@@ -32,6 +32,9 @@ public class GazeTracker : MonoBehaviour
     private float prevX = 999f;
     private float prevY = 999f;
 
+    // Cache reference to the Gaze component instead of searching every frame
+    private Gaze gazeScript;
+
     // Singleton
     private static GazeTracker instance; // Singleton instance
     public static GazeTracker GetInstance
@@ -59,6 +62,9 @@ public class GazeTracker : MonoBehaviour
     {
         //var settings = new TobiiXR_Settings();
         //TobiiXR.Start(settings);
+
+        // Find and cache the gaze script once on start
+        gazeScript = FindObjectOfType<Gaze>();
     }
 
 	// Update is called once per frame
@@ -162,18 +168,17 @@ public class GazeTracker : MonoBehaviour
 
     private Vector2 FindGazeLocation()
     {
-        // Find the Gaze script in the scene
-        Gaze gazeScript = FindObjectOfType<Gaze>();
+        // If the script reference was lost, try to locate it again
+        if (gazeScript == null)
+        {
+            gazeScript = FindObjectOfType<Gaze>();
+            if (gazeScript == null)
+            {
+                Debug.LogError("Gaze script not found in the scene!");
+                return Vector2.zero;
+            }
+        }
 
-        // If the script is found, return the gazeLocation
-        if (gazeScript != null)
-        {
-            return gazeScript.gazeLocation;
-        }
-        else
-        {
-            Debug.LogError("Gaze script not found in the scene!");
-            return Vector2.zero;
-        }
+        return gazeScript.gazeLocation;
     }
 }
