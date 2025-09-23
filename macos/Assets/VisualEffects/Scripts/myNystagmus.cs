@@ -39,7 +39,10 @@ namespace VisSim
         private float old_shift_deg = 0f;
         [Tooltip("Diploplia strength.")]
         private Vector2 Displace = new Vector2(0.7f, 0.0f);
-        
+
+        [SerializeField, Tooltip("Logs additional information when enabled for debugging.")]
+        private bool enableDebugLogging = false;
+
         // geometry info
         [Linkable, Range(100, 10000), Tooltip("Only required if using artificial rotation")]
         public int screenWidth_px = 1334;
@@ -72,6 +75,10 @@ namespace VisSim
 
         protected override void OnUpdate()
         {
+            if (enableDebugLogging)
+            {
+                Debug.Log("foveat_d" + foveat_d);
+            }
 
             if(prev_foveat_d != foveat_d){
                 foveat_d = 1 - foveat_d;
