@@ -4,32 +4,27 @@ using uWindowCapture;
 
 public class HideImpairmentSelection : MonoBehaviour
 {
-    // Serielles Field für das GameObject, das gesetzt werden soll
     [SerializeField] private GameObject targetGameObject;
     [SerializeField] Slider enableToggle;
     [SerializeField] Image settingWheel;
 
-    // Update is called once per frame
     void Update()
     {
-        // Setzt das target GameObject je nach Rückgabewert
-        if (UwcWindowList.thereIsActiveWindow)
+        bool hasActiveWindow = UwcWindowList.thereIsActiveWindow;
+        bool desiredActive = hasActiveWindow && enableToggle.value > 0.9f;
+
+        if (targetGameObject.activeSelf != desiredActive)
         {
-            if (enableToggle.value > 0.9)
-            {
-                targetGameObject.SetActive(true);
-            } else
-            {
-                targetGameObject.SetActive(false);
-            }
-            if(settingWheel != null)
-            settingWheel.enabled = true;
+            targetGameObject.SetActive(desiredActive);
         }
-        else
+
+        if (settingWheel != null)
         {
-            targetGameObject.SetActive(false);
-            if(settingWheel != null)
-            settingWheel.enabled = false;    
+            bool desiredWheel = hasActiveWindow;
+            if (settingWheel.enabled != desiredWheel)
+            {
+                settingWheel.enabled = desiredWheel;
+            }
         }
     }
 }

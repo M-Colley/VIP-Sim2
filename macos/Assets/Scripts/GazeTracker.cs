@@ -34,6 +34,8 @@ public class GazeTracker : MonoBehaviour
 
     // Cache reference to the Gaze component instead of searching every frame
     private Gaze gazeScript;
+    // Cache the active state of the unitEye object
+    private bool unitEyeActive = false;
 
     // Singleton
     private static GazeTracker instance; // Singleton instance
@@ -68,10 +70,12 @@ public class GazeTracker : MonoBehaviour
     }
 
 	// Update is called once per frame
-	void Update ()
+        void Update ()
     {
+        float screenWidth = Screen.width;
+        float screenHeight = Screen.height;
         switch (gazeSource) {
-		case GazeSource.Fove:
+                case GazeSource.Fove:
                 /*
         	// Get convergence data
 			Fove.Managed.SFVR_GazeConvergenceData convergence = FoveInterface2.GetFVRHeadset ().GetGazeConvergence ();
@@ -89,10 +93,14 @@ public class GazeTracker : MonoBehaviour
 			break;
             */
         case GazeSource.UnitEye:
-                unitEye.SetActive(true);
+                if (!unitEyeActive)
+                {
+                    unitEye.SetActive(true);
+                    unitEyeActive = true;
+                }
                 xy_norm = FindGazeLocation();
-                xy_norm.x = xy_norm.x / Screen.width;
-                xy_norm.y = (Screen.height - xy_norm.y) / Screen.height;
+                xy_norm.x = xy_norm.x / screenWidth;
+                xy_norm.y = (screenHeight - xy_norm.y) / screenHeight;
             //get latest data from Tobii Eye-Tracker
                 /*
                 var latestdata = TobiiXR.GetEyeTrackingData(TobiiXR_TrackingSpace.Local);
@@ -111,8 +119,7 @@ public class GazeTracker : MonoBehaviour
                 }
                     // only register large movements
                     float dist = Mathf.Sqrt(Mathf.Pow(xy_norm.x - prevX, 2) + Mathf.Pow(xy_norm.y - prevY, 2));
-                    //if (dist > 0.01)
-                    if (dist > -0.01)
+                    if (dist > 0.01f)
                     {
                         prevX = xy_norm.x;
                         prevY = xy_norm.y;
@@ -126,43 +133,55 @@ public class GazeTracker : MonoBehaviour
                 */
                 break;
         case GazeSource.Mouse:
-            unitEye.SetActive(false);
-         	// Get raw, clip within canvas
-			float mousex = Mathf.Min (Mathf.Max (Input.mousePosition.x, 0), Screen.width);
-			float mousey = Mathf.Min (Mathf.Max (Input.mousePosition.y, 0), Screen.height);
+            if (unitEyeActive)
+            {
+                unitEye.SetActive(false);
+                unitEyeActive = false;
+            }
+                // Get raw, clip within canvas
+                        float mousex = Mathf.Min (Mathf.Max (Input.mousePosition.x, 0), screenWidth);
+                        float mousey = Mathf.Min (Mathf.Max (Input.mousePosition.y, 0), screenHeight);
 
             // Convert to norm & set
-			xy_norm.x = mousex / Screen.width;
-			xy_norm.y = mousey / Screen.height;
+                        xy_norm.x = mousex / screenWidth;
+                        xy_norm.y = mousey / screenHeight;
 
             //Debug.Log("Mouse --> " + xy_norm);
 
             // finished Mouse
             break;
-		case GazeSource.None:
-         	// fix at centre
-			xy_norm.x = 0.5f;
-			xy_norm.y = 0.5f;
+                case GazeSource.None:
+                // fix at centre
+                        xy_norm.x = 0.5f;
+                        xy_norm.y = 0.5f;
 
-         	// finished None
-			break;
-		default:
-			throw new System.ArgumentException ("Unknown GazeSource parameter?");
-		}
+                if (unitEyeActive)
+                {
+                    unitEye.SetActive(false);
+                    unitEyeActive = false;
+                }
+
+                // finished None
+                        break;
+                default:
+                        throw new System.ArgumentException ("Unknown GazeSource parameter?");
+                }
 
         // clamp within 0 to 1 range (defensive)
-        xy_norm.x = Mathf.Min(Mathf.Max(xy_norm.x, 0f), 1f);
-        xy_norm.y = Mathf.Min(Mathf.Max(xy_norm.y, 0f), 1f);
+        xy_norm.x = Mathf.Clamp01(xy_norm.x);
+        xy_norm.y = Mathf.Clamp01(xy_norm.y);
     }
 
     void OnGUI()
     {
         if (visualiseGaze)
-        { 
-            float xMin = (Screen.width / 2)*xy_norm.x - (crosshairImage.width / 2);
-            float yMin = Screen.height*(1-xy_norm.y) - (crosshairImage.height / 2);
+        {
+            float screenWidth = Screen.width;
+            float screenHeight = Screen.height;
+            float xMin = (screenWidth / 2)*xy_norm.x - (crosshairImage.width / 2);
+            float yMin = screenHeight*(1-xy_norm.y) - (crosshairImage.height / 2);
             GUI.DrawTexture(new Rect(xMin, yMin, crosshairImage.width, crosshairImage.height), crosshairImage);
-            GUI.DrawTexture(new Rect(xMin + (Screen.width / 2), yMin, crosshairImage.width, crosshairImage.height), crosshairImage);
+            GUI.DrawTexture(new Rect(xMin + (screenWidth / 2), yMin, crosshairImage.width, crosshairImage.height), crosshairImage);
         }
     }
 

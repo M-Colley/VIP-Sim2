@@ -52,8 +52,8 @@ If you want to use our shaders for your own project or use/contribute to VIP-Sim
 
 ### 🚀 Quick Start
 
-Download our release to to install VIP-Sim to your system.
-Note that the Mac-OS version does need a manual adjustement to the access rights for screen recording.
+Download our release to install VIP-Sim on your system.
+Note that the macOS version does need a manual adjustment to the access rights for screen recording.
 
 ### 🎓 Tutorial
 

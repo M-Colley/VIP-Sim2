@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace VisSim
@@ -27,20 +28,59 @@ namespace VisSim
         public FastNoise.FractalType fractalType = FastNoise.FractalType.FBM;
 
         // internal
-        private Texture2D[] tex;
+        private static Texture2D[] tex;
+        private static bool texturesGenerated = false;
+        private static int texWidth;
+        private static int texHeight;
         private int counter = 0;
 
         // Use this for initialization
         public new void OnEnable() {
             base.OnEnable();
 
-            //
-            int width_px =Screen.width;
+            int width_px = Screen.width;
             int height_px = Screen.height;
-            int N = 10;
+            const int N = 10;
 
-            //
-            FastNoise fNoise = new FastNoise(); // Create a FastNoise object
+            if (!texturesGenerated || texWidth != width_px || texHeight != height_px)
+            {
+                GenerateTextures(width_px, height_px, N);
+            }
+        }
+
+        private void GenerateTextures(int width_px, int height_px, int N)
+        {
+            texWidth = width_px;
+            texHeight = height_px;
+            tex = new Texture2D[N];
+
+            var tasks = new Task<Color32[]>[N];
+            var seeds = new int[N];
+            for (int i = 0; i < N; i++)
+            {
+                seeds[i] = UnityEngine.Random.Range(0, 1000);
+                int idx = i;
+                tasks[i] = Task.Run(() => BuildPixels(width_px, height_px, seeds[idx]));
+            }
+
+            for (int i = 0; i < N; i++)
+            {
+                var pixels = tasks[i].Result;
+                tex[i] = new Texture2D(width_px, height_px);
+                tex[i].SetPixels32(pixels);
+                tex[i].Apply(false);
+            }
+
+            texturesGenerated = true;
+
+            // for debugging: draw texture to screen!
+            //GameObject currentLoc = GameObject.Find("Cube (Street Scene)"); //("Cube (Texture2D)");
+            //currentLoc.GetComponent<Renderer>().material.mainTexture = tex[0];
+        }
+
+        private Color32[] BuildPixels(int width_px, int height_px, int seed)
+        {
+            FastNoise fNoise = new FastNoise();
             fNoise.SetFrequency(frequency);
             fNoise.SetInterp(interp);
             fNoise.SetNoiseType(noiseType);
@@ -48,30 +88,20 @@ namespace VisSim
             fNoise.SetFractalLacunarity(lacunarity);
             fNoise.SetFractalGain(gain);
             fNoise.SetFractalType(fractalType);
+            fNoise.SetSeed(seed);
 
-            //
             Color32[] pixels = new Color32[width_px * height_px];
-            tex = new Texture2D[N];
-            for (int i = 0; i < N; i++)
+            for (int y = 0; y < height_px; y++)
             {
-                fNoise.SetSeed((int)UnityEngine.Random.Range(0.0f, 1000.0f));
-                int index = 0;
-                for (int y = 0; y < height_px; y++)
+                float y2 = y * 2f;
+                int row = y * width_px;
+                for (int x = 0; x < width_px; x++)
                 {
-                    for (int x = 0; x < width_px; x++)
-                    {
-                        byte noise = (byte)Mathf.Clamp(fNoise.GetNoise(x * 2f, y * 2f) * 127.5f + 127.5f, 0f, 255f);
-                        pixels[index++] = new Color32(noise, noise, noise, 255);
-                    }
+                    byte noise = (byte)Mathf.Clamp(fNoise.GetNoise(x * 2f, y2) * 127.5f + 127.5f, 0f, 255f);
+                    pixels[row + x] = new Color32(noise, noise, noise, 255);
                 }
-                tex[i] = new Texture2D(width_px, height_px);
-                tex[i].SetPixels32(pixels);
-                tex[i].Apply(false);
             }
-
-            // for debugging: draw texture to screen!
-            //GameObject currentLoc = GameObject.Find("Cube (Street Scene)"); //("Cube (Texture2D)");
-            //currentLoc.GetComponent<Renderer>().material.mainTexture = tex[0];
+            return pixels;
         }
 
         // Called by camera to apply image effect
@@ -101,15 +131,12 @@ namespace VisSim
         // Called by camera to apply image effect
         protected override void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            tween += speed;
+            tween += speed * Time.deltaTime;
 
-            //
             if (tween >= 1f)
-            { 
-                counter++;
-                if (counter > 9) { counter = 0; }
-                counter1++;
-                if (counter1 > 9) { counter1 = 0; }
+            {
+                counter = (counter + 1) % tex.Length;
+                counter1 = (counter1 + 1) % tex.Length;
                 tween = 0f;
             }
 

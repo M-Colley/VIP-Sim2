@@ -5,7 +5,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class ChangeButtonApperance : MonoBehaviour
+public class ChangeButtonAppearance : MonoBehaviour
 {
     [SerializeField] private Sprite sprite1; // First sprite
     [SerializeField] private Sprite sprite2; // Second sprite

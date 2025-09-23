@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class MarkerTool : MonoBehaviour
 {
     public Camera m_camera;
-    public GameObject brush;
+    public BrushPool brushPool;
 
     public Material white;
     public Material blue;
@@ -14,6 +14,9 @@ public class MarkerTool : MonoBehaviour
     private Vector2 lastPos;
     private List<GameObject> drawnObjects = new List<GameObject>();
     private bool activeState = true;
+
+    [SerializeField]
+    private float pointDistanceThreshold = 0.01f;
 
     private Material currentMaterial;
 
@@ -26,7 +29,7 @@ public class MarkerTool : MonoBehaviour
     {
         Drawing();
         CheckUndo();
-        CheckVisablility();
+        CheckVisibility();
         CheckColor();
     }
 
@@ -48,7 +51,7 @@ public class MarkerTool : MonoBehaviour
 
     void CreateBrush()
     {
-        GameObject brushInstance = Instantiate(brush);
+        GameObject brushInstance = brushPool.GetBrush();
         brushInstance.GetComponent<LineRenderer>().material = currentMaterial;
         drawnObjects.Add(brushInstance);
         brushInstance.transform.parent = transform;
@@ -59,6 +62,8 @@ public class MarkerTool : MonoBehaviour
 
         currentLineRenderer.SetPosition(0, mousePos);
         currentLineRenderer.SetPosition(1, mousePos);
+
+        lastPos = mousePos;
     }
 
     void AddAPoint(Vector2 pointPos)
@@ -71,7 +76,7 @@ public class MarkerTool : MonoBehaviour
     void PointToMousePos()
     {
         Vector2 mousePos = m_camera.ScreenToWorldPoint(Input.mousePosition);
-        if (lastPos != mousePos)
+        if (Vector2.Distance(lastPos, mousePos) > pointDistanceThreshold)
         {
             AddAPoint(mousePos);
             lastPos = mousePos;
@@ -102,11 +107,11 @@ public class MarkerTool : MonoBehaviour
         }
     }
 
-    void CheckVisablility()
+    void CheckVisibility()
     {
         if (Input.GetKeyDown(KeyCode.V)) //USD or European layout
         {
-            toggleLineVisablity();
+            ToggleLineVisibility();
         }
     }
 
@@ -116,11 +121,11 @@ public class MarkerTool : MonoBehaviour
         {
             GameObject lastDrawnObject = drawnObjects[drawnObjects.Count - 1];
             drawnObjects.RemoveAt(drawnObjects.Count - 1);
-            Destroy(lastDrawnObject);
+            brushPool.ReturnBrush(lastDrawnObject);
         }
     }
 
-    public void toggleLineVisablity()
+    public void ToggleLineVisibility()
     {
         activeState = !activeState;
         foreach (GameObject lineObj in drawnObjects)

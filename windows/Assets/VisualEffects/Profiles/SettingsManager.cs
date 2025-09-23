@@ -1,14 +1,14 @@
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
-using Newtonsoft.Json; // Für JSON (installiere NewtonSoft.Json aus dem Unity Asset Store oder per NuGet)
+using Newtonsoft.Json; // FÃ¼r JSON (installiere NewtonSoft.Json aus dem Unity Asset Store oder per NuGet)
 using System.Reflection;
 using MathNet.Numerics.Interpolation;
 using System.Threading.Tasks;
 using VisSim;
 using static VisSim.myRecolour;
 using static VisSim.myFloaters;
-using SimpleFileBrowser; // Für Reflection, um alle Public Variablen zu aktualisieren
+using SimpleFileBrowser; // FÃ¼r Reflection, um alle Public Variablen zu aktualisieren
 
 public class SettingsManager : MonoBehaviour
 {
@@ -75,13 +75,13 @@ public class SettingsManager : MonoBehaviour
 
     private void Start()
     {
-        // Event Listener für die Buttons hinzufügen
+        // Event Listener fÃ¼r die Buttons hinzufÃ¼gen
         loadButton.onClick.AddListener(OpenFileBrowser);
         saveButton.onClick.AddListener(SaveSettings);
         InvokeRepeating("SyncSettings", 5.0f, 5.0f);
     }
 
-    // Öffnet einen Dateibrowser, um die Datei zu laden
+    // Ã–ffnet einen Dateibrowser, um die Datei zu laden
     private async void OpenFileBrowser()
     {
         string path = await OpenFilePanelAsync();
@@ -103,14 +103,14 @@ public class SettingsManager : MonoBehaviour
         }
     }
 
-    // Lädt Einstellungen aus einer JSON-Datei
+    // LÃ¤dt Einstellungen aus einer JSON-Datei
     private void LoadSettings(string path)
     {
         if (File.Exists(path))
         {
             string json = File.ReadAllText(path);
             appSettings = JsonConvert.DeserializeObject<AppSettings>(json);
-            ApplySettings(); // Übernimmt die Einstellungen ins Spiel
+            ApplySettings(); // Ãœbernimmt die Einstellungen ins Spiel
             Debug.Log("Settings loaded from: " + path);
         }
         else
@@ -119,17 +119,13 @@ public class SettingsManager : MonoBehaviour
         }
     }
 
-    // Übernimmt die geladenen Einstellungen und aktualisiert alle relevanten Public Variablen in anderen Skripten
+    // Ãœbernimmt die geladenen Einstellungen und aktualisiert alle relevanten Public Variablen in anderen Skripten
     private void ApplySettings()
     {
-        // Aktualisiere alle Objekte mit Public Variablen
-        MonoBehaviour[] allBehaviours = FindObjectsOfType<MonoBehaviour>();
-        foreach (var behaviour in allBehaviours)
-        {
-            UpdatePublicFields();
-        }
+        // Aktualisiere die referenzierten Objekte mit Public Variablen
+        UpdatePublicFields();
 
-        // Beispiel: wende Licht-Intensität an
+        // Beispiel: wende Licht-IntensitÃ¤t an
         Light[] lights = FindObjectsOfType<Light>();
         foreach (var light in lights)
         {
@@ -190,7 +186,7 @@ public class SettingsManager : MonoBehaviour
         myDoubleVision.displacementAmount = appSettings.displacementAmount;
         //Distortion
         myVortexEffect.vortexRadius = appSettings.vortexRadius;
-        myVortexEffect.suctionStrength = appSettings.suctionStrenght;
+        myVortexEffect.suctionStrength = appSettings.suctionStrength;
         myVortexEffect.innerCircleRadius = appSettings.innerCircleRadius;
         myVortexEffect.noiseAmount = appSettings.noiseAmount;
         //Foveal Darkness
@@ -207,7 +203,7 @@ public class SettingsManager : MonoBehaviour
 
 }
 
-    // Synchronisiert die AppSettings, wenn sich eine Public Variable ändert
+    // Synchronisiert die AppSettings, wenn sich eine Public Variable Ã¤ndert
     public void SyncSettings()
     {
         // vision loss central
@@ -260,7 +256,7 @@ public class SettingsManager : MonoBehaviour
         appSettings.displacementAmount = myDoubleVision.displacementAmount;
         // Distortion
         appSettings.vortexRadius = myVortexEffect.vortexRadius;
-        appSettings.suctionStrenght = myVortexEffect.suctionStrength;
+        appSettings.suctionStrength = myVortexEffect.suctionStrength;
         appSettings.innerCircleRadius = myVortexEffect.innerCircleRadius;
         appSettings.noiseAmount = myVortexEffect.noiseAmount;
         // Foveal Darkness
@@ -277,7 +273,7 @@ public class SettingsManager : MonoBehaviour
 
     }
 
-    // Methoden für den Standalone File Browser
+    // Methoden fÃ¼r den Standalone File Browser
     /*
     private string OpenFilePanel()
     {
@@ -333,7 +329,7 @@ public class SettingsManager : MonoBehaviour
     }
 }
 
-// Klasse, die alle Einstellungen enthält
+// Klasse, die alle Einstellungen enthÃ¤lt
 [System.Serializable]
 public class AppSettings
 {
@@ -344,7 +340,7 @@ public class AppSettings
     public bool fullscreen = true;
     public float volume = 0.5f;
 
-    // Füge hier weitere Einstellungen hinzu, die gespeichert werden sollen
+    // FÃ¼ge hier weitere Einstellungen hinzu, die gespeichert werden sollen
 
     // vision loss central
     public float overlay_scale;
@@ -396,7 +392,7 @@ public class AppSettings
     public float displacementAmount;
     //Distortion
     public float vortexRadius;
-    public float suctionStrenght;
+    public float suctionStrength;
     public float innerCircleRadius;
     public float noiseAmount;
     //Foveal Darkness

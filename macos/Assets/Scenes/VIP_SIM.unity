@@ -1339,7 +1339,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 73720588}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -4622,7 +4622,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 357715336}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -6212,7 +6212,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 577858248}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -7010,7 +7010,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 665143161}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -7598,7 +7598,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 710379088}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -8908,7 +8908,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 850052974}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -10427,7 +10427,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 967889738}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -10891,7 +10891,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 993250610}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -11364,7 +11364,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 1080787019}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -11979,7 +11979,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 1115614453}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -12355,7 +12355,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 1224382965}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -12656,7 +12656,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 1250469332}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -14789,7 +14789,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 1418537656}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -14991,7 +14991,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 1458675855}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -15752,7 +15752,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 1607068751}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -16725,7 +16725,7 @@ MonoBehaviour:
     i_threshold: 0
     displacementAmount: 0
     vortexRadius: 0
-    suctionStrenght: 0
+    suctionStrength: 0
     innerCircleRadius: 0
     noiseAmount: 0
     innnerCircleRadius: 0
@@ -17346,7 +17346,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 1798139763}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -18564,7 +18564,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 1995455316}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:
@@ -19009,7 +19009,7 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
       - m_Target: {fileID: 2018934307}
-        m_TargetAssemblyTypeName: ChangeButtonApperance, Assembly-CSharp
+        m_TargetAssemblyTypeName: ChangeButtonAppearance, Assembly-CSharp
         m_MethodName: SwapSpritesAndTextColor
         m_Mode: 1
         m_Arguments:

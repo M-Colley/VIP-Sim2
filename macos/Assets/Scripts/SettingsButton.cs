@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class SettingsButton : MonoBehaviour
 {
-    public ChangeButtonApperance associatedButton;
+    public ChangeButtonAppearance associatedButton;
         
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -21,7 +21,7 @@ public class SettingsButton : MonoBehaviour
         if (!associatedButton.isSprite1Active)
         {
             Debug.Log(associatedButton.isSprite1Active);
-            GetComponent<ChangeButtonApperance>().SwapSpritesAndTextColor();
+            GetComponent<ChangeButtonAppearance>().SwapSpritesAndTextColor();
         }
     }
 }

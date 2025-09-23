@@ -177,7 +177,7 @@ private void Start()
         myDoubleVision.displacementAmount = appSettings.displacementAmount;
         //Distortion
         myVortexEffect.vortexRadius = appSettings.vortexRadius;
-        myVortexEffect.suctionStrength = appSettings.suctionStrenght;
+        myVortexEffect.suctionStrength = appSettings.suctionStrength;
         myVortexEffect.innerCircleRadius = appSettings.innerCircleRadius;
         myVortexEffect.noiseAmount = appSettings.noiseAmount;
         //Foveal Darkness
@@ -247,7 +247,7 @@ private void Start()
         appSettings.displacementAmount = myDoubleVision.displacementAmount;
         // Distortion
         appSettings.vortexRadius = myVortexEffect.vortexRadius;
-        appSettings.suctionStrenght = myVortexEffect.suctionStrength;
+        appSettings.suctionStrength = myVortexEffect.suctionStrength;
         appSettings.innerCircleRadius = myVortexEffect.innerCircleRadius;
         appSettings.noiseAmount = myVortexEffect.noiseAmount;
         // Foveal Darkness
@@ -328,7 +328,7 @@ public class AppSettings
     public float displacementAmount;
     //Distortion
     public float vortexRadius;
-    public float suctionStrenght;
+    public float suctionStrength;
     public float innerCircleRadius;
     public float noiseAmount;
     //Foveal Darkness

@@ -145,9 +145,12 @@ public class RidgeRegression
 
         if (Affine)
         {
+            // MathNet does not provide a ``Vector.One`` constant. Referencing
+            // it results in a compile/runtime failure.  Build the column of
+            // ones explicitly instead.
             input = input.InsertColumn(
                 0,
-                Vector<float>.Build.Dense(input.RowCount, Vector<float>.One)
+                Vector<float>.Build.Dense(input.RowCount, 1.0f)
             );
         }
 

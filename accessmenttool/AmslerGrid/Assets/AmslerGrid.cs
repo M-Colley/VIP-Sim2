@@ -20,10 +20,7 @@ public class AmslerGrid : MonoBehaviour
     private Material lineMaterial; // Material for the LineRenderer
 
     [SerializeField]
-    private float lineWidth = .03f;
-
-    [SerializeField]
-    public Image circle; 
+    public Image circle;
 
     private float cmPerPixel;
     private float screenWidth;
@@ -54,7 +51,7 @@ public class AmslerGrid : MonoBehaviour
 
     private void Update()
     {
-        CheckVisablility();
+        CheckVisibility();
     }
 
     float ParseAspectRatio(string aspectRatio)
@@ -116,46 +113,60 @@ public class AmslerGrid : MonoBehaviour
         float pixelsToWorldX = screenWidthWorld / screenResolution.x;
         float pixelsToWorldY = screenHeightWorld / screenResolution.y;
 
-        // Draw vertical lines
+        // Total line count (each line has two vertices)
+        int totalLines = numberOfVerticalLines + numberOfHorizontalLines;
+        Vector3[] vertices = new Vector3[totalLines * 2];
+        int[] indices = new int[totalLines * 2];
+        int vertIndex = 0;
+
+        // Store vertical line vertices
         for (int i = -numberOfVerticalLines / 2; i <= numberOfVerticalLines / 2; i++)
         {
             float xPos = i * distancePerLinePx * pixelsToWorldX;
-            DrawLine(new Vector3(xPos, -screenHeightWorld, 0), new Vector3(xPos, screenHeightWorld, 0), (i == 0) ? lineWidth + 0.01f : lineWidth);
+            vertices[vertIndex] = new Vector3(xPos, -screenHeightWorld, 0);
+            indices[vertIndex] = vertIndex;
+            vertIndex++;
+            vertices[vertIndex] = new Vector3(xPos, screenHeightWorld, 0);
+            indices[vertIndex] = vertIndex;
+            vertIndex++;
         }
 
-        // Draw horizontal lines
+        // Store horizontal line vertices
         for (int i = -numberOfHorizontalLines / 2; i <= numberOfHorizontalLines / 2; i++)
         {
             float yPos = i * distancePerLinePx * pixelsToWorldY;
-            DrawLine(new Vector3(-screenWidthWorld, yPos, 0), new Vector3(screenWidthWorld, yPos, 0), (i == 0) ? lineWidth + 0.01f : lineWidth);
+            vertices[vertIndex] = new Vector3(-screenWidthWorld, yPos, 0);
+            indices[vertIndex] = vertIndex;
+            vertIndex++;
+            vertices[vertIndex] = new Vector3(screenWidthWorld, yPos, 0);
+            indices[vertIndex] = vertIndex;
+            vertIndex++;
         }
+
+        // Create mesh for the grid
+        Mesh gridMesh = new Mesh();
+        gridMesh.vertices = vertices;
+        gridMesh.SetIndices(indices, MeshTopology.Lines, 0);
+
+        GameObject gridObj = new GameObject("Grid");
+        gridObj.transform.parent = transform;
+        MeshFilter mf = gridObj.AddComponent<MeshFilter>();
+        MeshRenderer mr = gridObj.AddComponent<MeshRenderer>();
+        mf.mesh = gridMesh;
+        mr.material = lineMaterial;
+
+        drawnObjects.Add(gridObj);
     }
 
-    void DrawLine(Vector3 start, Vector3 end, float width)
-    {
-        GameObject lineObj = new GameObject("Line");
-        LineRenderer lineRenderer = lineObj.AddComponent<LineRenderer>();
-        drawnObjects.Add(lineRenderer.gameObject);
-        lineRenderer.transform.parent = transform;
-
-        lineRenderer.positionCount = 2;
-        lineRenderer.SetPosition(0, start);
-        lineRenderer.SetPosition(1, end);
-
-        lineRenderer.startWidth = width; 
-        lineRenderer.endWidth = width;
-        lineRenderer.material = lineMaterial;
-    }
-
-    void CheckVisablility()
+    void CheckVisibility()
     {
         if (Input.GetKeyDown(KeyCode.V)) //USD or European layout
         {
-            toggleLineVisablity();
+            ToggleLineVisibility();
         }
     }
 
-    public void toggleLineVisablity()
+    public void ToggleLineVisibility()
     {
         activeState = !activeState;
         foreach (GameObject lineObj in drawnObjects)

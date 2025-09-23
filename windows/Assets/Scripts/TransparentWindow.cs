@@ -58,6 +58,8 @@ public class TransparentWindow : MonoBehaviour {
     const uint LWA_COLORKEY = 0x00000000;
 
     private IntPtr hWnd;
+    private bool _lastClickthrough;
+    private Coroutine clickRoutine;
 
     private void Start() {
         //MessageBox(new IntPtr(0), "Hello World!", "Hello Dialog", 0);
@@ -68,13 +70,17 @@ public class TransparentWindow : MonoBehaviour {
         MARGINS margins = new MARGINS { cxLeftWidth = -1 };
         DwmExtendFrameIntoClientArea(hWnd, ref margins);
 
-        SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TRANSPARENT);
+        SetClickthrough(true);
         //SetLayeredWindowAttributes(hWnd, 0, 0, LWA_COLORKEY);
-
         SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, 0);
+        _lastClickthrough = true;
+#else
+        _lastClickthrough = false;
 #endif
-
         Application.runInBackground = true;
+        // Lower the frame rate when running in the background to reduce CPU usage
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = 30;
     }
 
     public void enableFeedbackState()
@@ -87,16 +93,37 @@ public class TransparentWindow : MonoBehaviour {
         feedbackState = false;
     }
 
-    private void Update() {
-        //SetClickthrough(Physics2D.OverlapPoint(GetMouseWorldPosition()) == null);
-        bool clickthrough = IsCoordinateOutsidePanel();
-        if (feedbackState)
+    private void OnEnable()
+    {
+        // Run the clickthrough check at a reduced frequency to lower CPU usage
+        clickRoutine = StartCoroutine(ClickthroughRoutine());
+    }
+
+    private void OnDisable()
+    {
+        if (clickRoutine != null)
         {
-            clickthrough = false;
+            StopCoroutine(clickRoutine);
         }
-        SetClickthrough(clickthrough);
+    }
 
-
+    private IEnumerator ClickthroughRoutine()
+    {
+        var wait = new WaitForSeconds(0.1f); // Check 10 times per second
+        while (true)
+        {
+            bool clickthrough = IsCoordinateOutsidePanel();
+            if (feedbackState)
+            {
+                clickthrough = false;
+            }
+            if (clickthrough != _lastClickthrough)
+            {
+                SetClickthrough(clickthrough);
+                _lastClickthrough = clickthrough;
+            }
+            yield return wait;
+        }
     }
 
     private void SetClickthrough(bool clickthrough) {
@@ -133,31 +160,9 @@ public class TransparentWindow : MonoBehaviour {
     public bool IsCoordinateOutsidePanel()
     {
         Vector2 screenPosition = Input.mousePosition;
-        // Convert screen position to canvas space
-        Vector2 canvasPosition;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRectTransform, screenPosition, null, out canvasPosition);
-
-
-        // Get the panel's boundaries in canvas space
-        Vector3[] panelCorners = new Vector3[4];
-        panelRectTransform.GetWorldCorners(panelCorners);
-
-        // Convert the world coordinates of the panel corners to local canvas space
-        for (int i = 0; i < 4; i++)
-        {
-            
-            panelCorners[i] = canvasRectTransform.InverseTransformPoint(panelCorners[i]);
-        }
-
-        // Check if the point is inside the panel
-        if (canvasPosition.x >= panelCorners[0].x && canvasPosition.x <= panelCorners[2].x &&
-            canvasPosition.y >= panelCorners[0].y && canvasPosition.y <= panelCorners[2].y)
-        {
-            return false; // Inside the panel
-        }
-        else
-        {
-            return true; // Outside the panel
-        }
+        // Use the built-in rectangle check to avoid per-frame allocations
+        bool inside = RectTransformUtility.RectangleContainsScreenPoint(
+            panelRectTransform, screenPosition, null);
+        return !inside;
     }
 }

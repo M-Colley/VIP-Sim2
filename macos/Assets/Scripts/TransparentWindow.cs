@@ -37,6 +37,10 @@ public class TransparentWindow : MonoBehaviour {
     public RectTransform canvasRectTransform;
     public RectTransform panelRectTransform;
 
+    private Vector3[] panelCorners = new Vector3[4];
+    private Vector2 lastPanelSize;
+    private Vector2 lastCanvasSize;
+
     private struct MARGINS {
         public int cxLeftWidth;
         public int cxRightWidth;
@@ -74,6 +78,13 @@ public class TransparentWindow : MonoBehaviour {
 #endif
 
         Application.runInBackground = true;
+        CachePanelCorners();
+        if (panelRectTransform != null) {
+            lastPanelSize = panelRectTransform.rect.size;
+        }
+        if (canvasRectTransform != null) {
+            lastCanvasSize = canvasRectTransform.rect.size;
+        }
     }
 
     private void Update() {
@@ -82,6 +93,23 @@ public class TransparentWindow : MonoBehaviour {
         SetClickthrough(clickthrough);
 
 
+    }
+
+    private void CachePanelCorners() {
+        if (panelRectTransform != null) {
+            panelRectTransform.GetWorldCorners(panelCorners);
+        }
+    }
+
+    private void OnRectTransformDimensionsChange() {
+        if (panelRectTransform == null || canvasRectTransform == null) return;
+        Vector2 panelSize = panelRectTransform.rect.size;
+        Vector2 canvasSize = canvasRectTransform.rect.size;
+        if (panelSize != lastPanelSize || canvasSize != lastCanvasSize) {
+            lastPanelSize = panelSize;
+            lastCanvasSize = canvasSize;
+            CachePanelCorners();
+        }
     }
 
     private void SetClickthrough(bool clickthrough) {
@@ -117,32 +145,7 @@ public class TransparentWindow : MonoBehaviour {
 
     public bool IsCoordinateOutsidePanel()
     {
-        Vector2 screenPosition = Input.mousePosition;
-        // Convert screen position to canvas space
-        Vector2 canvasPosition;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRectTransform, screenPosition, null, out canvasPosition);
-
-
-        // Get the panel's boundaries in canvas space
-        Vector3[] panelCorners = new Vector3[4];
-        panelRectTransform.GetWorldCorners(panelCorners);
-
-        // Convert the world coordinates of the panel corners to local canvas space
-        for (int i = 0; i < 4; i++)
-        {
-            
-            panelCorners[i] = canvasRectTransform.InverseTransformPoint(panelCorners[i]);
-        }
-
-        // Check if the point is inside the panel
-        if (canvasPosition.x >= panelCorners[0].x && canvasPosition.x <= panelCorners[2].x &&
-            canvasPosition.y >= panelCorners[0].y && canvasPosition.y <= panelCorners[2].y)
-        {
-            return false; // Inside the panel
-        }
-        else
-        {
-            return true; // Outside the panel
-        }
+        bool inside = RectTransformUtility.RectangleContainsScreenPoint(panelRectTransform, Input.mousePosition, null);
+        return !inside;
     }
 }

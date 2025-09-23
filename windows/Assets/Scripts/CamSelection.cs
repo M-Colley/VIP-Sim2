@@ -14,36 +14,47 @@ public class CamSelection : MonoBehaviour
     [SerializeField]
     private Gaze gaze;
 
-    
+    private string previousName;
+
     private void Start()
     {
+        previousName = webCamInput.webCamName;
         StartCoroutine(LateStart(1));
     }
 
     private void Update()
     {
-        webcamtext.text = "Webcam:" + webCamInput.webCamName;
+        if (webCamInput.webCamName != previousName)
+        {
+            UpdateWebcamText();
+        }
     }
-
 
     IEnumerator LateStart(float waitTime)
     {
         yield return new WaitForSeconds(waitTime);
         //Your Function You Want to Call
-        webcamtext.text = webCamInput.webCamName;
+        UpdateWebcamText();
     }
 
     public void OnPrevCam()
     {
         webCamInput.PreviousCamera((int)webCamInput.webCamResolution.x, (int)webCamInput.webCamResolution.y);
         gaze.EyeHelper.CameraChanged(webCamInput.webCamName);
+        UpdateWebcamText();
     }
 
     public void OnNextCam()
     {
         webCamInput.NextCamera((int)webCamInput.webCamResolution.x, (int)webCamInput.webCamResolution.y);
         gaze.EyeHelper.CameraChanged(webCamInput.webCamName);
+        UpdateWebcamText();
     }
-    
-    
+
+    private void UpdateWebcamText()
+    {
+        previousName = webCamInput.webCamName;
+        webcamtext.text = "Webcam: " + previousName;
+    }
 }
+

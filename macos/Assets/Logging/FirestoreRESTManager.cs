@@ -103,16 +103,22 @@ public class FirestoreRESTManager : MonoBehaviour
     {
         // Sucht den aktiven Toggle in der Gruppe
         Toggle selectedToggle = toggleGroup.ActiveToggles().FirstOrDefault();
-        string numericPart = Regex.Match(selectedToggle.GetComponentInChildren<Text>().text, @"\d+").Value;
-        if (selectedToggle != null && int.TryParse(numericPart, out int value))
+
+        if (selectedToggle != null)
         {
-            return value;
+            var label = selectedToggle.GetComponentInChildren<Text>();
+            if (label != null)
+            {
+                string numericPart = Regex.Match(label.text, @"\d+").Value;
+                if (int.TryParse(numericPart, out int value))
+                {
+                    return value;
+                }
+            }
         }
-        else
-        {
-            Debug.LogWarning("No valid toggle selected.");
-            return 0;
-        }
+
+        Debug.LogWarning("No valid toggle selected.");
+        return 0;
     }
 
     private IEnumerator SendSessionDataToFirestore(string jsonData)

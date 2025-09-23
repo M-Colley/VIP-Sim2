@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 
@@ -15,6 +16,7 @@ namespace uWindowCapture
         Dictionary<int, UwcWindowListItem> items_ = new Dictionary<int, UwcWindowListItem>();
 
         public static bool thereIsActiveWindow = false;
+        public static event Action<bool> OnActiveWindowChanged;
 
         void Start()
         {
@@ -37,7 +39,12 @@ namespace uWindowCapture
 
         private void Update()
         {
-            thereIsActiveWindow = checkForActiveWindows();
+            bool newState = checkForActiveWindows();
+            if (thereIsActiveWindow != newState)
+            {
+                thereIsActiveWindow = newState;
+                OnActiveWindowChanged?.Invoke(thereIsActiveWindow);
+            }
         }
 
         public bool checkForActiveWindows()

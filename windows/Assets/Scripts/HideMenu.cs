@@ -5,23 +5,27 @@ using uWindowCapture;
 public class HideMenu : MonoBehaviour
 {
 
-    // Serielles Field für das GameObject, das gesetzt werden soll
+    // Serielles Field fÃ¼r das GameObject, das gesetzt werden soll
     [SerializeField] private GameObject targetGameObject;
     [SerializeField] private ToggleSwitch toggle;
 
-    void Update()
+    void OnEnable()
     {
-        // Setzt das target GameObject je nach Rückgabewert
-        if (UwcWindowList.thereIsActiveWindow)
-        {
-            targetGameObject.SetActive(true);
-        }
-        else
-        {
-            targetGameObject.SetActive(false);
-            if(toggle.CurrentValue)
-            toggle.Toggle();
+        UwcWindowList.OnActiveWindowChanged += HandleActiveWindowChanged;
+        HandleActiveWindowChanged(UwcWindowList.thereIsActiveWindow);
+    }
 
-        }    
+    void OnDisable()
+    {
+        UwcWindowList.OnActiveWindowChanged -= HandleActiveWindowChanged;
+    }
+
+    void HandleActiveWindowChanged(bool hasActiveWindow)
+    {
+        targetGameObject.SetActive(hasActiveWindow);
+        if (!hasActiveWindow && toggle.CurrentValue)
+        {
+            toggle.Toggle();
+        }
     }
 }

@@ -44,7 +44,6 @@ public class DropdownManager : MonoBehaviour
         fixedInputs.Add("Rise_d");
         fixedInputs.Add("Rise_exp");
         fixedInputs.Add("Amp_deg");
-        fixedInputs.Add("BaslineErr_deg");
         fixedInputs.Add("kernalSigma");
         fixedInputs.Add("viewingAngle_deg");
         fixedInputs.Add("AutomaticTimer");
@@ -265,7 +264,7 @@ public class DropdownManager : MonoBehaviour
         { "Speed", "Speed (-/+)" },
         { "displacementAmount", "Severity (-/+)" },
         { "vortexRadius", "Radius (-/+)" },
-        { "suctionStrength", "Strenght (-/+)" },
+        { "suctionStrength", "Strength (-/+)" },
         { "innerCircleRadius", "Radius (-/+)" },
         { "noiseAmount", "Noise (-/+)" },
         { "fadeWidth", "Fade (-/+)" },

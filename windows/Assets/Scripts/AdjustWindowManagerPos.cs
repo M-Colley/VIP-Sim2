@@ -1,34 +1,59 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class AdjustWindowManagerPos : MonoBehaviour
 {
-
+    private Transform trackedChild;
     private Vector3 lastChildLocalPosition;
-    // Start is called before the first frame update
-    void Start()
+    private bool forceUpdate;
+
+    private void Awake()
     {
-        
+        CacheFirstChild();
     }
 
-    // Update is called once per frame
-    void Update()
+    private void OnEnable()
     {
-        if (transform.childCount > 0)
+        forceUpdate = true;
+    }
+
+    private void OnTransformChildrenChanged()
+    {
+        CacheFirstChild();
+        forceUpdate = true;
+    }
+
+    private void LateUpdate()
+    {
+        if (trackedChild == null)
         {
-            Transform firstChild = transform.GetChild(0);
-            Vector3 childLocalPosition = firstChild.localPosition;
+            return;
+        }
 
-            if (childLocalPosition != lastChildLocalPosition)
-            {
-                Vector3 parentLocalPosition = transform.localPosition;
-                parentLocalPosition.x = -childLocalPosition.x;
-                transform.localPosition = parentLocalPosition;
+        Vector3 childLocalPosition = trackedChild.localPosition;
+        bool childMoved = forceUpdate ||
+                          trackedChild.hasChanged ||
+                          (childLocalPosition - lastChildLocalPosition).sqrMagnitude > Mathf.Epsilon;
 
-                // Update last known local position to prevent continuous adjustment
-                lastChildLocalPosition = childLocalPosition;
-            }
+        if (!childMoved)
+        {
+            return;
+        }
+
+        Vector3 parentLocalPosition = transform.localPosition;
+        parentLocalPosition.x = -childLocalPosition.x;
+        transform.localPosition = parentLocalPosition;
+
+        lastChildLocalPosition = childLocalPosition;
+        trackedChild.hasChanged = false;
+        forceUpdate = false;
+    }
+
+    private void CacheFirstChild()
+    {
+        trackedChild = transform.childCount > 0 ? transform.GetChild(0) : null;
+        if (trackedChild != null)
+        {
+            lastChildLocalPosition = trackedChild.localPosition;
         }
     }
 }

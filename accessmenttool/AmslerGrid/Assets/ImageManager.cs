@@ -20,14 +20,14 @@ public class ImageManager : MonoBehaviour
     void Update()
     {
         CheckImage();
-        CheckVisablility();
+        CheckVisibility();
     }
 
-    private void CheckVisablility()
+    private void CheckVisibility()
     {
         if (Input.GetKeyDown(KeyCode.I))
         {
-            m_Image.enabled = m_Image.enabled ? false : true;
+            m_Image.enabled = !m_Image.enabled;
         }
     }
     private void CheckImage()

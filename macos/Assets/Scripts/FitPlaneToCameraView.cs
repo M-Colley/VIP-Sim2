@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class FitPlaneToCameraVie : MonoBehaviour
+public class FitPlaneToCameraView : MonoBehaviour
 {
     public Camera mainCamera; // Reference to the main camera
     private Transform planeTransform; // Reference to the plane's transform

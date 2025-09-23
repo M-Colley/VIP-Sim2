@@ -20,6 +20,7 @@ public class FlickeringStars : MonoBehaviour
     private float fade = 1.0f;
     private float[] fadeInStartTimes;
     private float[] fadeOutEndTimes;
+    private float elapsed;
 
     void Start()
     {
@@ -38,10 +39,11 @@ public class FlickeringStars : MonoBehaviour
 
     void Update()
     {
-        // Update coordinates at regular intervals
-        if (Time.time % 5f < Time.deltaTime)
+        elapsed += Time.deltaTime;
+        if (elapsed >= 5f)
         {
             GenerateRandomCoordinates();
+            elapsed = 0f;
         }
 
         // Update fade states for each coordinate
