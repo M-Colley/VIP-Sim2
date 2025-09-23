@@ -2,6 +2,7 @@
 using System.Reflection;
 //using Colorful;
 using System;
+using System.Linq.Expressions;
 
 namespace VisSim
 {
@@ -28,6 +29,7 @@ namespace VisSim
         // reflection every frame in Update(). This significantly reduces the
         // overhead when running the simulator in the background.
         private FieldInfo[] linkableFields;
+        private Action<LinkableBaseEffect, LinkableBaseEffect>[] linkableFieldCopiers;
         
 
         /*
@@ -76,7 +78,13 @@ namespace VisSim
 
             // Cache all fields that are marked as linkable so we don't have to
             // iterate over every field each frame via reflection.
-            linkableFields = Array.FindAll(GetType().GetFields(), fi => fi.IsDefined(typeof(LinkableAttribute), false));
+            Type effectType = GetType();
+            linkableFields = Array.FindAll(effectType.GetFields(), fi => fi.IsDefined(typeof(LinkableAttribute), false) && !fi.IsStatic);
+            linkableFieldCopiers = new Action<LinkableBaseEffect, LinkableBaseEffect>[linkableFields.Length];
+            for (int i = 0; i < linkableFields.Length; i++)
+            {
+                linkableFieldCopiers[i] = CreateFieldCopier(linkableFields[i]);
+            }
 
             // also enable right eye, if the two eyes are locked
             if (isLeftEye && this.LinkEyes)
@@ -117,9 +125,9 @@ namespace VisSim
                 {
                     rightEyeEffectInstance.enabled = leftEyeEffectInstance.enabled;
 
-                    foreach (FieldInfo fi in linkableFields)
+                    for (int i = 0; i < linkableFieldCopiers.Length; i++)
                     {
-                        fi.SetValue(rightEyeEffectInstance, fi.GetValue(this));
+                        linkableFieldCopiers[i](this, rightEyeEffectInstance);
                     }
                 }
             }
@@ -140,6 +148,24 @@ namespace VisSim
         protected override string GetShaderName()
         {
             return "Hidden/VisSim/LinkableBaseEffect (this should be overriden)";
+        }
+
+        private static Action<LinkableBaseEffect, LinkableBaseEffect> CreateFieldCopier(FieldInfo fieldInfo)
+        {
+            Type declaringType = fieldInfo.DeclaringType ?? typeof(LinkableBaseEffect);
+
+            ParameterExpression sourceParameter = Expression.Parameter(typeof(LinkableBaseEffect), "source");
+            ParameterExpression targetParameter = Expression.Parameter(typeof(LinkableBaseEffect), "target");
+
+            UnaryExpression typedSource = Expression.Convert(sourceParameter, declaringType);
+            UnaryExpression typedTarget = Expression.Convert(targetParameter, declaringType);
+
+            MemberExpression sourceField = Expression.Field(typedSource, fieldInfo);
+            MemberExpression targetField = Expression.Field(typedTarget, fieldInfo);
+
+            BinaryExpression assignExpression = Expression.Assign(targetField, sourceField);
+
+            return Expression.Lambda<Action<LinkableBaseEffect, LinkableBaseEffect>>(assignExpression, sourceParameter, targetParameter).Compile();
         }
     }
 }
