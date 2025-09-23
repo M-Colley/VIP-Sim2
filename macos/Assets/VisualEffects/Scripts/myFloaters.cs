@@ -46,19 +46,20 @@ namespace VisSim
 
 
         // Store previous values to track changes
-        private float previousIntensity;
         private float previousFloaterSize;
         private float previousFloaterDensity;
         private float previousRadius;
         private bool previousCenter;
 
-        // Boolean to track if values changed
-        private bool valuesChanged = false;
-
         // internal
         private float Timer = 0f;
-        private float _old_floaterSize = 1;
-        private float _old_floaterDensity = 0.5f;
+
+        private const int OverlayWidth = 1024;
+        private const int OverlayHeight = 1024;
+        private const int MaxFloaterCount = OverlayWidth * OverlayHeight / 10;
+
+        private Color[] floaterPixels;
+        private bool overlayRegenerationQueued;
 
         // cellular automata (Game of Life) params
         private static bool[,] golBoard; // Holds the current state of the board.
@@ -69,11 +70,11 @@ namespace VisSim
 
         public new void OnEnable()
         {
-            previousIntensity = intensity;
             previousFloaterSize = floaterSize;
             previousFloaterDensity = floaterDensity;
             previousCenter = center;
             previousRadius = circleRadius;
+            overlayRegenerationQueued = false;
             // init floater texture
             generateOverlayTexture();
 
@@ -93,30 +94,41 @@ namespace VisSim
 
             if (floaterSize != previousFloaterSize || floaterDensity != previousFloaterDensity || previousRadius != circleRadius || previousCenter != center)
             {
-                // Set flag if values have changed
-                valuesChanged = true;
-                Debug.Log("Values have changed! Regenerating texture...");
+                if (!overlayRegenerationQueued)
+                {
+                    Debug.Log("Values have changed! Regenerating texture...");
+                }
 
-                // Regenerate the floaters texture or perform any other action needed
-                generateOverlayTexture();
+                RequestOverlayRegeneration();
 
                 // Update the previous values to the new ones
-                previousIntensity = intensity;
                 previousFloaterSize = floaterSize;
                 previousFloaterDensity = floaterDensity;
                 previousCenter = center;
                 previousRadius = circleRadius;
             }
-            else
-            {
-                valuesChanged = false; // No changes detected
-            }
 
             // Pass mouse position to shader
             Vector2 xy_norm = GazeTracker.GetInstance.xy_norm;
-            Material.SetFloat("_MouseX", 1 - xy_norm.x); 
+            Material.SetFloat("_MouseX", 1 - xy_norm.x);
             Material.SetFloat("_MouseY", 1 - xy_norm.y);
 
+        }
+
+        private void LateUpdate()
+        {
+            if (!overlayRegenerationQueued)
+            {
+                return;
+            }
+
+            overlayRegenerationQueued = false;
+            generateOverlayTexture();
+        }
+
+        private void RequestOverlayRegeneration()
+        {
+            overlayRegenerationQueued = true;
         }
 
         // Called by camera to apply image effect
@@ -175,32 +187,52 @@ namespace VisSim
         {
             Debug.Log("Generating Floaters with custom parameters");
 
-            // Create a texture
-            int width = 1024;
-            int height = 1024;
-            texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-
-            // Initialize with white background
-            Color[] pixels = new Color[width * height];
-
-            // Generate floaters
-            int numFloaters = Mathf.FloorToInt(floaterDensity * 100); // Adjustable density
-            for (int i = 0; i < numFloaters; i++)
+            if (texture == null || texture.width != OverlayWidth || texture.height != OverlayHeight)
             {
-                AddFloater(pixels, width, height, floaterSize);
+                if (texture != null)
+                {
+                    if (Application.isPlaying)
+                    {
+                        Destroy(texture);
+                    }
+                    else
+                    {
+                        DestroyImmediate(texture);
+                    }
+                }
+
+                texture = new Texture2D(OverlayWidth, OverlayHeight, TextureFormat.RGBA32, false);
             }
 
-            // Apply texture
-            texture.SetPixels(pixels);
+            int pixelCount = OverlayWidth * OverlayHeight;
+            if (floaterPixels == null || floaterPixels.Length != pixelCount)
+            {
+                floaterPixels = new Color[pixelCount];
+            }
+            else
+            {
+                Array.Clear(floaterPixels, 0, floaterPixels.Length);
+            }
+
+            int numFloaters = Mathf.FloorToInt(floaterDensity * 100f); // Adjustable density
+            if (numFloaters > MaxFloaterCount)
+            {
+                Debug.LogWarning($"Floater density {floaterDensity} generates {numFloaters} floaters. Clamping to {MaxFloaterCount} to avoid long stalls.");
+                numFloaters = MaxFloaterCount;
+            }
+
+            for (int i = 0; i < numFloaters; i++)
+            {
+                AddFloater(floaterPixels, OverlayWidth, OverlayHeight, floaterSize);
+            }
+
+            texture.SetPixels(floaterPixels);
             texture.Apply();
 
             // Apply Gaussian blur for a natural look
             // ApplyGaussianBlur(texture, 3); // Adjustable blur amount
 
             // Create material and set texture
-            Material material = new Material(Shader.Find("Hidden/BlurEffectConeTap"));
-            material.mainTexture = texture;
-
             Debug.Log("Floaters generated successfully!");
         }
 
