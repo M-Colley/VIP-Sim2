@@ -26,6 +26,7 @@ public class DropdownManager : MonoBehaviour
     [SerializeField] private Sprite backgroundSprite;
     [SerializeField] private Sprite fillSprite;
     [SerializeField] private Sprite checkmarkSprite;
+    [SerializeField] private TMP_FontAsset liberationSansFont;
 
     [SerializeField] private FirestoreRESTManager logger;
 
@@ -34,8 +35,27 @@ public class DropdownManager : MonoBehaviour
 
     private List<String> fixedInputs = new List<String>();
 
+    private TMP_FontAsset LiberationSansFont
+    {
+        get
+        {
+            if (liberationSansFont == null)
+            {
+                liberationSansFont = Resources.Load<TMP_FontAsset>("LiberationSans SDF");
+
+                if (liberationSansFont == null)
+                {
+                    Debug.LogWarning("LiberationSans SDF font asset could not be loaded from Resources.");
+                }
+            }
+
+            return liberationSansFont;
+        }
+    }
+
     void Start()
     {
+        _ = LiberationSansFont;
         // Add listener to handle dropdown value change
         dropdown.onValueChanged.AddListener(delegate { DropdownValueChanged(); });
 
@@ -221,7 +241,7 @@ public class DropdownManager : MonoBehaviour
             GameObject labelObject = new GameObject(field.Name + "Label");
             labelObject.transform.SetParent(uiContainer, false);
             TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
-            label.font = Resources.Load<TMP_FontAsset>("LiberationSans SDF");
+            label.font = LiberationSansFont;
             label.text = renameToReadableParameter(field.Name);
             label.fontSize = fontSize;
             label.color = labelColor;

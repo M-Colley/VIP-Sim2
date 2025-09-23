@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -29,68 +30,224 @@ namespace VisSim
 
         // internal
         private static Texture2D[] tex;
+        private static Color32[][] pixelBuffers;
         private static bool texturesGenerated = false;
         private static int texWidth;
         private static int texHeight;
+        private const int TextureCount = 10;
+        private static Coroutine generationCoroutine;
+        private static myNoise generationOwner;
         private int counter = 0;
 
         // Use this for initialization
         public new void OnEnable() {
             base.OnEnable();
 
-            int width_px = Screen.width;
-            int height_px = Screen.height;
-            const int N = 10;
-
-            if (!texturesGenerated || texWidth != width_px || texHeight != height_px)
-            {
-                GenerateTextures(width_px, height_px, N);
-            }
+            RequestTextureGeneration(Screen.width, Screen.height, TextureCount);
         }
 
-        private void GenerateTextures(int width_px, int height_px, int N)
+        private void RequestTextureGeneration(int width_px, int height_px, int count)
         {
+            if (width_px <= 0 || height_px <= 0)
+            {
+                return;
+            }
+
+            if (texturesGenerated && texWidth == width_px && texHeight == height_px)
+            {
+                return;
+            }
+
+            if (generationCoroutine != null)
+            {
+                if (generationOwner == this)
+                {
+                    return;
+                }
+
+                return;
+            }
+
+            generationOwner = this;
+            generationCoroutine = StartCoroutine(GenerateTexturesCoroutine(width_px, height_px, count));
+        }
+
+        private IEnumerator GenerateTexturesCoroutine(int width_px, int height_px, int count)
+        {
+            texturesGenerated = false;
+
+            bool resolutionChanged = tex == null || tex.Length != count || texWidth != width_px || texHeight != height_px;
             texWidth = width_px;
             texHeight = height_px;
-            tex = new Texture2D[N];
 
-            var tasks = new Task<Color32[]>[N];
-            var seeds = new int[N];
-            for (int i = 0; i < N; i++)
+            if (resolutionChanged)
+            {
+                ReleaseTextures();
+                tex = new Texture2D[count];
+            }
+
+            EnsurePixelBuffers(count, width_px * height_px);
+            EnsureTextures(count, width_px, height_px);
+
+            float localFrequency = frequency;
+            FastNoise.Interp localInterp = interp;
+            FastNoise.NoiseType localNoiseType = noiseType;
+            int localOctaves = octaves;
+            float localLacunarity = lacunarity;
+            float localGain = gain;
+            FastNoise.FractalType localFractalType = fractalType;
+
+            var tasks = new Task[count];
+            var seeds = new int[count];
+            for (int i = 0; i < count; i++)
             {
                 seeds[i] = UnityEngine.Random.Range(0, 1000);
                 int idx = i;
-                tasks[i] = Task.Run(() => BuildPixels(width_px, height_px, seeds[idx]));
+                tasks[i] = Task.Run(() => BuildPixels(pixelBuffers[idx], width_px, height_px, seeds[idx], localFrequency, localInterp, localNoiseType, localOctaves, localLacunarity, localGain, localFractalType));
             }
 
-            for (int i = 0; i < N; i++)
+            var allTask = Task.WhenAll(tasks);
+            while (!allTask.IsCompleted)
             {
-                var pixels = tasks[i].Result;
-                tex[i] = new Texture2D(width_px, height_px);
-                tex[i].SetPixels32(pixels);
-                tex[i].Apply(false);
+                yield return null;
             }
 
-            texturesGenerated = true;
+            if (allTask.IsFaulted)
+            {
+                Debug.LogException(allTask.Exception);
+            }
+            else
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    tex[i].SetPixels32(pixelBuffers[i]);
+                    tex[i].Apply(false);
+                }
 
-            // for debugging: draw texture to screen!
-            //GameObject currentLoc = GameObject.Find("Cube (Street Scene)"); //("Cube (Texture2D)");
-            //currentLoc.GetComponent<Renderer>().material.mainTexture = tex[0];
+                counter = 0;
+                counter1 = tex.Length > 0 ? 1 % tex.Length : 0;
+                texturesGenerated = true;
+            }
+
+            generationCoroutine = null;
+            generationOwner = null;
         }
 
-        private Color32[] BuildPixels(int width_px, int height_px, int seed)
+        private void OnDisable()
         {
+            if (generationOwner == this)
+            {
+                if (generationCoroutine != null)
+                {
+                    StopCoroutine(generationCoroutine);
+                }
+
+                generationOwner = null;
+                generationCoroutine = null;
+            }
+        }
+
+        private void EnsurePixelBuffers(int count, int totalPixels)
+        {
+            if (pixelBuffers == null || pixelBuffers.Length != count)
+            {
+                pixelBuffers = new Color32[count][];
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                if (pixelBuffers[i] == null || pixelBuffers[i].Length != totalPixels)
+                {
+                    pixelBuffers[i] = new Color32[totalPixels];
+                }
+            }
+        }
+
+        private void EnsureTextures(int count, int width, int height)
+        {
+            if (tex == null || tex.Length != count)
+            {
+                tex = new Texture2D[count];
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                if (tex[i] == null)
+                {
+                    tex[i] = CreateTexture(width, height);
+                }
+                else if (tex[i].width != width || tex[i].height != height)
+                {
+                    DestroyTexture(tex[i]);
+                    tex[i] = CreateTexture(width, height);
+                }
+            }
+        }
+
+        private Texture2D CreateTexture(int width, int height)
+        {
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            return texture;
+        }
+
+        private void DestroyTexture(Texture2D texture)
+        {
+            if (texture == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(texture);
+            }
+            else
+            {
+                DestroyImmediate(texture);
+            }
+        }
+
+        private void ReleaseTextures()
+        {
+            if (tex == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < tex.Length; i++)
+            {
+                if (tex[i] != null)
+                {
+                    DestroyTexture(tex[i]);
+                    tex[i] = null;
+                }
+            }
+
+            texturesGenerated = false;
+            pixelBuffers = null;
+        }
+
+        private void BuildPixels(Color32[] pixels, int width_px, int height_px, int seed, float localFrequency, FastNoise.Interp localInterp, FastNoise.NoiseType localNoiseType, int localOctaves, float localLacunarity, float localGain, FastNoise.FractalType localFractalType)
+        {
+            if (pixels == null || pixels.Length < width_px * height_px)
+            {
+                return;
+            }
+
             FastNoise fNoise = new FastNoise();
-            fNoise.SetFrequency(frequency);
-            fNoise.SetInterp(interp);
-            fNoise.SetNoiseType(noiseType);
-            fNoise.SetFractalOctaves(octaves);
-            fNoise.SetFractalLacunarity(lacunarity);
-            fNoise.SetFractalGain(gain);
-            fNoise.SetFractalType(fractalType);
+            fNoise.SetFrequency(localFrequency);
+            fNoise.SetInterp(localInterp);
+            fNoise.SetNoiseType(localNoiseType);
+            fNoise.SetFractalOctaves(localOctaves);
+            fNoise.SetFractalLacunarity(localLacunarity);
+            fNoise.SetFractalGain(localGain);
+            fNoise.SetFractalType(localFractalType);
             fNoise.SetSeed(seed);
 
-            Color32[] pixels = new Color32[width_px * height_px];
             for (int y = 0; y < height_px; y++)
             {
                 float y2 = y * 2f;
@@ -101,7 +258,6 @@ namespace VisSim
                     pixels[row + x] = new Color32(noise, noise, noise, 255);
                 }
             }
-            return pixels;
         }
 
         // Called by camera to apply image effect
@@ -118,8 +274,18 @@ namespace VisSim
 
 
         // Update is called once per frame
-		protected override void OnUpdate()
+        protected override void OnUpdate()
         {
+            if (generationCoroutine == null)
+            {
+                int screenWidth = Screen.width;
+                int screenHeight = Screen.height;
+                if (!texturesGenerated || texWidth != screenWidth || texHeight != screenHeight)
+                {
+                    RequestTextureGeneration(screenWidth, screenHeight, TextureCount);
+                }
+            }
+
             // Reset the timer after a while, some GPUs don't like big numbers
             if (wTimer > 1000f)
                 wTimer -= 1000f;
@@ -131,25 +297,48 @@ namespace VisSim
         // Called by camera to apply image effect
         protected override void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
+            if (!texturesGenerated || tex == null || tex.Length == 0)
+            {
+                Graphics.Blit(source, destination);
+                return;
+            }
+
+            int textureCount = tex.Length;
+
             tween += speed * Time.deltaTime;
 
             if (tween >= 1f)
             {
-                counter = (counter + 1) % tex.Length;
-                counter1 = (counter1 + 1) % tex.Length;
+                counter = (counter + 1) % textureCount;
+                counter1 = (counter1 + 1) % textureCount;
                 tween = 0f;
             }
+
+            counter %= textureCount;
+            counter1 %= textureCount;
 
             // set params
             //Material.SetVector("_UV_Transform", UV_Transform);
             //Material.SetFloat("_Intensity", intensity);
-            Material.SetTexture("_NoiseTex", tex[counter]);
+            Texture2D primaryTexture = tex[counter];
+            Texture2D secondaryTexture = tex[counter1];
+            if (primaryTexture == null)
+            {
+                Graphics.Blit(source, destination);
+                return;
+            }
+
+            if (secondaryTexture == null)
+            {
+                secondaryTexture = primaryTexture;
+            }
+
+            Material.SetTexture("_NoiseTex", primaryTexture);
             //Material.SetTexture("_MainTex", source);
 
             Material.SetFloat("_Intensity", intensity);
 
-            
-            Material.SetTexture("_NoiseTex1", tex[counter1]);
+            Material.SetTexture("_NoiseTex1", secondaryTexture);
             Material.SetFloat("_Tween", tween);
 
             Material.SetVector("_WarpParams", new Vector3(wFrequency, wAmplitude, wTimer));
@@ -158,10 +347,10 @@ namespace VisSim
             Graphics.Blit(source, destination, Material, 0);
         }
 
-				
-		protected override string GetShaderName()
-		{
-			return "Hidden/VisSim/myNoise";
-		}
+
+        protected override string GetShaderName()
+        {
+            return "Hidden/VisSim/myNoise";
+        }
     }
 }
