@@ -37,7 +37,10 @@ namespace Christina.UI
         {
             SetupToggleComponents();
 
-            _slider.value = sliderValue;
+            if (_slider != null)
+            {
+                _slider.value = sliderValue;
+            }
         }
 
         private void SetupToggleComponents()
@@ -118,6 +121,11 @@ namespace Christina.UI
 
         private IEnumerator AnimateSlider()
         {
+            if (_slider == null)
+            {
+                yield break;
+            }
+
             float startValue = _slider.value;
             float endValue = CurrentValue ? 1 : 0;
 
@@ -138,6 +146,8 @@ namespace Christina.UI
             }
 
             _slider.value = endValue;
+            sliderValue = endValue;
+            transitionEffect?.Invoke();
         }
     }
 }

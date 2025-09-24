@@ -94,43 +94,76 @@ public class FirestoreRESTManager : MonoBehaviour
         sessionData.Learnings = learnings;
         sessionData.OpenFeedback = openFeedback;
 
-        // Jetzt die sessionData an Firestore senden (siehe vorherige Lösung)
-        string jsonData = JsonUtility.ToJson(sessionData);
-        StartCoroutine(SendSessionDataToFirestore(jsonData));
-    }
+        if (toggleGroup == null)
+        {
+            Debug.LogWarning("Toggle group reference is missing.");
+            return 0;
+        }
 
-    private int GetSelectedToggleValue(ToggleGroup toggleGroup)
-    {
-        // Sucht den aktiven Toggle in der Gruppe
-        Toggle selectedToggle = toggleGroup.ActiveToggles().FirstOrDefault();
-        string numericPart = Regex.Match(selectedToggle.GetComponentInChildren<Text>().text, @"\d+").Value;
-        if (selectedToggle != null && int.TryParse(numericPart, out int value))
+        if (selectedToggle == null)
+            Debug.LogWarning("No toggle is currently selected.");
+            return 0;
+        }
+
+        string labelText = null;
+
+        Text legacyText = selectedToggle.GetComponentInChildren<Text>();
+        if (legacyText != null)
+        {
+            labelText = legacyText.text;
+            TMP_Text tmpText = selectedToggle.GetComponentInChildren<TMP_Text>();
+            if (tmpText != null)
+            {
+                labelText = tmpText.text;
+            }
+        }
+
+        if (string.IsNullOrEmpty(labelText))
+        {
+            Debug.LogWarning("Selected toggle does not contain any readable text.");
+
+        Match match = Regex.Match(labelText, @"\d+");
+        if (match.Success && int.TryParse(match.Value, out int value))
         {
             return value;
         }
-        else
+
+        Debug.LogWarning($"Unable to parse numeric value from toggle label '{labelText}'.");
+        return 0;
+
+        FirebaseResponse response;
+
+        using (UnityWebRequest authRequest = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST))
         {
-            Debug.LogWarning("No valid toggle selected.");
-            return 0;
+            if (authRequest.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError("Fehler bei der Anmeldung: " + authRequest.error);
+                SaveLogLocally(jsonData);
+                Application.Quit();
+                yield break;
+            }
+            response = JsonConvert.DeserializeObject<FirebaseResponse>(authRequest.downloadHandler.text);
+            if (response == null || string.IsNullOrEmpty(response.idToken))
+                Debug.LogError("Failed to parse authentication response or missing ID token.");
+                SaveLogLocally(jsonData);
+                Application.Quit();
+                yield break;
+            }
         }
-    }
 
-    private IEnumerator SendSessionDataToFirestore(string jsonData)
-    {
-        string url = $"ANON";
-
-        // Der Request-Body
-        var requestBody = new
+        using (UnityWebRequest request = new UnityWebRequest(firestoreUrl + sessionData.UUID.ToString() + ".json?auth=" + response.idToken, UnityWebRequest.kHttpVerbPOST))
         {
-            returnSecureToken = true
-        };
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            yield return request.SendWebRequest();
 
-        // JSON-Daten für den POST-Request
-        string jData = JsonUtility.ToJson(requestBody);
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log("Session data successfully sent to Firestore.");
+                Debug.LogError("Error sending session data: " + request.error);
 
-        UnityWebRequest authRequest = new UnityWebRequest(url, "POST");
-        
-            byte[] authBodyRaw = System.Text.Encoding.UTF8.GetBytes(jData);
             authRequest.uploadHandler = new UploadHandlerRaw(authBodyRaw);
             authRequest.downloadHandler = new DownloadHandlerBuffer();
             authRequest.SetRequestHeader("Content-Type", "application/json");
