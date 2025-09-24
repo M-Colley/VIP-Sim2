@@ -13,7 +13,6 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class TransparentWindow : MonoBehaviour {
@@ -60,6 +59,7 @@ public class TransparentWindow : MonoBehaviour {
     private IntPtr hWnd;
     private bool _lastClickthrough;
     private Coroutine clickRoutine;
+    private bool missingWindowHandleLogged;
 
     private void Start() {
         //MessageBox(new IntPtr(0), "Hello World!", "Hello Dialog", 0);
@@ -67,13 +67,21 @@ public class TransparentWindow : MonoBehaviour {
 #if !UNITY_EDITOR
         hWnd = GetActiveWindow();
 
-        MARGINS margins = new MARGINS { cxLeftWidth = -1 };
-        DwmExtendFrameIntoClientArea(hWnd, ref margins);
+        if (hWnd != IntPtr.Zero)
+        {
+            MARGINS margins = new MARGINS { cxLeftWidth = -1 };
+            DwmExtendFrameIntoClientArea(hWnd, ref margins);
 
-        SetClickthrough(true);
-        //SetLayeredWindowAttributes(hWnd, 0, 0, LWA_COLORKEY);
-        SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, 0);
-        _lastClickthrough = true;
+            SetClickthrough(true);
+            //SetLayeredWindowAttributes(hWnd, 0, 0, LWA_COLORKEY);
+            SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, 0);
+            _lastClickthrough = true;
+        }
+        else
+        {
+            Debug.LogWarning("TransparentWindow could not retrieve the native window handle. Clickthrough will be disabled.", this);
+            _lastClickthrough = false;
+        }
 #else
         _lastClickthrough = false;
 #endif
@@ -96,7 +104,10 @@ public class TransparentWindow : MonoBehaviour {
     private void OnEnable()
     {
         // Run the clickthrough check at a reduced frequency to lower CPU usage
-        clickRoutine = StartCoroutine(ClickthroughRoutine());
+        if (clickRoutine == null && isActiveAndEnabled)
+        {
+            clickRoutine = StartCoroutine(ClickthroughRoutine());
+        }
     }
 
     private void OnDisable()
@@ -104,13 +115,14 @@ public class TransparentWindow : MonoBehaviour {
         if (clickRoutine != null)
         {
             StopCoroutine(clickRoutine);
+            clickRoutine = null;
         }
     }
 
     private IEnumerator ClickthroughRoutine()
     {
         var wait = new WaitForSeconds(0.1f); // Check 10 times per second
-        while (true)
+        while (isActiveAndEnabled)
         {
             bool clickthrough = IsCoordinateOutsidePanel();
             if (feedbackState)
@@ -124,16 +136,34 @@ public class TransparentWindow : MonoBehaviour {
             }
             yield return wait;
         }
+        clickRoutine = null;
     }
 
     private void SetClickthrough(bool clickthrough) {
 
-        
+
+#if UNITY_EDITOR
+        _lastClickthrough = clickthrough;
+        return;
+#else
+        if (hWnd == IntPtr.Zero)
+        {
+            if (!missingWindowHandleLogged)
+            {
+                Debug.LogWarning("TransparentWindow does not have a valid window handle, unable to update clickthrough state.", this);
+                missingWindowHandleLogged = true;
+            }
+            return;
+        }
+
+        missingWindowHandleLogged = false;
+
         if (clickthrough) {
             SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TRANSPARENT);
         } else {
             SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED);
         }
+#endif
     }
 
     // Get Mouse Position in World with Z = 0f

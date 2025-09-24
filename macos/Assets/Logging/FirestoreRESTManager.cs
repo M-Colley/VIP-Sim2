@@ -101,83 +101,109 @@ public class FirestoreRESTManager : MonoBehaviour
 
     private int GetSelectedToggleValue(ToggleGroup toggleGroup)
     {
-        // Sucht den aktiven Toggle in der Gruppe
-        Toggle selectedToggle = toggleGroup.ActiveToggles().FirstOrDefault();
-
-        if (selectedToggle != null)
+        if (toggleGroup == null)
         {
-            var label = selectedToggle.GetComponentInChildren<Text>();
-            if (label != null)
+            Debug.LogWarning("Toggle group reference is missing.");
+            return 0;
+        }
+
+        Toggle selectedToggle = toggleGroup.ActiveToggles().FirstOrDefault();
+        if (selectedToggle == null)
+        {
+            Debug.LogWarning("No toggle is currently selected.");
+            return 0;
+        }
+
+        string labelText = null;
+
+        Text legacyText = selectedToggle.GetComponentInChildren<Text>();
+        if (legacyText != null)
+        {
+            labelText = legacyText.text;
+        }
+        else
+        {
+            TMP_Text tmpText = selectedToggle.GetComponentInChildren<TMP_Text>();
+            if (tmpText != null)
             {
-                string numericPart = Regex.Match(label.text, @"\d+").Value;
-                if (int.TryParse(numericPart, out int value))
-                {
-                    return value;
-                }
+                labelText = tmpText.text;
             }
         }
 
-        Debug.LogWarning("No valid toggle selected.");
+        if (string.IsNullOrEmpty(labelText))
+        {
+            Debug.LogWarning("Selected toggle does not contain any readable text.");
+            return 0;
+        }
+
+        Match match = Regex.Match(labelText, @"\d+");
+        if (match.Success && int.TryParse(match.Value, out int value))
+        {
+            return value;
+        }
+
+        Debug.LogWarning($"Unable to parse numeric value from toggle label '{labelText}'.");
         return 0;
     }
+
 
     private IEnumerator SendSessionDataToFirestore(string jsonData)
     {
         string url = $"ANON";
 
-        // Der Request-Body
         var requestBody = new
         {
             returnSecureToken = true
         };
 
-        // JSON-Daten f�r den POST-Request
         string jData = JsonUtility.ToJson(requestBody);
 
-        UnityWebRequest authRequest = new UnityWebRequest(url, "POST");
-        
+        FirebaseResponse response;
+
+        using (UnityWebRequest authRequest = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST))
+        {
             byte[] authBodyRaw = System.Text.Encoding.UTF8.GetBytes(jData);
             authRequest.uploadHandler = new UploadHandlerRaw(authBodyRaw);
             authRequest.downloadHandler = new DownloadHandlerBuffer();
             authRequest.SetRequestHeader("Content-Type", "application/json");
 
-            // Sende den Request und warte auf das Ergebnis
             yield return authRequest.SendWebRequest();
 
-            FirebaseResponse response = new FirebaseResponse();
-
-            if (authRequest.result == UnityWebRequest.Result.Success)
+            if (authRequest.result != UnityWebRequest.Result.Success)
             {
-                // Erfolgreich
-                Debug.Log("Anmeldung erfolgreich!");
-                Debug.Log("Antwort: " + authRequest.downloadHandler.text);
+                Debug.LogError("Fehler bei der Anmeldung: " + authRequest.error);
+                SaveLogLocally(jsonData);
+                Application.Quit();
+                yield break;
+            }
 
-                // JSON-Antwort parsen (optional)
-                response = JsonConvert.DeserializeObject<FirebaseResponse>(authRequest.downloadHandler.text);
-                Debug.Log($"ID-Token: {response.idToken}");
+            response = JsonConvert.DeserializeObject<FirebaseResponse>(authRequest.downloadHandler.text);
+            if (response == null || string.IsNullOrEmpty(response.idToken))
+            {
+                Debug.LogError("Failed to parse authentication response or missing ID token.");
+                SaveLogLocally(jsonData);
+                Application.Quit();
+                yield break;
+            }
+        }
+
+        using (UnityWebRequest request = new UnityWebRequest(firestoreUrl + sessionData.UUID.ToString() + ".json?auth=" + response.idToken, UnityWebRequest.kHttpVerbPOST))
+        {
+            byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
+            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log("Session data successfully sent to Firestore.");
             }
             else
             {
-                // Fehlerbehandlung
-                Debug.LogError("Fehler bei der Anmeldung: " + authRequest.error);
+                Debug.LogError("Error sending session data: " + request.error);
             }
-       
-    
-        UnityWebRequest request = new UnityWebRequest(firestoreUrl + sessionData.UUID.ToString()+".json?auth=" + response.idToken, "POST");
-        byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(jsonData);
-        request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-        request.downloadHandler = new DownloadHandlerBuffer();
-        request.SetRequestHeader("Content-Type", "application/json");
-
-        yield return request.SendWebRequest();
-
-        if (request.result == UnityWebRequest.Result.Success)
-        {
-            Debug.Log("Session data successfully sent to Firestore.");
-        }
-        else
-        {
-            Debug.LogError("Error sending session data: " + request.error);
         }
 
         SaveLogLocally(jsonData);
@@ -185,6 +211,7 @@ public class FirestoreRESTManager : MonoBehaviour
         Application.Quit();
 
     }
+
 
     private void SaveLogLocally(string jsonData)
     {

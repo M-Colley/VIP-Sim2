@@ -13,7 +13,6 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class TransparentWindow : MonoBehaviour {
@@ -37,9 +36,8 @@ public class TransparentWindow : MonoBehaviour {
     public RectTransform canvasRectTransform;
     public RectTransform panelRectTransform;
 
-    private Vector3[] panelCorners = new Vector3[4];
-    private Vector2 lastPanelSize;
-    private Vector2 lastCanvasSize;
+    private bool _lastClickthrough;
+    private bool missingWindowHandleLogged;
 
     private struct MARGINS {
         public int cxLeftWidth;
@@ -68,58 +66,66 @@ public class TransparentWindow : MonoBehaviour {
 #if !UNITY_EDITOR
         hWnd = GetActiveWindow();
 
-        MARGINS margins = new MARGINS { cxLeftWidth = -1 };
-        DwmExtendFrameIntoClientArea(hWnd, ref margins);
+        if (hWnd != IntPtr.Zero)
+        {
+            MARGINS margins = new MARGINS { cxLeftWidth = -1 };
+            DwmExtendFrameIntoClientArea(hWnd, ref margins);
 
-        SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TRANSPARENT);
-        //SetLayeredWindowAttributes(hWnd, 0, 0, LWA_COLORKEY);
+            SetClickthrough(true);
+            //SetLayeredWindowAttributes(hWnd, 0, 0, LWA_COLORKEY);
 
-        SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, 0);
+            SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, 0);
+            _lastClickthrough = true;
+        }
+        else
+        {
+            Debug.LogWarning("TransparentWindow could not retrieve the native window handle. Clickthrough will be disabled.", this);
+            _lastClickthrough = false;
+        }
+#else
+        _lastClickthrough = false;
 #endif
 
         Application.runInBackground = true;
-        CachePanelCorners();
-        if (panelRectTransform != null) {
-            lastPanelSize = panelRectTransform.rect.size;
-        }
-        if (canvasRectTransform != null) {
-            lastCanvasSize = canvasRectTransform.rect.size;
-        }
     }
 
     private void Update() {
         //SetClickthrough(Physics2D.OverlapPoint(GetMouseWorldPosition()) == null);
         bool clickthrough = IsCoordinateOutsidePanel();
-        SetClickthrough(clickthrough);
-
-
-    }
-
-    private void CachePanelCorners() {
-        if (panelRectTransform != null) {
-            panelRectTransform.GetWorldCorners(panelCorners);
+        if (clickthrough != _lastClickthrough)
+        {
+            SetClickthrough(clickthrough);
+            _lastClickthrough = clickthrough;
         }
-    }
 
-    private void OnRectTransformDimensionsChange() {
-        if (panelRectTransform == null || canvasRectTransform == null) return;
-        Vector2 panelSize = panelRectTransform.rect.size;
-        Vector2 canvasSize = canvasRectTransform.rect.size;
-        if (panelSize != lastPanelSize || canvasSize != lastCanvasSize) {
-            lastPanelSize = panelSize;
-            lastCanvasSize = canvasSize;
-            CachePanelCorners();
-        }
+
     }
 
     private void SetClickthrough(bool clickthrough) {
 
-        
+
+#if UNITY_EDITOR
+        _lastClickthrough = clickthrough;
+        return;
+#else
+        if (hWnd == IntPtr.Zero)
+        {
+            if (!missingWindowHandleLogged)
+            {
+                Debug.LogWarning("TransparentWindow does not have a valid window handle, unable to update clickthrough state.", this);
+                missingWindowHandleLogged = true;
+            }
+            return;
+        }
+
+        missingWindowHandleLogged = false;
+
         if (clickthrough) {
             SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TRANSPARENT);
         } else {
             SetWindowLong(hWnd, GWL_EXSTYLE, WS_EX_LAYERED);
         }
+#endif
     }
 
     // Get Mouse Position in World with Z = 0f
