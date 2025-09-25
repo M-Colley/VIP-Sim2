@@ -1,142 +1,105 @@
+using Unity.Mathematics;
+using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.Serialization;
 
 public class AlignBoxColliderWithCamera : MonoBehaviour
 {
-    [SerializeField, FormerlySerializedAs("camera")]
-    private Camera targetCamera;
-    [SerializeField]
-    private int taskbarHeightPixels = 48;
-
+    public Camera camera;
     private BoxCollider boxCollider;
-    private Transform boxColliderTransform;
-    private int lastScreenWidth = -1;
-    private int lastScreenHeight = -1;
-    private Vector3 lastBoundsSize;
-    private Vector3 lastBoundsCenter;
-    private bool hasCachedBounds;
-    private bool missingColliderLogged;
-    private bool missingCameraLogged;
 
-    private void Awake()
+    void Update()
     {
-        CacheBoxCollider();
-        EnsureCameraSetup();
-        InvalidateCachedState();
-    }
-
-    private void OnEnable()
-    {
-        InvalidateCachedState();
-    }
-
-    private void LateUpdate()
-    {
-        if (targetCamera == null)
-        {
-            if (!missingCameraLogged)
-            {
-                Debug.LogError("Target camera not assigned.", this);
-                missingCameraLogged = true;
-            }
-            return;
-        }
-
-        missingCameraLogged = false;
-
+        
         if (boxCollider == null)
         {
-            CacheBoxCollider();
-            if (boxCollider == null)
-            {
-                return;
-            }
+            FindBoxCollider();
         }
 
-        Bounds bounds = boxCollider.bounds;
-        bool screenChanged = Screen.width != lastScreenWidth || Screen.height != lastScreenHeight;
-        bool boundsChanged = !hasCachedBounds ||
-                             bounds.size != lastBoundsSize ||
-                             bounds.center != lastBoundsCenter ||
-                             (boxColliderTransform != null && boxColliderTransform.hasChanged);
-
-        if (!screenChanged && !boundsChanged)
-        {
-            return;
-        }
-
-        Align(bounds);
-
-        lastScreenWidth = Screen.width;
-        lastScreenHeight = Screen.height;
-        lastBoundsSize = bounds.size;
-        lastBoundsCenter = bounds.center;
-        hasCachedBounds = true;
-
-        if (boxColliderTransform != null)
-        {
-            boxColliderTransform.hasChanged = false;
-        }
-    }
-
-    private void CacheBoxCollider()
-    {
-        boxCollider = GetComponentInChildren<BoxCollider>();
+        /*
         if (boxCollider != null)
         {
-            boxColliderTransform = boxCollider.transform;
-            missingColliderLogged = false;
-            hasCachedBounds = false;
+            AlignBoxCollider();
         }
-        else if (!missingColliderLogged)
-        {
-            Debug.LogError("No BoxCollider found in children.", this);
-            missingColliderLogged = true;
-        }
+        */
+
+        MatchPlaneToScreenSize();   
     }
 
-    private void EnsureCameraSetup()
+    void FindBoxCollider()
     {
-        if (targetCamera != null && !targetCamera.orthographic)
-        {
-            targetCamera.orthographic = true;
-        }
+        // Find the BoxCollider in the child objects
+        boxCollider = GetComponentInChildren<BoxCollider>();
     }
 
-    private void InvalidateCachedState()
+    void AlignBoxCollider()
     {
-        lastScreenWidth = -1;
-        lastScreenHeight = -1;
-        hasCachedBounds = false;
+        // Get the camera's FOV and aspect ratio
+        float fov = camera.fieldOfView;
+        float aspect = camera.aspect;
+
+
+        // Calculate the height of the BoxCollider
+        float colliderHeight = boxCollider.size.y;
+        float colliderTop = colliderHeight / 2;
+
+        float delta = (colliderTop * aspect) / (2.0f * Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad));
+
+        
+        // Calculate the delta
+        //float delta = frustumTop - colliderTop;
+
+        // Adjust the parent object's Z position
+        Vector3 parentPosition = transform.position;
+        parentPosition.z = camera.transform.position.z + delta;
+        transform.position = parentPosition;
+        
     }
 
-    private void Align(Bounds bounds)
+    private void MatchPlaneToScreenSize()
     {
-        EnsureCameraSetup();
+        /*
+        float planeToCameradistance = Vector3.Distance(boxCollider.transform.position, camera.transform.position);
+        float planeHeightScale = (2.0f * Mathf.Tan(camera.fieldOfView * 0.5f * Mathf.Deg2Rad) * planeToCameradistance) / 2;
+        camera.orthographicSize = planeHeightScale;
+        */
+        // Ensure the camera is orthographic
+        // Ensure the camera is orthographic
+        camera.orthographic = true;
 
-        int screenHeight = Screen.height;
-        if (screenHeight <= 0 || boxColliderTransform == null)
-        {
-            return;
-        }
+        // Get the bounds of the BoxCollider
+        Bounds bounds = boxCollider.bounds;
 
+        // Calculate the full height of the BoxCollider
         float boxHeight = bounds.size.y;
-        float pixelRatio = Mathf.Clamp01(taskbarHeightPixels / (float)screenHeight);
-        float viewHeight = boxHeight / Mathf.Max(0.0001f, 1f - pixelRatio);
-        targetCamera.orthographicSize = viewHeight * 0.5f;
 
-        float additionalSpace = (viewHeight - boxHeight) * 0.5f;
+        // Determine the taskbar height in pixels (you can set this value based on the screen resolution and taskbar size)
+        int taskbarHeightPixels = 48; // Default medium size for a full HD screen
 
-        Vector3 newPosition = boxColliderTransform.position;
-        newPosition.y = targetCamera.transform.position.y - bounds.extents.y + additionalSpace;
-        newPosition.x = targetCamera.transform.position.x;
-        boxColliderTransform.position = newPosition;
+        // Get the screen height in pixels
+        int screenHeightPixels = Screen.height;
 
-        Vector3 cameraPosition = targetCamera.transform.position;
-        if (!Mathf.Approximately(cameraPosition.x, newPosition.x))
-        {
-            cameraPosition.x = newPosition.x;
-            targetCamera.transform.position = cameraPosition;
-        }
+        // Calculate the height of the taskbar in world units
+        float taskbarHeightWorldUnits = (taskbarHeightPixels / (float)screenHeightPixels) * camera.orthographicSize * 2;
+
+        // Calculate the orthographic size to fit the box height and the taskbar height
+        camera.orthographicSize = (boxHeight / 2.0f) + taskbarHeightWorldUnits / 2.0f;
+
+        // Ensure the camera's aspect ratio remains unchanged
+        float aspectRatio = camera.aspect;
+
+        // Adjust the position of the boxCollider to account for the taskbar height
+        Vector3 newPosition = boxCollider.transform.position;
+        newPosition.y = camera.transform.position.y - (bounds.extents.y) + (taskbarHeightWorldUnits / 2.0f);
+
+        // Center the boxCollider horizontally within the camera view
+        newPosition.x = camera.transform.position.x;
+
+        // Apply the new position to the boxCollider to account for the taskbar height
+        boxCollider.transform.position = newPosition;
+
+        // Ensure the camera is centered on the object
+        camera.transform.position = new Vector3(newPosition.x, camera.transform.position.y, camera.transform.position.z);
+
+
     }
 }
