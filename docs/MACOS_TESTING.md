@@ -99,8 +99,15 @@ Then Window → General → **Test Runner** → EditMode → **Run All**. Two su
 - *Shader Integrity* — every shader resolves, compiles on Metal, and is in
   Always Included Shaders
 
-Shader Integrity is the one to watch. It has **never been run against Metal**.
-If a shader fails to compile there, that is a genuine finding, not a broken test.
+Shader Integrity is the one to watch, though with a caveat: a macOS player has
+been built before (`macos/VIP_SIM_MacOS_BurstDebugInformation_DoNotShip` is
+Burst output from a real macOS build, committed 2025-07-10), so these shaders
+**have** compiled for Metal — on Unity 6000.0.34f1. What is untested is Metal on
+**6.5 specifically**, which is a much weaker claim: a version bump rarely breaks
+HLSL→MSL translation. Treat a failure as a real finding, but do not expect one.
+
+The same caveat applies to the `half`/`fixed` types this code is full of: 23 of
+the 24 shader files use them and evidently translated fine.
 
 ---
 
@@ -168,6 +175,34 @@ These are the macOS changes I made blind. Each has a concrete way to falsify it.
 | 4 | **Texture no longer latched on frame 1** | Capture a window playing video | Before: frozen first frame. After: live |
 | 5 | **Permission detection** | Run with Screen Recording *denied* | Should log the explicit "no Screen Recording permission… quit and reopen" error, not show black silently |
 | 6 | **Field Loss parity** | Compare Central Vision Loss at the same severity against Windows | Should now look identical — macOS previously had a clamp Windows lacked |
+| 7 | **Vertical gaze direction** (see below) | Enable Central Vision Loss, gaze source = Mouse, move the pointer **up** | The dark spot must move **up** with it. If it moves *down*, the Y flip is inverted on Metal |
+
+### Why test 7 matters most
+
+This is the one place where the two platforms genuinely diverge *by design*, and
+the divergence is invisible until you look at it on a Mac.
+
+Nine shaders — `myFieldLoss`, `myFieldLossInverted`, `myBloom`,
+`myDistortionMap`, `myFloaters`, `myInpainter`, `myInpainter2`, `myNoise`,
+`myScintillate` — contain:
+
+```hlsl
+#if UNITY_UV_STARTS_AT_TOP
+    _MouseY = 1.0 - _MouseY;
+#endif
+```
+
+`UNITY_UV_STARTS_AT_TOP` is defined on Direct3D and **not** on Metal. So the
+gaze Y coordinate is flipped on Windows and left alone on macOS. That is the
+macro doing its job — the two APIs really do disagree on texture origin — but it
+means the vertical gaze mapping is the single most likely thing to be wrong on
+macOS while being perfectly correct on Windows, and no amount of testing on
+Windows can tell you.
+
+Test it with the **mouse** gaze source rather than the webcam: it is
+deterministic, and it isolates the shader's coordinate handling from eye-tracking
+accuracy. Everything else in the simulation is now byte-identical across
+platforms, so this is the remaining platform-conditional behaviour.
 
 Please send me `Player.log` plus the Unity Console if anything fails.
 
