@@ -139,7 +139,9 @@ public class GazeTracker : MonoBehaviour
         {
             SetUnitEyeActive(true);
             UnitEyeAPI.GetGazeReference().LoadCalibration();
-            Debug.Log("[GazeTracker] Gaze calibration started.");
+            Debug.Log("[GazeTracker] Gaze calibration started. " +
+                      "Left-click to begin and to advance; ESCAPE or right-click aborts and restores " +
+                      "the previous settings.");
         }
         catch (System.InvalidOperationException e)
         {
