@@ -2,6 +2,7 @@
 using System.Reflection;
 //using Colorful;
 using System;
+using System.Linq.Expressions;
 
 namespace VisSim
 {
@@ -23,6 +24,12 @@ namespace VisSim
         protected bool isLeftEye;
         private LinkableBaseEffect rightEyeEffectInstance;
         private LinkableBaseEffect leftEyeEffectInstance;
+
+        // Cache all fields marked with LinkableAttribute to avoid expensive
+        // reflection every frame in Update(). This significantly reduces the
+        // overhead when running the simulator in the background.
+        private FieldInfo[] linkableFields;
+        private Action<LinkableBaseEffect, LinkableBaseEffect>[] linkableFieldCopiers;
         
 
         /*
@@ -69,6 +76,16 @@ namespace VisSim
             leftEyeEffectInstance = leftEyeEffectInstances[0] as LinkableBaseEffect;
             rightEyeEffectInstance = rightEyeEffectInstances[0] as LinkableBaseEffect;
 
+            // Cache all fields that are marked as linkable so we don't have to
+            // iterate over every field each frame via reflection.
+            Type effectType = GetType();
+            linkableFields = Array.FindAll(effectType.GetFields(), fi => fi.IsDefined(typeof(LinkableAttribute), false) && !fi.IsStatic);
+            linkableFieldCopiers = new Action<LinkableBaseEffect, LinkableBaseEffect>[linkableFields.Length];
+            for (int i = 0; i < linkableFields.Length; i++)
+            {
+                linkableFieldCopiers[i] = CreateFieldCopier(linkableFields[i]);
+            }
+
             // also enable right eye, if the two eyes are locked
             if (isLeftEye && this.LinkEyes)
             {
@@ -100,26 +117,24 @@ namespace VisSim
             //Debug.Log (this.gameObject.tag);
             if (isLeftEye)
             {
-                // Sync lock value across eyes
-                rightEyeEffectInstance.GetType().GetField("LinkEyes").SetValue(rightEyeEffectInstance, this.LinkEyes);
+                // Sync lock value across eyes without using reflection each frame
+                rightEyeEffectInstance.LinkEyes = this.LinkEyes;
 
                 // If LinkEyes, then set all LinkableAttribute fields to have the value of the left eye
                 if (this.LinkEyes)
                 {
                     rightEyeEffectInstance.enabled = leftEyeEffectInstance.enabled;
 
-                    foreach (FieldInfo fi in this.GetType().GetFields())
+                    for (int i = 0; i < linkableFieldCopiers.Length; i++)
                     {
-                        if (fi.IsDefined(typeof(LinkableAttribute), false))
-                        {
-                            rightEyeEffectInstance.GetType().GetField(fi.Name).SetValue(rightEyeEffectInstance, fi.GetValue(this));
-                        }
+                        linkableFieldCopiers[i](this, rightEyeEffectInstance);
                     }
                 }
             }
             else
             {
-                this.LinkEyes = (bool)leftEyeEffectInstance.GetType().GetField("LinkEyes").GetValue(leftEyeEffectInstance);
+                // Read LinkEyes state from left eye directly
+                this.LinkEyes = leftEyeEffectInstance.LinkEyes;
                 if (this.LinkEyes)
                 {
                     rightEyeEffectInstance.enabled = leftEyeEffectInstance.enabled;
@@ -133,6 +148,24 @@ namespace VisSim
         protected override string GetShaderName()
         {
             return "Hidden/VisSim/LinkableBaseEffect (this should be overriden)";
+        }
+
+        private static Action<LinkableBaseEffect, LinkableBaseEffect> CreateFieldCopier(FieldInfo fieldInfo)
+        {
+            Type declaringType = fieldInfo.DeclaringType ?? typeof(LinkableBaseEffect);
+
+            ParameterExpression sourceParameter = Expression.Parameter(typeof(LinkableBaseEffect), "source");
+            ParameterExpression targetParameter = Expression.Parameter(typeof(LinkableBaseEffect), "target");
+
+            UnaryExpression typedSource = Expression.Convert(sourceParameter, declaringType);
+            UnaryExpression typedTarget = Expression.Convert(targetParameter, declaringType);
+
+            MemberExpression sourceField = Expression.Field(typedSource, fieldInfo);
+            MemberExpression targetField = Expression.Field(typedTarget, fieldInfo);
+
+            BinaryExpression assignExpression = Expression.Assign(targetField, sourceField);
+
+            return Expression.Lambda<Action<LinkableBaseEffect, LinkableBaseEffect>>(assignExpression, sourceParameter, targetParameter).Compile();
         }
     }
 }

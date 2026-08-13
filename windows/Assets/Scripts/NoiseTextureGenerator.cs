@@ -10,7 +10,7 @@ public class NoiseTextureGenerator : MonoBehaviour
     void Start()
     {
         Texture2D noiseTex = new Texture2D(width, height);
-        Color[] pixels = new Color[width * height];
+        Color[] colors = new Color[width * height];
 
         for (int y = 0; y < height; y++)
         {
@@ -19,11 +19,11 @@ public class NoiseTextureGenerator : MonoBehaviour
                 float xCoord = (float)x / width * scale;
                 float yCoord = (float)y / height * scale;
                 float sample = Mathf.PerlinNoise(xCoord, yCoord);
-                pixels[x + y * width] = new Color(sample, sample, sample);
+                colors[y * width + x] = new Color(sample, sample, sample);
             }
         }
 
-        noiseTex.SetPixels(pixels);
+        noiseTex.SetPixels(colors);
         noiseTex.Apply();
         GetComponent<Renderer>().material.SetTexture("_NoiseTex", noiseTex);
     }

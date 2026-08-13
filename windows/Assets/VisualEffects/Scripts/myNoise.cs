@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace VisSim
 {
-    
+
     public class myNoise : LinkableBaseEffect
     {
 
@@ -40,7 +40,8 @@ namespace VisSim
         private int counter = 0;
 
         // Use this for initialization
-        public new void OnEnable() {
+        public new void OnEnable()
+        {
             base.OnEnable();
 
             RequestTextureGeneration(Screen.width, Screen.height, TextureCount);
@@ -288,7 +289,9 @@ namespace VisSim
 
             // Reset the timer after a while, some GPUs don't like big numbers
             if (wTimer > 1000f)
+            {
                 wTimer -= 1000f;
+            }
 
             // Increment timer
             wTimer += wSpeed * Time.deltaTime;

@@ -42,7 +42,7 @@ namespace VisSim
 
         [SerializeField, Tooltip("Logs additional information when enabled for debugging.")]
         private bool enableDebugLogging = false;
-        
+
         // geometry info
         [Linkable, Range(100, 10000), Tooltip("Only required if using artificial rotation")]
         public int screenWidth_px = 1334;
@@ -70,6 +70,7 @@ namespace VisSim
 
         private float prev_foveat_d = 0;
         private float prev_rise_d = 0f;
+
         private float prev_rise_exp = 0f;
 
         protected override void OnUpdate()
@@ -78,18 +79,16 @@ namespace VisSim
             {
                 Debug.Log("foveat_d" + foveat_d);
             }
-            if(prev_foveat_d !=  foveat_d)
-            {
+
+            if(prev_foveat_d != foveat_d){
                 foveat_d = 1 - foveat_d;
                 prev_foveat_d = foveat_d;
             }
-            if(prev_rise_d != rise_d)
-            {
+            if(prev_rise_d != rise_d){
                 rise_d = 1 - rise_d;
                 prev_rise_d = rise_d;
             }
-            if(prev_rise_exp !=  rise_exp)
-            {
+            if(prev_rise_exp != rise_exp){
                 rise_exp = 4 - rise_exp;
                 prev_rise_exp = rise_exp;
             }

@@ -74,6 +74,19 @@ namespace VisSim
             // Implement any update logic here if needed
         }
 
+        // The intermediate RenderTexture is allocated in Awake() and lives for the
+        // lifetime of the component. Without this it was never released: at
+        // 2048x1024 ARGB32 with a mip chain that is ~11MB of GPU memory leaked per
+        // instance, per scene load, and there is one instance per eye.
+        protected void OnDestroy()
+        {
+            if (rt != null)
+            {
+                rt.Release();
+                DestroyImmediate(rt);
+                rt = null;
+            }
+        }
         protected override string GetShaderName()
         {
             return "Hidden/DoubleVision";
