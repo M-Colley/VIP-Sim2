@@ -1,0 +1,257 @@
+name: CI
+
+# Test + build + release pipeline for the Unity VIP-Sim.
+#
+# Job order is deliberate: the cheap licence-free guardrails run first and fail
+# fast, then the Unity test suites, then the per-platform builds, and only a tag
+# push produces a release. That ordering means the failure modes this project has
+# actually suffered (platform drift, a reintroduced Barracuda dependency, a file
+# left syntactically broken by a bad revert) are caught in under a minute rather
+# than after a 20-minute build.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_builds:
+        description: 'Also run the platform builds'
+        type: boolean
+        default: true
+
+env:
+  UNITY_VERSION: 6000.5.8f1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Set 1 - Repository invariants. No Unity licence needed, runs in ~30 seconds.
+  # ---------------------------------------------------------------------------
+  invariants:
+    name: 'Tests: repository invariants'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { lfs: true }
+
+      - name: Editor version is pinned and identical across projects
+        run: |
+          win=$(awk '/^m_EditorVersion:/{print $2}' windows/ProjectSettings/ProjectVersion.txt)
+          mac=$(awk '/^m_EditorVersion:/{print $2}' macos/ProjectSettings/ProjectVersion.txt)
+          echo "windows=$win macos=$mac expected=$UNITY_VERSION"
+          [ "$win" = "$mac" ] || { echo "::error::projects target different Unity versions"; exit 1; }
+          [ "$win" = "$UNITY_VERSION" ] || { echo "::error::expected $UNITY_VERSION"; exit 1; }
+
+      - name: Player identity is consistent across projects
+        # A mismatched companyName/productName silently relocates PlayerPrefs and
+        # the macOS bundle id, so saved symptom profiles vanish per platform.
+        run: |
+          status=0
+          for key in companyName productName bundleVersion; do
+            w=$(grep -m1 "  $key:" windows/ProjectSettings/ProjectSettings.asset | sed "s/.*$key: //" | tr -d '\r')
+            m=$(grep -m1 "  $key:" macos/ProjectSettings/ProjectSettings.asset   | sed "s/.*$key: //" | tr -d '\r')
+            printf '%-16s windows=%-24s macos=%s\n' "$key" "$w" "$m"
+            [ "$w" = "$m" ] || { echo "::error::$key differs between projects"; status=1; }
+          done
+          exit $status
+
+      - name: Simulation source is byte-identical across platforms
+        run: |
+          status=0
+          while IFS= read -r f; do
+            rel=${f#windows/Assets/}
+            if [ ! -f "macos/Assets/$rel" ]; then
+              echo "::error file=$f::missing on macOS: $rel"; status=1; continue
+            fi
+            if ! cmp -s "$f" "macos/Assets/$rel"; then
+              echo "::error file=$f::simulation code differs between platforms"
+              diff -u "$f" "macos/Assets/$rel" | head -30 || true
+              status=1
+            fi
+          done < <(find windows/Assets/VisualEffects -type f \
+                     \( -name '*.cs' -o -name '*.shader' -o -name '*.compute' -o -name '*.cginc' \))
+          exit $status
+
+      - name: Barracuda-era dependencies stay removed
+        # UnitEye 1.1 uses com.unity.ai.inference. Barracuda and the Inference
+        # Engine both register an .onnx importer and cannot coexist.
+        run: |
+          if grep -rnE 'com\.unity\.barracuda|jp\.ikep|jp\.keijiro' windows/Packages/manifest.json macos/Packages/manifest.json; then
+            echo "::error::Barracuda-era dependency reintroduced"; exit 1
+          fi
+          echo ok
+
+      - name: Shared packages resolve from both projects
+        run: |
+          status=0
+          for proj in windows macos; do
+            for dep in $(grep -oE '"file:[^"]+"' $proj/Packages/manifest.json | tr -d '"' | sed 's/^file://'); do
+              target="$proj/Packages/$dep"
+              if [ ! -f "$(realpath -m "$target")/package.json" ]; then
+                echo "::error::$proj: unresolvable $dep"; status=1
+              else
+                echo "$proj -> $dep ok"
+              fi
+            done
+          done
+          exit $status
+
+      - name: C# sources are brace-balanced
+        # A bad revert once left FirestoreRESTManager.cs with methods spliced into
+        # one another. It sat broken in main because nothing compiled it in CI.
+        run: |
+          status=0
+          while IFS= read -r f; do
+            awk -v F="$f" '
+              {o+=gsub(/{/,"{"); c+=gsub(/}/,"}")}
+              END{ if (o!=c) { printf "::error file=%s::unbalanced braces (%d open, %d close)\n", F, o, c; exit 1 } }
+            ' "$f" || status=1
+          done < <(find windows/Assets/Scripts windows/Assets/VisualEffects windows/Assets/Logging \
+                        macos/Assets/Scripts   macos/Assets/VisualEffects   macos/Assets/Logging \
+                        -name '*.cs' 2>/dev/null)
+          exit $status
+
+  # ---------------------------------------------------------------------------
+  # Set 2 - Unity EditMode suites (shader integrity, platform parity).
+  # ---------------------------------------------------------------------------
+  unity-tests:
+    name: 'Tests: Unity EditMode'
+    needs: invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { lfs: true }
+
+      - uses: actions/cache@v4
+        with:
+          path: windows/Library
+          key: Library-tests-${{ hashFiles('windows/Packages/manifest.json') }}
+          restore-keys: Library-tests-
+
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+
+      - uses: game-ci/unity-test-runner@v4
+        id: tests
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          projectPath: windows
+          testMode: EditMode
+          artifactsPath: test-results
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: Unity EditMode results
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unity-test-results
+          path: ${{ steps.tests.outputs.artifactsPath }}
+
+  # ---------------------------------------------------------------------------
+  # Set 3 - Platform builds.
+  # ---------------------------------------------------------------------------
+  build:
+    name: 'Build: ${{ matrix.name }}'
+    needs: unity-tests
+    if: github.event_name != 'workflow_dispatch' || inputs.run_builds
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Windows, project: windows, targetPlatform: StandaloneWindows64, experimental: false }
+          - { name: macOS,   project: macos,   targetPlatform: StandaloneOSX,       experimental: false }
+          - { name: Linux,   project: windows, targetPlatform: StandaloneLinux64,   experimental: true  }
+    steps:
+      - uses: actions/checkout@v4
+        with: { lfs: true }
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ matrix.project }}/Library
+          key: Library-${{ matrix.project }}-${{ matrix.targetPlatform }}-${{ hashFiles(format('{0}/Packages/manifest.json', matrix.project)) }}
+          restore-keys: |
+            Library-${{ matrix.project }}-${{ matrix.targetPlatform }}-
+            Library-${{ matrix.project }}-
+
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+
+      - uses: game-ci/unity-builder@v4
+        continue-on-error: ${{ matrix.experimental }}
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: ${{ env.UNITY_VERSION }}
+          projectPath: ${{ matrix.project }}
+          targetPlatform: ${{ matrix.targetPlatform }}
+          buildName: VIP-Sim
+          allowDirtyBuild: true
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cd build && zip -qr "../dist/VIP-Sim-${{ matrix.name }}.zip" . && cd ..
+          ls -lh dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VIP-Sim-${{ matrix.name }}
+          path: dist/*.zip
+          if-no-files-found: warn
+
+  # ---------------------------------------------------------------------------
+  # Set 4 - Release. Tag pushes only.
+  # ---------------------------------------------------------------------------
+  release:
+    name: Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: VIP-Sim-*
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lhR artifacts
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') }}
+          body: |
+            ## VIP-Sim ${{ github.ref_name }}
+
+            Built with Unity ${{ env.UNITY_VERSION }}.
+
+            **Windows** — unblock the zip (right-click → Properties → Unblock) before extracting.
+            **macOS** — right-click → Open on first launch, then grant Screen Recording
+            in System Settings and **restart the app**.
+            **Linux** — experimental; needs `xdg-desktop-portal` + PipeWire.
+
+            > Gaze calibration files from releases before 2.0 are not compatible with
+            > UnitEye 1.1 and fall back to raw gaze. **Recalibrate after upgrading.**
+
+            See [INSTALL.md](docs/INSTALL.md) for full setup.
