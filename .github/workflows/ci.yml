@@ -61,17 +61,30 @@ jobs:
           done
           exit $status
 
-      - name: Simulation source is byte-identical across platforms
+      - name: Simulation source is identical across platforms
+        # Scope: VIP-Sim's own symptom shaders and effect scripts. Deliberately
+        # excludes two things that are legitimately not mirrored:
+        #   - alglib, a vendored numerics library that sits in Scripts/alglib on
+        #     Windows and Scripts/alglibnet on macOS. Same code, different folder.
+        #   - Profiles/, which only exists on the Windows side; the macOS project
+        #     keeps its SettingsManager under Assets/Scripts.
+        # Comparison is line-ending insensitive: .gitattributes normalises to LF
+        # in the repository, but a working tree checked out on Windows has CRLF,
+        # and a byte comparison would fail there for no real reason.
         run: |
           status=0
           while IFS= read -r f; do
             rel=${f#windows/Assets/}
+            case "$rel" in
+              VisualEffects/Scripts/alglib*/*) continue ;;
+              VisualEffects/Profiles/*)        continue ;;
+            esac
             if [ ! -f "macos/Assets/$rel" ]; then
               echo "::error file=$f::missing on macOS: $rel"; status=1; continue
             fi
-            if ! cmp -s "$f" "macos/Assets/$rel"; then
+            if ! diff -q <(tr -d '\r' < "$f") <(tr -d '\r' < "macos/Assets/$rel") >/dev/null; then
               echo "::error file=$f::simulation code differs between platforms"
-              diff -u "$f" "macos/Assets/$rel" | head -30 || true
+              diff -u <(tr -d '\r' < "$f") <(tr -d '\r' < "macos/Assets/$rel") | head -30 || true
               status=1
             fi
           done < <(find windows/Assets/VisualEffects -type f \
@@ -102,12 +115,22 @@ jobs:
           done
           exit $status
 
-      - name: C# sources are brace-balanced
-        # A bad revert once left FirestoreRESTManager.cs with methods spliced into
-        # one another. It sat broken in main because nothing compiled it in CI.
+      - name: First-party C# sources are brace-balanced
+        # A bad revert once left FirestoreRESTManager.cs with three methods spliced
+        # into one another. It sat broken in main because nothing compiled it in CI.
+        #
+        # This is a cheap proxy for "did an edit truncate a file", not a parser: it
+        # counts braces without understanding string literals or comments, so it is
+        # deliberately restricted to VIP-Sim's own code. Vendored alglib trips it
+        # legitimately (optimization.cs has braces inside strings), which is why
+        # that subtree is excluded rather than the check being weakened.
+        # The real correctness gate is the Unity compile in the next job.
         run: |
           status=0
           while IFS= read -r f; do
+            case "$f" in
+              */VisualEffects/Scripts/alglib*/*) continue ;;
+            esac
             awk -v F="$f" '
               {o+=gsub(/{/,"{"); c+=gsub(/}/,"}")}
               END{ if (o!=c) { printf "::error file=%s::unbalanced braces (%d open, %d close)\n", F, o, c; exit 1 } }
@@ -118,11 +141,41 @@ jobs:
           exit $status
 
   # ---------------------------------------------------------------------------
+  # Is a Unity licence configured? Everything below needs one, and game-ci fails
+  # hard without it. Skipping is the honest outcome for a fork or a repo whose
+  # secrets have not been set up: a red X on every push trains people to ignore
+  # CI, which costs more than the missing coverage.
+  #
+  # Secrets cannot be referenced from a job-level `if`, so the check is surfaced
+  # as a job output.
+  # ---------------------------------------------------------------------------
+  preflight:
+    name: Preflight
+    needs: invariants
+    runs-on: ubuntu-latest
+    outputs:
+      has_unity_licence: ${{ steps.check.outputs.has_licence }}
+    steps:
+      - id: check
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ] || [ -n "$UNITY_EMAIL" ]; then
+            echo "has_licence=true" >> "$GITHUB_OUTPUT"
+            echo "Unity credentials present; tests and builds will run."
+          else
+            echo "has_licence=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Unity licence configured, so the Unity test and build jobs are skipped. Add UNITY_LICENSE (or UNITY_EMAIL + UNITY_PASSWORD) as repository secrets to enable them. See https://game.ci/docs/github/activation"
+          fi
+
+  # ---------------------------------------------------------------------------
   # Set 2 - Unity EditMode suites (shader integrity, platform parity).
   # ---------------------------------------------------------------------------
   unity-tests:
     name: 'Tests: Unity EditMode'
-    needs: invariants
+    needs: preflight
+    if: needs.preflight.outputs.has_unity_licence == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -162,8 +215,10 @@ jobs:
   # ---------------------------------------------------------------------------
   build:
     name: 'Build: ${{ matrix.name }}'
-    needs: unity-tests
-    if: github.event_name != 'workflow_dispatch' || inputs.run_builds
+    needs: [preflight, unity-tests]
+    if: >-
+      needs.preflight.outputs.has_unity_licence == 'true' &&
+      (github.event_name != 'workflow_dispatch' || inputs.run_builds)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

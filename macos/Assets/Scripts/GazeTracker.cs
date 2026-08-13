@@ -262,12 +262,53 @@ public class GazeTracker : MonoBehaviour
         if (unitEyeUnavailable) return;
         try
         {
-            if (active) UnitEyeAPI.EnableGaze();
+            if (active)
+            {
+                UnitEyeAPI.EnableGaze();
+                SuppressUnitEyeDebugOverlays();
+            }
             else UnitEyeAPI.DisableGaze();
         }
         catch (System.InvalidOperationException)
         {
             // Rig genuinely absent; UpdateFromUnitEye reports this properly.
+        }
+    }
+
+    /// <summary>
+    /// Turn off UnitEye's own on-screen debug drawing.
+    ///
+    /// HomulerGaze ships with showFaceMesh and showEyes enabled, which draw the
+    /// webcam eye crops into the screen corners via GUI.DrawTexture, plus a gaze
+    /// dot. That is reasonable for a UnitEye demo scene and completely wrong for
+    /// VIP-Sim: this is a transparent click-through overlay sitting on top of the
+    /// user's real desktop, so the webcam feed appears over their work and cannot
+    /// be dismissed -- UnitEye's own "Hide FaceMesh" button is itself unclickable,
+    /// because the overlay is click-through everywhere outside VIP-Sim's panel.
+    ///
+    /// The Barracuda-era rig had no equivalent, so this only became visible after
+    /// the UnitEye 1.1 rig migration.
+    ///
+    /// Safe with respect to tracking: FaceMeshSolution documents IsRendering and
+    /// Annotate as preference storage on the Task API path ("overlay drawing is
+    /// not reimplemented"), so none of these gate inference.
+    /// </summary>
+    private static void SuppressUnitEyeDebugOverlays()
+    {
+        var gaze = UnitEyeAPI.GetGazeReference();
+        if (gaze == null) return;
+
+        gaze.showEyes = false;      // webcam eye crops in the screen corners
+        gaze.showFaceMesh = false;  // face-mesh annotation
+        gaze.showGazeUI = false;    // UnitEye's IMGUI button panel
+        gaze.visualizeAOI = false;  // AOI debug boxes
+        gaze.drawDot = false;       // UnitEye's own gaze dot; VIP-Sim has visualiseGaze
+
+        var provider = gaze.Provider;
+        if (provider != null)
+        {
+            provider.AnnotateFaceMesh = false;
+            provider.SetRendering(false);
         }
     }
 
