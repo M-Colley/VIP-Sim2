@@ -82,6 +82,11 @@ public class GazeTracker : MonoBehaviour
     private float lastGoodGazeTime;
     private Vector2 lastGoodGaze = new Vector2(0.5f, 0.5f);
 
+    // Calibration click-capture (see UpdateCalibrationCapture).
+    private TransparentWindow transparentWindow;
+    private HomulerGazeCalibration calibrationUi;
+    private bool calibrationCaptureOn;
+
     // Singleton
     private static GazeTracker instance;
     public static GazeTracker GetInstance
@@ -139,6 +144,9 @@ public class GazeTracker : MonoBehaviour
         {
             SetUnitEyeActive(true);
             UnitEyeAPI.GetGazeReference().LoadCalibration();
+            // Same-frame capture: the very first left-click must already reach
+            // the calibration rather than fall through the overlay.
+            UpdateCalibrationCapture();
             Debug.Log("[GazeTracker] Gaze calibration started. " +
                       "Left-click to begin and to advance; ESCAPE or right-click aborts and restores " +
                       "the previous settings.");
@@ -150,10 +158,46 @@ public class GazeTracker : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Hold the overlay in full click-capture while UnitEye's calibration UI is
+    /// up, and release it the moment the calibration ends.
+    ///
+    /// Calibration is driven entirely by left-clicks and draws a full-screen
+    /// backdrop -- but the overlay is click-through outside VIP-Sim's own panel,
+    /// so those clicks fell through into whatever application sat invisibly
+    /// BEHIND the backdrop. The user clicked "some underlying window" they could
+    /// not even see, and the calibration never advanced because Unity never
+    /// received a single click. HomulerGaze enables the calibration component on
+    /// LoadCalibration and disables it again on finish/abort, so its enabled
+    /// state IS the "calibration in progress" signal.
+    /// </summary>
+    private void UpdateCalibrationCapture()
+    {
+        if (calibrationUi == null && unitEye != null)
+            calibrationUi = unitEye.GetComponentInChildren<HomulerGazeCalibration>(true);
+
+        bool calibrating = calibrationUi != null && calibrationUi.isActiveAndEnabled;
+        if (calibrating == calibrationCaptureOn) return;
+
+        if (transparentWindow == null)
+            transparentWindow = FindAnyObjectByType<TransparentWindow>(FindObjectsInactive.Include);
+        if (transparentWindow == null) return; // keep trying while the states differ
+
+        if (calibrating) transparentWindow.enableCalibrationState();
+        else transparentWindow.disableCalibrationState();
+        calibrationCaptureOn = calibrating;
+
+        Debug.Log(calibrating
+            ? "[GazeTracker] Calibration UI is up; the overlay now captures every click so they reach the calibration."
+            : "[GazeTracker] Calibration UI closed; normal click-through restored.");
+    }
+
     private void Update()
     {
         if (Input.GetKeyDown(calibrationHotkey))
             StartCalibration();
+
+        UpdateCalibrationCapture();
 
         switch (gazeSource)
         {

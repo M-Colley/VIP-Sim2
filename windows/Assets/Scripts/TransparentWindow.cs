@@ -13,7 +13,9 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Makes the VIP-Sim overlay click-through everywhere except its own panel.
@@ -199,6 +201,24 @@ public class TransparentWindow : MonoBehaviour {
         feedbackState = false;
     }
 
+    // Set while UnitEye's gaze calibration is running. Calibration is driven
+    // entirely by left-clicks and draws a full-screen backdrop -- with the
+    // overlay click-through outside the panel, those clicks fell through into
+    // whatever application sat invisibly BEHIND the backdrop, and the
+    // calibration itself never received them. A separate flag from
+    // feedbackState so the two modal owners cannot fight over one bool.
+    private bool calibrationState = false;
+
+    public void enableCalibrationState()
+    {
+        calibrationState = true;
+    }
+
+    public void disableCalibrationState()
+    {
+        calibrationState = false;
+    }
+
     private static TransparentWindow _instance;
 
     private void OnEnable()
@@ -289,7 +309,11 @@ public class TransparentWindow : MonoBehaviour {
         // SetWindowLong call still only happens on a state change.
         if (EnsureWindow())
         {
-            bool clickthrough = !feedbackState && IsCoordinateOutsidePanel();
+            // Evaluate the hover test even while a modal flag forces capture, so
+            // the LastUiHit diagnostic keeps reflecting reality instead of
+            // freezing at whatever was hit when the modal state began.
+            bool outsideUi = IsCoordinateOutsidePanel();
+            bool clickthrough = !feedbackState && !calibrationState && outsideUi;
             if (clickthrough != _lastClickthrough || !_appliedOnce)
             {
                 SetClickthrough(clickthrough);
@@ -492,11 +516,49 @@ public class TransparentWindow : MonoBehaviour {
         return worldPosition;
     }
 
+    // Reused raycast state; allocation-free per frame.
+    private PointerEventData _pointerData;
+    private readonly List<RaycastResult> _raycastResults = new List<RaycastResult>();
+
+    /// <summary>
+    /// Name of the topmost UI element under the cursor from the last hover test,
+    /// or "" when nothing was hit. Diagnostics only (shown on the F10 overlay).
+    /// </summary>
+    public static string LastUiHit { get; private set; } = "";
+
     public bool IsCoordinateOutsidePanel()
     {
-        // Fail towards click-through. If the panel reference is ever lost the user
-        // keeps their desktop and loses VIP-Sim's buttons; the opposite choice
-        // locks the whole screen behind an overlay that has no title bar.
+        // CursorPosition, not Input.mousePosition: this test must keep working
+        // while the window is unfocused, which is its normal operating state.
+        Vector2 screenPosition = CursorPosition;
+
+        // Primary test: is there actually visible, clickable VIP-Sim UI under the
+        // cursor? The old single-rectangle test had two failure modes seen in the
+        // wild: the panel's rect kept capturing clicks after the panel was HIDDEN
+        // (a dead zone over the user's application), and the Settings window --
+        // which does not live inside the panel rect at all -- let clicks fall
+        // through itself into whatever sat underneath. Raycasting the UI answers
+        // the real question, for every current and future panel, wherever it is
+        // dragged and whatever its visibility.
+        var eventSystem = EventSystem.current;
+        if (eventSystem != null)
+        {
+            _pointerData ??= new PointerEventData(eventSystem);
+            _pointerData.position = screenPosition;
+            _raycastResults.Clear();
+            eventSystem.RaycastAll(_pointerData, _raycastResults);
+            if (_raycastResults.Count > 0)
+            {
+                LastUiHit = _raycastResults[0].gameObject.name;
+                return false;
+            }
+        }
+        LastUiHit = "";
+
+        // Fallback: the panel rectangle, counted only while the panel is actually
+        // shown. Covers a missing EventSystem; fails towards click-through
+        // otherwise -- the user keeps their desktop and loses VIP-Sim's buttons,
+        // rather than the whole screen locking up behind an invisible overlay.
         if (panelRectTransform == null)
         {
             if (!_missingPanelLogged)
@@ -507,10 +569,8 @@ public class TransparentWindow : MonoBehaviour {
             }
             return true;
         }
+        if (!panelRectTransform.gameObject.activeInHierarchy) return true;
 
-        // CursorPosition, not Input.mousePosition: this test must keep working
-        // while the window is unfocused, which is its normal operating state.
-        Vector2 screenPosition = CursorPosition;
         // Use the built-in rectangle check to avoid per-frame allocations
         bool inside = RectTransformUtility.RectangleContainsScreenPoint(
             panelRectTransform, screenPosition, null);

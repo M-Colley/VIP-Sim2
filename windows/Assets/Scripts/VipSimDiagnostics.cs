@@ -78,6 +78,33 @@ public class VipSimDiagnostics : MonoBehaviour
         _gazeWindowStart = Time.unscaledTime;
         Debug.Log($"[VipSimDiagnostics] {toggleKey}=overlay  {benchmarkKey}=effect benchmark  " +
                   $"{quitKey}=quit  F9=gaze calibration");
+        StartCoroutine(DumpButtonRectsOnce());
+    }
+
+    /// <summary>
+    /// One-shot log of every button's actual screen rectangle, a few seconds
+    /// after startup so the canvas scaler and the overlay geometry repair have
+    /// both settled. Reasoning about this UI's positions from scene data has
+    /// been wrong repeatedly (batch-mode canvases scale differently, the window
+    /// itself was once 1x1); this prints the ground truth of the running build,
+    /// which is also exactly what an automated UI test needs to click.
+    /// </summary>
+    private IEnumerator DumpButtonRectsOnce()
+    {
+        yield return new WaitForSeconds(3f);
+        var sb = new StringBuilder("[VipSimDiagnostics] button rects (Unity px, origin bottom-left, " +
+                                   $"screen {Screen.width}x{Screen.height}):\n");
+        var corners = new Vector3[4];
+        foreach (var b in FindObjectsByType<UnityEngine.UI.Button>(
+                     FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            var rt = b.transform as RectTransform;
+            if (rt == null) continue;
+            rt.GetWorldCorners(corners);
+            sb.AppendLine($"  BTNRECT {b.name} ({corners[0].x:F0},{corners[0].y:F0})-({corners[2].x:F0},{corners[2].y:F0}) " +
+                          $"active={b.gameObject.activeInHierarchy}");
+        }
+        Debug.Log(sb.ToString());
     }
 
     private void OnDisable()
@@ -252,8 +279,10 @@ public class VipSimDiagnostics : MonoBehaviour
             sb.AppendLine($"panel   ({c[0].x:F0},{c[0].y:F0})-({c[2].x:F0},{c[2].y:F0}) " +
                           $"shown={tw.panelRectTransform.gameObject.activeInHierarchy}");
             var cur = TransparentWindow.CursorPosition;
+            var hit = TransparentWindow.LastUiHit;
             sb.AppendLine($"        mouse ({cur.x:F0},{cur.y:F0}) " +
-                          $"screen {Screen.width}x{Screen.height} focused={Application.isFocused}");
+                          $"screen {Screen.width}x{Screen.height} focused={Application.isFocused} " +
+                          $"ui-hit={(string.IsNullOrEmpty(hit) ? "-" : hit)}");
         }
 
         // Gaze
