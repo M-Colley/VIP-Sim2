@@ -15102,6 +15102,7 @@ GameObject:
   - component: {fileID: 1461121525}
   - component: {fileID: 1461121524}
   - component: {fileID: 1461121526}
+  - component: {fileID: 1461121527}
   m_Layer: 0
   m_Name: CameraRig
   m_TagString: Untagged
@@ -15163,8 +15164,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VipSimDiagnostics
   toggleKey: 291
   benchmarkKey: 292
+  quitKey: 293
   showOverlay: 0
-  logIntervalSeconds: 0
+  logIntervalSeconds: 5
+--- !u!114 &1461121527
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1461121523}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e944c70e49c23e14a92d2db5cbc9f746, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FrameRateController
+  targetFrameRate: 60
+  enableVSync: 0
 --- !u!1 &1461671000
 GameObject:
   m_ObjectHideFlags: 0

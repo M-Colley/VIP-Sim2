@@ -37,12 +37,19 @@ public class VipSimDiagnostics : MonoBehaviour
     public KeyCode toggleKey = KeyCode.F10;
     public KeyCode benchmarkKey = KeyCode.F11;
 
+    [Tooltip("Emergency quit. VIP-Sim is a topmost, click-through, borderless overlay: it has no " +
+             "title bar, alt-tabbing away does not close it, and if the in-app exit path is broken " +
+             "the only remaining option is Task Manager. This guarantees a way out.")]
+    public KeyCode quitKey = KeyCode.F12;
+
     [Tooltip("Draw the overlay. Off by default: this is an IMGUI overlay and, like " +
              "UnitEye's debug drawing, it paints over the simulation.")]
     public bool showOverlay = false;
 
-    [Tooltip("Also write a summary line to the player log at this interval. 0 disables.")]
-    public float logIntervalSeconds = 0f;
+    [Tooltip("Also write a summary line to the player log at this interval. 0 disables.\n\n" +
+             "On by default: the overlay is on-screen only, so if the app is killed rather " +
+             "than closed cleanly there is otherwise no record of what the numbers were.")]
+    public float logIntervalSeconds = 5f;
 
     // --- rolling frame stats ---
     private const int Window = 120;
@@ -69,6 +76,8 @@ public class VipSimDiagnostics : MonoBehaviour
                                                 ProfilerRecorderOptions.SumAllSamplesInFrame);
         _drawCalls = ProfilerRecorder.StartNew(ProfilerCategory.Render, "Draw Calls Count");
         _gazeWindowStart = Time.unscaledTime;
+        Debug.Log($"[VipSimDiagnostics] {toggleKey}=overlay  {benchmarkKey}=effect benchmark  " +
+                  $"{quitKey}=quit  F9=gaze calibration");
     }
 
     private void OnDisable()
@@ -79,6 +88,11 @@ public class VipSimDiagnostics : MonoBehaviour
 
     private void Update()
     {
+        if (Input.GetKeyDown(quitKey))
+        {
+            Debug.Log("[VipSimDiagnostics] Quit hotkey pressed.");
+            Application.Quit();
+        }
         if (Input.GetKeyDown(toggleKey)) showOverlay = !showOverlay;
         if (Input.GetKeyDown(benchmarkKey) && !_benchmarkRunning) StartCoroutine(RunEffectBenchmark());
 

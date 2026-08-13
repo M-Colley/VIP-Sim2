@@ -44,5 +44,20 @@ public class QuestionnaireGate : MonoBehaviour
             transparentWindow.disableFeedbackState();
 
         gameObject.SetActive(false);
+
+        // Then finish what the user actually asked for.
+        //
+        // This panel is the end-of-session screen, and the application's exit path
+        // runs THROUGH it: the quit button opens this panel, and Application.Quit()
+        // only happens once the questionnaire is submitted. Simply hiding the panel
+        // therefore severed the only way to close the app -- it had to be killed
+        // from Task Manager, because it is a topmost click-through overlay with no
+        // title bar to close.
+        //
+        // With the questionnaire disabled, OnEndSessionButtonPressed() collects and
+        // uploads nothing and just exits, so this preserves the intent of pressing
+        // the button rather than swallowing it.
+        Debug.Log("[QuestionnaireGate] Questionnaire disabled; exiting without it.");
+        manager.OnEndSessionButtonPressed();
     }
 }

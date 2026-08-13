@@ -33,8 +33,34 @@ public class FrameRateController : MonoBehaviour
     /// <summary>Current target, for display in the settings UI.</summary>
     public static int Current { get; private set; }
 
+    [Tooltip("Let UnitEye own the frame rate while gaze tracking is active.\n\n" +
+             "HomulerGaze sets Application.targetFrameRate itself (30 by default), and its gaze " +
+             "smoothing is TUNED AT THAT RATE -- both KalmanFilter and EaseSmoothing carry source " +
+             "comments saying their coefficients were calibrated against 30fps. Forcing 60 does not " +
+             "just raise the frame rate, it desynchronises the filters from the rate they were fitted " +
+             "at, which makes gaze feel worse rather than better.\n\n" +
+             "Leave this on unless you have re-tuned the smoothing.")]
+    [SerializeField] private bool deferToUnitEye = true;
+
     private void Awake()
     {
+        Apply();
+    }
+
+    private void Start()
+    {
+        // Runs after every Awake, so UnitEye has already applied its own value by
+        // now. Re-assert only the parts that are safe to own.
+        if (deferToUnitEye)
+        {
+            // vSync must still be 0 or whatever UnitEye asks for is ignored
+            // entirely -- that is a pure bug fix and does not change the rate.
+            QualitySettings.vSyncCount = 0;
+            Application.runInBackground = true;
+            Current = Application.targetFrameRate;
+            return;
+        }
+
         Apply();
     }
 

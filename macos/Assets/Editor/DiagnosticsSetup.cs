@@ -23,21 +23,48 @@ namespace VipSim.EditorTools
         {
             var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
-            if (Object.FindObjectsByType<VipSimDiagnostics>(FindObjectsInactive.Include).Any())
-            {
-                Debug.Log("DIAGNOSTICS_SETUP_SKIPPED: already present.");
-                return;
-            }
+            var existing = Object.FindObjectsByType<VipSimDiagnostics>(FindObjectsInactive.Include)
+                                 .FirstOrDefault();
 
-            var host = Object.FindObjectsByType<GazeTracker>(FindObjectsInactive.Include)
+            GameObject host;
+            if (existing != null)
+            {
+                host = existing.gameObject;
+            }
+            else
+            {
+                host = Object.FindObjectsByType<GazeTracker>(FindObjectsInactive.Include)
                              .FirstOrDefault()?.gameObject;
-            if (host == null)
-            {
-                Debug.LogError("DIAGNOSTICS_SETUP_FAILED: no GazeTracker to attach to.");
-                return;
+                if (host == null)
+                {
+                    Debug.LogError("DIAGNOSTICS_SETUP_FAILED: no GazeTracker to attach to.");
+                    return;
+                }
+                existing = host.AddComponent<VipSimDiagnostics>();
             }
 
-            host.AddComponent<VipSimDiagnostics>();
+            // Enforce the serialized values rather than relying on the C# field
+            // initialisers. Unity serialises a component's values when it is added,
+            // so changing a default later does NOT update instances already in the
+            // scene -- which is exactly why periodic logging stayed off after the
+            // default was changed from 0 to 5.
+            if (existing.logIntervalSeconds <= 0f)
+                existing.logIntervalSeconds = 5f;
+            existing.showOverlay = false;
+
+            // FrameRateController must actually be in the scene to own the frame
+            // rate. Removing the three competing targetFrameRate assignments left
+            // nothing setting it at all, so the player reported "target 30 fps"
+            // (a leftover serialized value) and only hit 60 because vSync happened
+            // to be enabled. A component that is written but never attached does
+            // nothing.
+            if (!Object.FindObjectsByType<FrameRateController>(FindObjectsInactive.Include).Any())
+            {
+                host.AddComponent<FrameRateController>();
+                Debug.Log("DIAGNOSTICS_SETUP: added FrameRateController (was missing from the scene).");
+            }
+
+            EditorUtility.SetDirty(existing);
             EditorUtility.SetDirty(host);
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
