@@ -28,7 +28,7 @@ namespace VipSim.EditorTools
     {
         private const string ScenePath = "Assets/Scenes/VIP_SIM.unity";
         private const string ButtonName = "CalibrateGazeButton";
-        private const string TemplateName = "NextCam";
+        private const string TemplateName = "MouseEyeSwitch";
         // Calibration belongs beside the gaze-source toggle, not buried in the
         // webcam sub-menu: WebcamMenu is only meaningful once eye tracking is
         // selected, so a calibration button parented there is invisible exactly
@@ -72,30 +72,23 @@ namespace VipSim.EditorTools
                 return;
             }
 
-            // Style comes from NextCam (fonts, colours, sizing); placement comes
-            // from the gaze-source toggle, so the two concerns stay separate.
-            var neighbour = all.FirstOrDefault(g => g.name == PreferredNeighbourName);
-            var parent = neighbour != null ? neighbour.transform.parent : template.transform.parent;
+            // Clone MouseEyeSwitch itself, in place, as a sibling.
+            //
+            // TitleBarB is the always-visible icon row (settings, Load, Save,
+            // MouseEyeSwitch, Minimize, Exit). Every button in it is 60x55 at
+            // anchoredPosition (0,0) -- the container does the arranging. Earlier
+            // attempts cloned NextCam (a 51px webcam-menu button) and then applied
+            // a manual vertical offset, which put the button at (0,-63): outside a
+            // 220x100 bar, and therefore clipped out of view. Cloning a sibling and
+            // touching nothing about its transform is what makes it land in the row.
+            var neighbour = template;
+            var parent = template.transform.parent;
 
             var clone = Object.Instantiate(template, parent);
             clone.name = ButtonName;
-
-            // Sit directly below the template rather than on top of it. Offsetting
-            // by the template's own height keeps whatever layout convention the
-            // panel already uses instead of inventing coordinates.
-            var anchorSrc = (neighbour != null ? neighbour : template).GetComponent<RectTransform>();
-            var dstRect = clone.GetComponent<RectTransform>();
-            if (anchorSrc != null && dstRect != null)
-            {
-                // Inherit the neighbour's anchoring so the button follows the same
-                // resolution behaviour as the control it sits under, then drop one
-                // row using its height rather than an invented offset.
-                dstRect.anchorMin = anchorSrc.anchorMin;
-                dstRect.anchorMax = anchorSrc.anchorMax;
-                dstRect.pivot = anchorSrc.pivot;
-                dstRect.anchoredPosition = anchorSrc.anchoredPosition
-                                           - new Vector2(0f, anchorSrc.rect.height * 1.15f);
-            }
+            // Sit immediately after the gaze toggle: calibration is what you want
+            // right after turning eye tracking on.
+            clone.transform.SetSiblingIndex(template.transform.GetSiblingIndex() + 1);
 
             // Label sized to the button. MouseEyeSwitch lives in the title bar and
             // is a ~51px icon-sized control, so the clone inherits those dimensions
