@@ -19880,6 +19880,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1461121525}
   - component: {fileID: 1461121524}
+  - component: {fileID: 1461121526}
   m_Layer: 0
   m_Name: CameraRig
   m_TagString: Untagged
@@ -19927,6 +19928,22 @@ Transform:
   - {fileID: 197203488}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1461121526
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1461121523}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7615c0b321765d34aa0d92d5c87b0df7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VipSimDiagnostics
+  toggleKey: 291
+  benchmarkKey: 292
+  showOverlay: 0
+  logIntervalSeconds: 0
 --- !u!1 &1461462902
 GameObject:
   m_ObjectHideFlags: 0
