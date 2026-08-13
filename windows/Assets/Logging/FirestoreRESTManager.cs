@@ -19,6 +19,25 @@ public class FirestoreRESTManager : MonoBehaviour
     private UserSessionData sessionData;
     private string firestoreUrl = "https://vip-sim-default-rtdb.europe-west1.firebasedatabase.app/";
 
+    [Header("Study instrumentation")]
+    [Tooltip("Show the end-of-session questionnaire (SUS rating, accessibility rating, " +
+             "learnings, open feedback) and upload the session record.\n\n" +
+             "OFF by default. This is instrumentation for the UIST'25 participatory " +
+             "study, not a feature of the tool: it uploads a persistent UUID plus every " +
+             "application captured, every symptom toggled and every eye-tracker click to " +
+             "a Firebase realtime database. Nobody outside that study should be sending " +
+             "us their data without having agreed to it, and it should not be the default " +
+             "for someone who just downloaded a vision-impairment simulator.\n\n" +
+             "Turn it on when running a study session.")]
+    [SerializeField] private bool enableSessionQuestionnaire = false;
+
+    /// <summary>Whether study instrumentation is active, for UI that shows/hides the questionnaire.</summary>
+    public bool QuestionnaireEnabled => enableSessionQuestionnaire;
+
+    [Tooltip("Optional. The questionnaire panel, hidden automatically when the " +
+             "questionnaire is disabled so the end-of-session button just exits.")]
+    [SerializeField] private GameObject questionnairePanel;
+
     // Inspector variables
     public TMP_InputField learningsInputField;
     public TMP_InputField openFeedbackInputField;
@@ -29,6 +48,17 @@ public class FirestoreRESTManager : MonoBehaviour
 
     void Start()
     {
+        if (questionnairePanel != null)
+            questionnairePanel.SetActive(enableSessionQuestionnaire);
+
+        if (!enableSessionQuestionnaire)
+        {
+            // Do not even mint a UUID: with the questionnaire off nothing is
+            // uploaded, so there is no identifier to correlate and no reason to
+            // persist one to disk.
+            return;
+        }
+
         string uuid = LoadUUID();
 
         // Initialize session data
@@ -63,24 +93,44 @@ public class FirestoreRESTManager : MonoBehaviour
 
     public void OnProgramClick(string programName)
     {
+        // No-op when study instrumentation is off: sessionData is never
+        // allocated in that case, so this would otherwise throw on every click.
+        if (!enableSessionQuestionnaire) return;
+
         sessionData.ActivePrograms.Add(new ProgramActivity(programName, DateTime.UtcNow.ToString("o")));
         Debug.Log($"Program {programName} clicked at {DateTime.UtcNow}");
     }
 
     public void OnButtonClick(string buttonType)
     {
+        // No-op when study instrumentation is off: sessionData is never
+        // allocated in that case, so this would otherwise throw on every click.
+        if (!enableSessionQuestionnaire) return;
+
         sessionData.EyeTrackerClicks.Add(new ButtonClick(buttonType, DateTime.UtcNow.ToString("o")));
         Debug.Log($"Button {buttonType} clicked at {DateTime.UtcNow}");
     }
 
     public void OnImpairmentClick(string impairmentName, float severity)
     {
+        // No-op when study instrumentation is off: sessionData is never
+        // allocated in that case, so this would otherwise throw on every click.
+        if (!enableSessionQuestionnaire) return;
+
         sessionData.Impairments.Add(new ImpairmentClick(impairmentName, severity, DateTime.UtcNow.ToString("o")));
         Debug.Log($"Impairment {impairmentName} clicked with severity {severity} at {DateTime.UtcNow}");
     }
 
     public void OnEndSessionButtonPressed()
     {
+        // With the questionnaire disabled this button is just "quit": no ratings
+        // are collected and nothing is uploaded.
+        if (!enableSessionQuestionnaire)
+        {
+            Application.Quit();
+            return;
+        }
+
         // Holen der Benutzer-Eingaben
         int ratingSuS = GetSelectedToggleValue(ratingSuSToggleGroup);
         int ratingLearnedAccessibility = GetSelectedToggleValue(ratingLearnedAccessibilityToggleGroup);
