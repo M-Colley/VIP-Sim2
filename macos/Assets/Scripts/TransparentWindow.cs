@@ -89,9 +89,31 @@ public class TransparentWindow : MonoBehaviour {
         Application.runInBackground = true;
     }
 
+    // Set while a modal panel (e.g. the end-of-session questionnaire) is open, so
+    // the overlay stops being click-through and the panel can actually be used.
+    //
+    // These exist on the Windows TransparentWindow but were missing here, which is
+    // a plain API divergence between two copies of the same class: any shared code
+    // calling them compiled on Windows and failed on macOS.
+    private bool feedbackState = false;
+
+    public void enableFeedbackState()
+    {
+        feedbackState = true;
+    }
+
+    public void disableFeedbackState()
+    {
+        feedbackState = false;
+    }
+
     private void Update() {
         //SetClickthrough(Physics2D.OverlapPoint(GetMouseWorldPosition()) == null);
         bool clickthrough = IsCoordinateOutsidePanel();
+        if (feedbackState)
+        {
+            clickthrough = false;
+        }
         if (clickthrough != _lastClickthrough)
         {
             SetClickthrough(clickthrough);

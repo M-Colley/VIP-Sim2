@@ -14071,6 +14071,14 @@ PrefabInstance:
       propertyPath: showFaceMesh
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8076264650888145063, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
+      propertyPath: _asyncGpuReadback
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8076264650888145063, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
+      propertyPath: _calibrationScript
+      value: 
+      objectReference: {fileID: 949449546}
     - target: {fileID: 8817224278118811634, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
       propertyPath: _drawPreview
       value: 0
@@ -14078,13 +14086,60 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 212319987667855090, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 949449546}
   m_SourcePrefab: {fileID: 100100000, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
 --- !u!1 &949449545 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 212319987667855090, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
   m_PrefabInstance: {fileID: 949449544}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &949449546
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 949449545}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a9a5bf147eee0843a975fc3ef8276d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniUlm.UnitEye.Runtime::UnitEye.HomulerGazeCalibration
+  points: []
+  calibrationDot: {fileID: 2800000, guid: dcf697a50e51baa4ea43260cf5f57a84, type: 3}
+  speed: 6
+  padding: 10
+  normalizedSafeMargin: 0.08
+  cornerVisits: 2
+  cornerDwellSeconds: 3
+  headRotationDwellSeconds: 5
+  interiorDwellSeconds: 1.5
+  settleSeconds: 0.5
+  minimumCornerSamples: 15
+  cornerOutlierZScore: 3
+  pursuitLagSeconds: 0.1
+  fixationGate: 1
+  fixationWindowSeconds: 0.3
+  fixationDispersionFraction: 0.035
+  drawCheckpoints: 0
+  drawPath: 1
+  currentRound: 0
+  maxRoundsPerPreset: 2
+  calibrationType: 1
+  save: 1
+  featureAugmentation:
+    enabled: 1
+    copiesPerSample: 1
+    standardDeviationScale: 0.05
+    maximumStandardDeviations: 3
+    headPoseJitterDegrees: 3
+    seed: 12345
+  enableRidgeWarp: 1
+  stopAfterPoints: 1
+  quitAfterCalibration: 0
 --- !u!1 &952841127
 GameObject:
   m_ObjectHideFlags: 0
@@ -19854,6 +19909,7 @@ MonoBehaviour:
   holdLastGoodGaze: 1
   trackingLossTimeout: 2
   extraSmoothing: 0
+  calibrationHotkey: 290
 --- !u!4 &1461121525
 Transform:
   m_ObjectHideFlags: 0
@@ -22887,6 +22943,7 @@ GameObject:
   - component: {fileID: 1783816373}
   - component: {fileID: 1783816372}
   - component: {fileID: 1783816371}
+  - component: {fileID: 1783816374}
   m_Layer: 5
   m_Name: Feedback
   m_TagString: Untagged
@@ -22987,6 +23044,20 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1783816369}
   m_CullTransparentMesh: 1
+--- !u!114 &1783816374
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1783816369}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13f707546e600ce45a0e6b4b26e3eef8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::QuestionnaireGate
+  manager: {fileID: 0}
+  transparentWindow: {fileID: 0}
 --- !u!1 &1786471461
 GameObject:
   m_ObjectHideFlags: 0
@@ -26097,6 +26168,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bf68fd77518c364886ccf56327fc876, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enableSessionQuestionnaire: 0
+  questionnairePanel: {fileID: 1783816369}
   learningsInputField: {fileID: 605092170}
   openFeedbackInputField: {fileID: 1519106577}
   ratingSuSToggleGroup: {fileID: 1267082121}

@@ -114,8 +114,45 @@ public class GazeTracker : MonoBehaviour
         lastGoodGazeTime = Time.time;
     }
 
+    [Header("Calibration")]
+    [Tooltip("Key that starts gaze calibration. Uncalibrated gaze is roughly " +
+             "head-pose driven and drifts badly; nearly all of UnitEye's accuracy " +
+             "comes from the per-user fit done during calibration.")]
+    public KeyCode calibrationHotkey = KeyCode.F9;
+
+    /// <summary>
+    /// Start UnitEye's gaze calibration. Safe to call from a UI button.
+    ///
+    /// Calibration takes over the screen until it finishes, then hands control
+    /// back (returnAfter), so VIP-Sim keeps running afterwards.
+    /// </summary>
+    public void StartCalibration()
+    {
+        if (gazeSource != GazeSource.UnitEye)
+        {
+            Debug.LogWarning("[GazeTracker] Calibration only applies to the UnitEye gaze source; " +
+                             "switch to it first.", this);
+            return;
+        }
+
+        try
+        {
+            SetUnitEyeActive(true);
+            UnitEyeAPI.GetGazeReference().LoadCalibration();
+            Debug.Log("[GazeTracker] Gaze calibration started.");
+        }
+        catch (System.InvalidOperationException e)
+        {
+            LastError = "Cannot calibrate: " + e.Message;
+            Debug.LogWarning("[GazeTracker] " + LastError, this);
+        }
+    }
+
     private void Update()
     {
+        if (Input.GetKeyDown(calibrationHotkey))
+            StartCalibration();
+
         switch (gazeSource)
         {
             case GazeSource.UnitEye:

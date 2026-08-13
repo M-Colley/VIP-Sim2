@@ -8193,6 +8193,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5bf68fd77518c364886ccf56327fc876, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  enableSessionQuestionnaire: 0
+  questionnairePanel: {fileID: 13370453}
   learningsInputField: {fileID: 1717060177}
   openFeedbackInputField: {fileID: 2016381690}
   ratingSuSToggleGroup: {fileID: 403449391}
@@ -13229,6 +13231,9 @@ PrefabInstance:
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 8967559583925561454, guid: 5ff6d16a26d1848cf99dd7b0f44658db, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2054152135}
     - targetCorrespondingSourceObject: {fileID: 4085067148178862854, guid: 5ff6d16a26d1848cf99dd7b0f44658db, type: 3}
       insertIndex: -1
       addedObject: {fileID: 24579329}
@@ -15125,6 +15130,7 @@ MonoBehaviour:
   holdLastGoodGaze: 1
   trackingLossTimeout: 2
   extraSmoothing: 0
+  calibrationHotkey: 290
 --- !u!4 &1461121525
 Transform:
   m_ObjectHideFlags: 0
@@ -15982,6 +15988,14 @@ PrefabInstance:
       propertyPath: showFaceMesh
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8076264650888145063, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
+      propertyPath: _asyncGpuReadback
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8076264650888145063, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
+      propertyPath: _calibrationScript
+      value: 
+      objectReference: {fileID: 1654021346}
     - target: {fileID: 8817224278118811634, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
       propertyPath: _drawPreview
       value: 0
@@ -15989,13 +16003,60 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 212319987667855090, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1654021346}
   m_SourcePrefab: {fileID: 100100000, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
 --- !u!1 &1654021345 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 212319987667855090, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
   m_PrefabInstance: {fileID: 1654021344}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1654021346
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1654021345}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5a9a5bf147eee0843a975fc3ef8276d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniUlm.UnitEye.Runtime::UnitEye.HomulerGazeCalibration
+  points: []
+  calibrationDot: {fileID: 2800000, guid: dcf697a50e51baa4ea43260cf5f57a84, type: 3}
+  speed: 6
+  padding: 10
+  normalizedSafeMargin: 0.08
+  cornerVisits: 2
+  cornerDwellSeconds: 3
+  headRotationDwellSeconds: 5
+  interiorDwellSeconds: 1.5
+  settleSeconds: 0.5
+  minimumCornerSamples: 15
+  cornerOutlierZScore: 3
+  pursuitLagSeconds: 0.1
+  fixationGate: 1
+  fixationWindowSeconds: 0.3
+  fixationDispersionFraction: 0.035
+  drawCheckpoints: 0
+  drawPath: 1
+  currentRound: 0
+  maxRoundsPerPreset: 2
+  calibrationType: 1
+  save: 1
+  featureAugmentation:
+    enabled: 1
+    copiesPerSample: 1
+    standardDeviationScale: 0.05
+    maximumStandardDeviations: 3
+    headPoseJitterDegrees: 3
+    seed: 12345
+  enableRidgeWarp: 1
+  stopAfterPoints: 1
+  quitAfterCalibration: 0
 --- !u!1 &1659064216
 GameObject:
   m_ObjectHideFlags: 0
@@ -19522,6 +19583,20 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 3502913444321142362, guid: 5ff6d16a26d1848cf99dd7b0f44658db, type: 3}
   m_PrefabInstance: {fileID: 1283366504}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &2054152135
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 13370453}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce165f2199aab13409cdabcb3933afe8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::QuestionnaireGate
+  manager: {fileID: 0}
+  transparentWindow: {fileID: 0}
 --- !u!1 &2056043409
 GameObject:
   m_ObjectHideFlags: 0
