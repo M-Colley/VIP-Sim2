@@ -1,4 +1,4 @@
-﻿/* 
+/* 
     ------------------- Code Monkey -------------------
 
     Thank you for downloading this package
@@ -85,10 +85,8 @@ public class TransparentWindow : MonoBehaviour {
 #else
         _lastClickthrough = false;
 #endif
-        Application.runInBackground = true;
-        // Lower the frame rate when running in the background to reduce CPU usage
-        QualitySettings.vSyncCount = 0;
-        Application.targetFrameRate = 30;
+        // Frame rate and runInBackground are owned by FrameRateController;
+        // three scripts used to set targetFrameRate and fight over it.
     }
 
     public void enableFeedbackState()

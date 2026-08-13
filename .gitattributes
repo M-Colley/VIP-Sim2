@@ -65,7 +65,16 @@
 *.pdf       binary
 
 # --- Git LFS ----------------------------------------------------------------
+# Large binaries that git cannot delta-compress. Without this the repository
+# grows by the full size of every revision: the gaze models alone are ~180MB,
+# and resnet34_gaze.onnx is 81.5MB on its own, past GitHub's 50MB warning
+# threshold and not far off its 100MB hard limit.
 *.aar       filter=lfs diff=lfs merge=lfs -text
+*.onnx      filter=lfs diff=lfs merge=lfs -text
+*.dylib     filter=lfs diff=lfs merge=lfs -text
+*.so        filter=lfs diff=lfs merge=lfs -text
+*.bundle    filter=lfs diff=lfs merge=lfs -text
+*.unitypackage filter=lfs diff=lfs merge=lfs -text
 
 # --- Linguist ---------------------------------------------------------------
 # Keep vendored third-party code out of the language statistics.

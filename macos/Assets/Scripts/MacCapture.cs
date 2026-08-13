@@ -62,7 +62,6 @@ public class MacCapture : MonoBehaviour
 
     public void Init()
     {
-        Application.targetFrameRate = 60;
 
         DesktopCapture2.Init();
 

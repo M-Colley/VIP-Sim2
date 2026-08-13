@@ -15,7 +15,6 @@ public class ToggleScript : MonoBehaviour
     private List<GameObject> lastObjects = new List<GameObject>();
     public void Awake()
     {
-        Application.targetFrameRate = 60;
     }
     // Function to toggle the active state of a GameObject
     public void ToggleActiveState(GameObject obj)
