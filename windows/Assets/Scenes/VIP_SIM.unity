@@ -2960,6 +2960,7 @@ GameObject:
   - component: {fileID: 146796226}
   - component: {fileID: 146796225}
   - component: {fileID: 146796224}
+  - component: {fileID: 146796227}
   m_Layer: 5
   m_Name: settings
   m_TagString: Untagged
@@ -3105,6 +3106,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 146796222}
   m_CullTransparentMesh: 1
+--- !u!114 &146796227
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 146796222}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: "Settings \u2014 offsets, zoom and display options"
 --- !u!1 &147828969
 GameObject:
   m_ObjectHideFlags: 0
@@ -9071,6 +9085,7 @@ GameObject:
   - component: {fileID: 601164987}
   - component: {fileID: 601164986}
   - component: {fileID: 601164985}
+  - component: {fileID: 601164988}
   m_Layer: 5
   m_Name: PrevCam
   m_TagString: Untagged
@@ -9192,6 +9207,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 601164983}
   m_CullTransparentMesh: 1
+--- !u!114 &601164988
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 601164983}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: Previous webcam
 --- !u!1 &605092168
 GameObject:
   m_ObjectHideFlags: 0
@@ -11076,6 +11104,7 @@ GameObject:
   - component: {fileID: 717029074}
   - component: {fileID: 717029073}
   - component: {fileID: 717029072}
+  - component: {fileID: 717029075}
   m_Layer: 5
   m_Name: NextCam
   m_TagString: Untagged
@@ -11197,6 +11226,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 717029070}
   m_CullTransparentMesh: 1
+--- !u!114 &717029075
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 717029070}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: Next webcam
 --- !u!1 &731233025
 GameObject:
   m_ObjectHideFlags: 0
@@ -11210,6 +11252,7 @@ GameObject:
   - component: {fileID: 731233029}
   - component: {fileID: 731233028}
   - component: {fileID: 731233027}
+  - component: {fileID: 731233031}
   m_Layer: 5
   m_Name: CalibrateGazeButton
   m_TagString: Untagged
@@ -11330,7 +11373,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: b91d0893b75e5b543894877b8cbee22a, type: 3}
+  m_Sprite: {fileID: 21300000, guid: eb5d38b489ce2d54c905340366bccf6b, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -11348,6 +11391,22 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 731233025}
   m_CullTransparentMesh: 1
+--- !u!114 &731233031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 731233025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: 'Calibrate eye tracking (F9).
+
+    Follow the dot; Escape or right-click
+    aborts.'
 --- !u!1 &732259744
 GameObject:
   m_ObjectHideFlags: 0
@@ -12919,6 +12978,7 @@ GameObject:
   - component: {fileID: 857660805}
   - component: {fileID: 857660804}
   - component: {fileID: 857660803}
+  - component: {fileID: 857660807}
   m_Layer: 5
   m_Name: ExitButton
   m_TagString: Untagged
@@ -13052,6 +13112,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 857660801}
   m_CullTransparentMesh: 1
+--- !u!114 &857660807
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 857660801}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: Exit VIP-Sim (Ctrl+Alt+Q always works)
 --- !u!1 &858823454
 GameObject:
   m_ObjectHideFlags: 0
@@ -13892,6 +13965,7 @@ GameObject:
   - component: {fileID: 930865781}
   - component: {fileID: 930865780}
   - component: {fileID: 930865779}
+  - component: {fileID: 930865783}
   m_Layer: 5
   m_Name: Save
   m_TagString: Untagged
@@ -14013,6 +14087,19 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 60, y: 55}
   m_Pivot: {x: 1, y: 1}
+--- !u!114 &930865783
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930865778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: Save the current symptom profile
 --- !u!1 &940969092
 GameObject:
   m_ObjectHideFlags: 0
@@ -14269,6 +14356,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UniUlm.UnitEye.Runtime::UnitEye.HomulerGazeCalibration
   points: []
   calibrationDot: {fileID: 2800000, guid: dcf697a50e51baa4ea43260cf5f57a84, type: 3}
+  backgroundColor: {r: 0.92, g: 0.92, b: 0.92, a: 1}
   speed: 6
   padding: 10
   normalizedSafeMargin: 0.08
@@ -14860,6 +14948,7 @@ GameObject:
   - component: {fileID: 983648683}
   - component: {fileID: 983648682}
   - component: {fileID: 983648681}
+  - component: {fileID: 983648685}
   m_Layer: 5
   m_Name: MouseEyeSwitch
   m_TagString: Untagged
@@ -14998,6 +15087,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 983648679}
   m_CullTransparentMesh: 1
+--- !u!114 &983648685
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 983648679}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: Switch gaze source between mouse and eye tracking
 --- !u!1 &993250608
 GameObject:
   m_ObjectHideFlags: 0
@@ -24043,6 +24145,7 @@ GameObject:
   - component: {fileID: 1812354167}
   - component: {fileID: 1812354166}
   - component: {fileID: 1812354165}
+  - component: {fileID: 1812354169}
   m_Layer: 5
   m_Name: ExitButton
   m_TagString: Untagged
@@ -24188,6 +24291,19 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1812354163}
   m_CullTransparentMesh: 1
+--- !u!114 &1812354169
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1812354163}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: Exit VIP-Sim (Ctrl+Alt+Q always works)
 --- !u!1 &1818312562
 GameObject:
   m_ObjectHideFlags: 0
@@ -24967,6 +25083,7 @@ RectTransform:
   - {fileID: 601164984}
   - {fileID: 110720840}
   - {fileID: 717029071}
+  - {fileID: 1904707162}
   m_Father: {fileID: 8434332443454203675}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
@@ -25437,6 +25554,143 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1898746832}
   m_CullTransparentMesh: 1
+--- !u!1 &1904707161
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1904707162}
+  - component: {fileID: 1904707164}
+  - component: {fileID: 1904707163}
+  m_Layer: 5
+  m_Name: ToolbarTooltipLabel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!224 &1904707162
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1904707161}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1859308686}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -60.000004}
+  m_SizeDelta: {x: 420, y: 60}
+  m_Pivot: {x: 1, y: 0.5}
+--- !u!114 &1904707163
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1904707161}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 0
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_text: 
+  m_isRightToLeft: 0
+  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontSharedMaterials: []
+  m_fontMaterial: {fileID: 0}
+  m_fontMaterials: []
+  m_fontColor32:
+    serializedVersion: 2
+    rgba: 4294967295
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_enableVertexGradient: 0
+  m_colorMode: 3
+  m_fontColorGradient:
+    topLeft: {r: 1, g: 1, b: 1, a: 1}
+    topRight: {r: 1, g: 1, b: 1, a: 1}
+    bottomLeft: {r: 1, g: 1, b: 1, a: 1}
+    bottomRight: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColorGradientPreset: {fileID: 0}
+  m_spriteAsset: {fileID: 0}
+  m_tintAllSprites: 0
+  m_StyleSheet: {fileID: 0}
+  m_TextStyleHashCode: -1183493901
+  m_overrideHtmlColors: 0
+  m_faceColor:
+    serializedVersion: 2
+    rgba: 4294967295
+  m_fontSize: 24
+  m_fontSizeBase: 24
+  m_fontWeight: 400
+  m_enableAutoSizing: 0
+  m_fontSizeMin: 18
+  m_fontSizeMax: 72
+  m_fontStyle: 0
+  m_HorizontalAlignment: 1
+  m_VerticalAlignment: 256
+  m_textAlignment: 65535
+  m_characterSpacing: 0
+  m_characterHorizontalScale: 1
+  m_wordSpacing: 0
+  m_lineSpacing: 0
+  m_lineSpacingMax: 0
+  m_paragraphSpacing: 0
+  m_charWidthMaxAdj: 0
+  m_TextWrappingMode: 1
+  m_wordWrappingRatios: 0.4
+  m_overflowMode: 0
+  m_linkedTextComponent: {fileID: 0}
+  parentLinkedComponent: {fileID: 0}
+  m_enableKerning: 1
+  m_ActiveFontFeatures: 6e72656b
+  m_enableExtraPadding: 0
+  checkPaddingRequired: 0
+  m_isRichText: 1
+  m_EmojiFallbackSupport: 1
+  m_parseCtrlCharacters: 1
+  m_isOrthographic: 1
+  m_isCullingEnabled: 0
+  m_horizontalMapping: 0
+  m_verticalMapping: 0
+  m_uvLineOffset: 0
+  m_geometrySortingOrder: 0
+  m_IsTextObjectScaleStatic: 0
+  m_VertexBufferAutoSizeReduction: 0
+  m_useMaxVisibleDescender: 1
+  m_pageToDisplay: 1
+  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_isUsingLegacyAnimationComponent: 0
+  m_isVolumetricText: 0
+  m_hasFontAssetChanged: 0
+  m_baseMaterial: {fileID: 0}
+  m_maskOffset: {x: 0, y: 0, z: 0, w: 0}
+--- !u!222 &1904707164
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1904707161}
+  m_CullTransparentMesh: 1
 --- !u!1 &1905525043
 GameObject:
   m_ObjectHideFlags: 0
@@ -25586,6 +25840,7 @@ GameObject:
   - component: {fileID: 1928150508}
   - component: {fileID: 1928150507}
   - component: {fileID: 1928150509}
+  - component: {fileID: 1928150510}
   m_Layer: 5
   m_Name: Load
   m_TagString: Untagged
@@ -25707,6 +25962,19 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+--- !u!114 &1928150510
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1928150505}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: Load a saved symptom profile
 --- !u!1 &1965686575
 GameObject:
   m_ObjectHideFlags: 0
@@ -32961,6 +33229,7 @@ GameObject:
   - component: {fileID: 6264127169132202823}
   - component: {fileID: 1203312681422410166}
   - component: {fileID: 5945570745942829826}
+  - component: {fileID: 8014445788195611104}
   m_Layer: 5
   m_Name: ExitButton
   m_TagString: Untagged
@@ -32968,6 +33237,19 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &8014445788195611104
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8014445788195611103}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: Exit VIP-Sim (Ctrl+Alt+Q always works)
 --- !u!224 &8042347269885633396
 RectTransform:
   m_ObjectHideFlags: 0
@@ -33115,6 +33397,7 @@ GameObject:
   - component: {fileID: 2052003047274792978}
   - component: {fileID: 3108689143184997205}
   - component: {fileID: 4423713757009667310}
+  - component: {fileID: 8184862333597876384}
   m_Layer: 5
   m_Name: MinimizeButton
   m_TagString: Untagged
@@ -33122,6 +33405,19 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &8184862333597876384
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8184862333597876383}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eebbe4b8e11705049a2db8a00182b905, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
+  message: Minimise VIP-Sim
 --- !u!1 &8247331484097966945
 GameObject:
   m_ObjectHideFlags: 0
