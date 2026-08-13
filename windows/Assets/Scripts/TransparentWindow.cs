@@ -142,7 +142,15 @@ public class TransparentWindow : MonoBehaviour {
     private int _acquireAttempts;
     private bool _missingPanelLogged;
 
+    [Tooltip("Cover the whole screen at startup. VIP-Sim is a fullscreen overlay, so a " +
+             "windowed or degenerate window size is always a fault -- and Unity persists " +
+             "window geometry between runs, so once a bad size is saved every later launch " +
+             "inherits it.")]
+    public bool forceFullScreenOverlay = true;
+
     private void Start() {
+        if (forceFullScreenOverlay) RestoreOverlayGeometry();
+
         // Window acquisition happens in the clickthrough coroutine, not here.
         // OnEnable -- and therefore the coroutine's first iteration -- runs before
         // Start, so setting the handle up here meant the very first clickthrough
@@ -271,6 +279,40 @@ public class TransparentWindow : MonoBehaviour {
         return true;
 #else
         return false;
+#endif
+    }
+
+    /// <summary>
+    /// Put the window back to full screen.
+    ///
+    /// The previous SetWindowPos call passed 0,0,0,0 with no flags, which asks
+    /// Windows to move the window to the origin and resize it to nothing. Unity
+    /// then saved that geometry, so the overlay came back as a 1x1 windowed player
+    /// on every subsequent launch -- invisible, covering nothing, and capturing no
+    /// clicks, with the saved size outliving the code that caused it:
+    ///
+    ///     Screenmanager Resolution Width  = 1
+    ///     Screenmanager Resolution Height = 1
+    ///     Screenmanager Fullscreen mode   = 3   (Windowed)
+    ///
+    /// Asserting the geometry here both repairs that and removes the class of bug:
+    /// there is no legitimate windowed or partial state for a fullscreen overlay.
+    /// Done once at startup rather than on a timer, so minimising still works.
+    /// </summary>
+    private void RestoreOverlayGeometry()
+    {
+#if !UNITY_EDITOR
+        int w = Display.main.systemWidth;
+        int h = Display.main.systemHeight;
+        if (w <= 0 || h <= 0) return;
+
+        if (Screen.width != w || Screen.height != h ||
+            Screen.fullScreenMode != FullScreenMode.FullScreenWindow)
+        {
+            Debug.Log($"TransparentWindow: overlay geometry was {Screen.width}x{Screen.height} " +
+                      $"({Screen.fullScreenMode}); restoring {w}x{h} FullScreenWindow.");
+            Screen.SetResolution(w, h, FullScreenMode.FullScreenWindow);
+        }
 #endif
     }
 

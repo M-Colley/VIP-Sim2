@@ -193,26 +193,61 @@ namespace VipSim.EditorTools
                 var txt = clone.GetComponent<TMP_Text>();
                 txt.text = "";
                 txt.enableWordWrapping = true;
-                txt.alignment = TextAlignmentOptions.TopLeft;
+                txt.alignment = TextAlignmentOptions.TopRight;
                 txt.raycastTarget = false; // must never eat clicks meant for the toolbar
-
-                var rt = clone.GetComponent<RectTransform>();
-                var toolbar = all.FirstOrDefault(g => g.name == "TitleBarB" && g.activeInHierarchy);
-                if (toolbar != null)
-                {
-                    var trt = toolbar.GetComponent<RectTransform>();
-                    rt.anchorMin = trt.anchorMin;
-                    rt.anchorMax = trt.anchorMax;
-                    rt.pivot = trt.pivot;
-                    // Just below the toolbar row.
-                    rt.anchoredPosition = trt.anchoredPosition - new Vector2(0f, trt.rect.height * 0.6f);
-                    rt.sizeDelta = new Vector2(420f, 60f);
-                }
 
                 clone.SetActive(false);
                 label = clone;
                 EditorUtility.SetDirty(clone);
                 changed++;
+            }
+
+            // Anchor it under the title bar, whatever it was cloned from.
+            //
+            // The first version copied TitleBarB's anchors and pivot but left the
+            // clone parented to whichever object happened to own the TMP_Text it
+            // cloned -- which was CamLabel, under WebcamMenu. Anchors resolve
+            // against the parent, so the help text rendered down beside the webcam
+            // arrows at the bottom of the panel rather than under the button it
+            // was describing.
+            var bar2 = all.FirstOrDefault(g => g.name == "TitleBar" && g.activeInHierarchy);
+            if (bar2 == null)
+            {
+                Debug.LogWarning("TOOLBAR_POLISH: no active TitleBar; tooltip label left where it is.");
+            }
+            else
+            {
+                var lrt = (RectTransform)label.transform;
+                var anchor = new Vector2(1f, 0f);      // bottom-right of the title bar
+                var pivot = new Vector2(1f, 1f);       // hang downwards from there
+                var offset = new Vector2(0f, -4f);
+                var size = new Vector2(420f, 60f);
+
+                bool moved = lrt.parent != bar2.transform;
+                if (moved) lrt.SetParent(bar2.transform, false);
+
+                // TitleBar runs a HorizontalLayoutGroup, which would otherwise
+                // treat the label as a third column and shove TitleBarA aside.
+                var le = label.GetComponent<LayoutElement>() ?? label.AddComponent<LayoutElement>();
+                if (!le.ignoreLayout) { le.ignoreLayout = true; moved = true; }
+
+                if (lrt.anchorMin != anchor || lrt.anchorMax != anchor || lrt.pivot != pivot ||
+                    lrt.anchoredPosition != offset || lrt.sizeDelta != size)
+                {
+                    lrt.anchorMin = anchor;
+                    lrt.anchorMax = anchor;
+                    lrt.pivot = pivot;
+                    lrt.anchoredPosition = offset;
+                    lrt.sizeDelta = size;
+                    moved = true;
+                }
+
+                if (moved)
+                {
+                    EditorUtility.SetDirty(label);
+                    changed++;
+                    Debug.Log("TOOLBAR_POLISH: tooltip label anchored under the title bar.");
+                }
             }
 
             // --- 4. Attach help to each button ---------------------------------

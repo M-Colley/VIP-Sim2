@@ -240,6 +240,21 @@ public class VipSimDiagnostics : MonoBehaviour
             false => "captured by VIP-Sim (pointer is over the panel)",
         }));
 
+        // The rectangle that decision is made against, in screen pixels. Printed
+        // because "clicks pass through everywhere" and "the toolbar is not
+        // clickable" are the same fault seen from two sides, and only the panel's
+        // actual screen rect distinguishes a hidden panel from a broken one.
+        var tw = FindAnyObjectByType<TransparentWindow>(FindObjectsInactive.Include);
+        if (tw != null && tw.panelRectTransform != null)
+        {
+            var c = new Vector3[4];
+            tw.panelRectTransform.GetWorldCorners(c);
+            sb.AppendLine($"panel   ({c[0].x:F0},{c[0].y:F0})-({c[2].x:F0},{c[2].y:F0}) " +
+                          $"shown={tw.panelRectTransform.gameObject.activeInHierarchy}");
+            sb.AppendLine($"        mouse ({Input.mousePosition.x:F0},{Input.mousePosition.y:F0}) " +
+                          $"screen {Screen.width}x{Screen.height}");
+        }
+
         // Gaze
         try
         {
