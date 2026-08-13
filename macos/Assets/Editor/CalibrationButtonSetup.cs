@@ -29,6 +29,12 @@ namespace VipSim.EditorTools
         private const string ScenePath = "Assets/Scenes/VIP_SIM.unity";
         private const string ButtonName = "CalibrateGazeButton";
         private const string TemplateName = "NextCam";
+        // Calibration belongs beside the gaze-source toggle, not buried in the
+        // webcam sub-menu: WebcamMenu is only meaningful once eye tracking is
+        // selected, so a calibration button parented there is invisible exactly
+        // when someone is looking for it. MouseEyeSwitch is the control that
+        // turns eye tracking on, which is the moment calibration becomes relevant.
+        private const string PreferredNeighbourName = "MouseEyeSwitch";
 
         [MenuItem("VIP-Sim/Add calibration button to settings")]
         public static void Setup()
@@ -40,11 +46,17 @@ namespace VipSim.EditorTools
                                .Select(t => t.gameObject)
                                .ToList();
 
-            if (all.Any(g => g.name == ButtonName))
+            // Repair rather than skip: an existing button may be in the wrong
+            // parent from an earlier run, and "already present" is useless if the
+            // user cannot see it. Removing and recreating re-applies the current
+            // placement rules.
+            foreach (var stale in all.Where(g => g.name == ButtonName).ToList())
             {
-                Debug.Log("CALIBRATION_BUTTON_SKIPPED: already present.");
-                return;
+                Debug.Log($"CALIBRATION_BUTTON: removing existing button under " +
+                          $"'{stale.transform.parent?.name}' to re-place it.");
+                Object.DestroyImmediate(stale);
             }
+            all = all.Where(g => g != null).ToList();
 
             var template = all.FirstOrDefault(g => g.name == TemplateName);
             if (template == null)
@@ -60,26 +72,50 @@ namespace VipSim.EditorTools
                 return;
             }
 
-            var clone = Object.Instantiate(template, template.transform.parent);
+            // Style comes from NextCam (fonts, colours, sizing); placement comes
+            // from the gaze-source toggle, so the two concerns stay separate.
+            var neighbour = all.FirstOrDefault(g => g.name == PreferredNeighbourName);
+            var parent = neighbour != null ? neighbour.transform.parent : template.transform.parent;
+
+            var clone = Object.Instantiate(template, parent);
             clone.name = ButtonName;
 
             // Sit directly below the template rather than on top of it. Offsetting
             // by the template's own height keeps whatever layout convention the
             // panel already uses instead of inventing coordinates.
-            var srcRect = template.GetComponent<RectTransform>();
+            var anchorSrc = (neighbour != null ? neighbour : template).GetComponent<RectTransform>();
             var dstRect = clone.GetComponent<RectTransform>();
-            if (srcRect != null && dstRect != null)
+            if (anchorSrc != null && dstRect != null)
             {
-                dstRect.anchoredPosition = srcRect.anchoredPosition
-                                           - new Vector2(0f, srcRect.rect.height * 1.2f);
+                // Inherit the neighbour's anchoring so the button follows the same
+                // resolution behaviour as the control it sits under, then drop one
+                // row using its height rather than an invented offset.
+                dstRect.anchorMin = anchorSrc.anchorMin;
+                dstRect.anchorMax = anchorSrc.anchorMax;
+                dstRect.pivot = anchorSrc.pivot;
+                dstRect.anchoredPosition = anchorSrc.anchoredPosition
+                                           - new Vector2(0f, anchorSrc.rect.height * 1.15f);
             }
 
-            // Label: cover both TMP and legacy Text so this does not depend on
-            // which the template happens to use.
+            // Label sized to the button. MouseEyeSwitch lives in the title bar and
+            // is a ~51px icon-sized control, so the clone inherits those dimensions
+            // and a full "Calibrate Eye Tracking" string would simply overflow.
+            // Short label on the button, full description in the tooltip-equivalent
+            // name so it is still discoverable in the hierarchy.
+            var rect = clone.GetComponent<RectTransform>();
+            bool tiny = rect != null && rect.rect.width < 120f;
+            string label = tiny ? "Cal" : "Calibrate Eye Tracking";
+
             foreach (var tmp in clone.GetComponentsInChildren<TMP_Text>(true))
-                tmp.text = "Calibrate Eye Tracking";
+            {
+                tmp.text = label;
+                if (tiny) tmp.enableAutoSizing = true;
+            }
             foreach (var txt in clone.GetComponentsInChildren<Text>(true))
-                txt.text = "Calibrate Eye Tracking";
+            {
+                txt.text = label;
+                if (tiny) txt.resizeTextForBestFit = true;
+            }
 
             var button = clone.GetComponent<Button>() ?? clone.GetComponentInChildren<Button>(true);
             if (button == null)
@@ -102,8 +138,12 @@ namespace VipSim.EditorTools
             EditorSceneManager.SaveScene(scene);
             AssetDatabase.SaveAssets();
 
-            Debug.Log($"CALIBRATION_BUTTON_OK: cloned '{TemplateName}' as '{ButtonName}' under " +
-                      $"'{clone.transform.parent?.name}', bound to GazeTracker.StartCalibration.");
+            var r = clone.GetComponent<RectTransform>();
+            Debug.Log($"CALIBRATION_BUTTON_OK: '{ButtonName}' under '{clone.transform.parent?.name}' " +
+                      $"at anchoredPosition {r?.anchoredPosition} size {r?.rect.size}, " +
+                      $"bound to GazeTracker.StartCalibration. " +
+                      $"If it is not where you want it, drag it in the Editor -- only the position " +
+                      $"needs changing, the binding is already correct.");
         }
     }
 }
