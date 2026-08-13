@@ -12,8 +12,8 @@ PlayerSettings:
   targetDevice: 2
   useOnDemandResources: 0
   accelerometerFrequency: 60
-  companyName: UUlm
-  productName: VIP_SIM_MacOS
+  companyName: Zefwih
+  productName: VIP-Sim
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.8, g: 0.8, b: 0.8, a: 1}
@@ -165,7 +165,7 @@ PlayerSettings:
   androidMaxAspectRatio: 2.1
   androidMinAspectRatio: 1
   applicationIdentifier:
-    Standalone: com.UUlm.VIP-SIM-MacOS
+    Standalone: com.Zefwih.VIP-Sim
   buildNumber:
     Standalone: 0
     VisionOS: 0
@@ -777,7 +777,7 @@ PlayerSettings:
   qnxGraphicConfPath: 
   apiCompatibilityLevel: 6
   captureStartupLogs: {}
-  activeInputHandler: 0
+  activeInputHandler: 2
   windowsGamepadBackendHint: 0
   cloudProjectId: ced9523f-0d13-4891-b5c5-e07feb2fdb90
   framebufferDepthMemorylessMode: 0
