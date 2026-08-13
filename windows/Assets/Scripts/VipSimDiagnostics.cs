@@ -251,8 +251,9 @@ public class VipSimDiagnostics : MonoBehaviour
             tw.panelRectTransform.GetWorldCorners(c);
             sb.AppendLine($"panel   ({c[0].x:F0},{c[0].y:F0})-({c[2].x:F0},{c[2].y:F0}) " +
                           $"shown={tw.panelRectTransform.gameObject.activeInHierarchy}");
-            sb.AppendLine($"        mouse ({Input.mousePosition.x:F0},{Input.mousePosition.y:F0}) " +
-                          $"screen {Screen.width}x{Screen.height}");
+            var cur = TransparentWindow.CursorPosition;
+            sb.AppendLine($"        mouse ({cur.x:F0},{cur.y:F0}) " +
+                          $"screen {Screen.width}x{Screen.height} focused={Application.isFocused}");
         }
 
         // Gaze

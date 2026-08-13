@@ -71,7 +71,15 @@ public class TransparentWindow : MonoBehaviour {
     [DllImport("user32.dll")]
     private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
 
+    [DllImport("user32.dll")]
+    private static extern bool GetCursorPos(out POINT lpPoint);
+
+    [DllImport("user32.dll")]
+    private static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
+
     private struct RECT { public int left, top, right, bottom; }
+
+    private struct POINT { public int X, Y; }
 
     private struct MARGINS {
         public int cxLeftWidth;
@@ -119,6 +127,25 @@ public class TransparentWindow : MonoBehaviour {
     [DllImport(ObjC, EntryPoint = "objc_msgSend")]
     private static extern void objc_msgSend_bool(IntPtr receiver, IntPtr selector, bool arg);
 
+    // Cursor position comes from CoreGraphics C functions rather than
+    // [NSEvent mouseLocation]: objc_msgSend with a struct return needs a
+    // different trampoline (objc_msgSend_stret) on x86_64 but not on arm64,
+    // whereas P/Invoke marshals plain C struct returns correctly on both.
+    private const string CoreGraphics =
+        "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics";
+
+    [DllImport(CoreGraphics)] private static extern IntPtr CGEventCreate(IntPtr source);
+    [DllImport(CoreGraphics)] private static extern CGPoint CGEventGetLocation(IntPtr theEvent);
+    [DllImport(CoreGraphics)] private static extern uint CGMainDisplayID();
+    [DllImport(CoreGraphics)] private static extern CGRect CGDisplayBounds(uint display);
+
+    [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")]
+    private static extern void CFRelease(IntPtr cf);
+
+    [StructLayout(LayoutKind.Sequential)] private struct CGPoint { public double x, y; }
+    [StructLayout(LayoutKind.Sequential)] private struct CGSize { public double width, height; }
+    [StructLayout(LayoutKind.Sequential)] private struct CGRect { public CGPoint origin; public CGSize size; }
+
     private IntPtr nsWindow;
 #endif
 
@@ -138,7 +165,6 @@ public class TransparentWindow : MonoBehaviour {
 
     private bool _lastClickthrough;
     private bool _appliedOnce;
-    private Coroutine clickRoutine;
     private int _acquireAttempts;
     private bool _missingPanelLogged;
 
@@ -173,47 +199,109 @@ public class TransparentWindow : MonoBehaviour {
         feedbackState = false;
     }
 
+    private static TransparentWindow _instance;
+
     private void OnEnable()
     {
-        // Run the clickthrough check at a reduced frequency to lower CPU usage
-        if (clickRoutine == null && isActiveAndEnabled)
-        {
-            clickRoutine = StartCoroutine(ClickthroughRoutine());
-        }
+        _instance = this;
     }
 
     private void OnDisable()
     {
-        if (clickRoutine != null)
+        if (_instance == this) _instance = null;
+    }
+
+    /// <summary>
+    /// The cursor in Unity screen coordinates (bottom-left origin), read from the
+    /// OS rather than from Unity.
+    ///
+    /// Input.mousePosition freezes the moment this window stops being the
+    /// foreground window: Windows delivers mouse messages only to the window
+    /// under the cursor -- which a click-through window never is -- and raw input
+    /// only to the foreground window. Since the entire purpose of VIP-Sim is that
+    /// the user clicks *into another application*, the overlay spends most of its
+    /// life unfocused, which is exactly the state in which Input.mousePosition
+    /// stops updating. A frozen position then froze the panel hover test: stuck
+    /// "inside the panel" the overlay captured every click and all typing went to
+    /// VIP-Sim; stuck "outside" the toolbar became unclickable and its clicks
+    /// fell through to the application underneath.
+    ///
+    /// Everything that must keep working while unfocused (the hover test, the
+    /// mouse gaze source, the diagnostics readout) reads this instead.
+    /// </summary>
+    public static Vector3 CursorPosition
+    {
+        get
         {
-            StopCoroutine(clickRoutine);
-            clickRoutine = null;
+            var inst = _instance;
+            if (inst != null && inst.TryGetNativeCursor(out var p)) return p;
+            return Input.mousePosition; // editor, or no window acquired yet
         }
     }
 
-    private IEnumerator ClickthroughRoutine()
+    private bool TryGetNativeCursor(out Vector3 pos)
     {
-        var wait = new WaitForSeconds(0.1f); // Check 10 times per second
-        while (isActiveAndEnabled)
+        pos = default;
+#if UNITY_EDITOR
+        return false;
+#elif UNITY_STANDALONE_WIN
+        if (hWnd == IntPtr.Zero) return false;
+        if (!GetCursorPos(out POINT pt)) return false;
+        if (!ScreenToClient(hWnd, ref pt)) return false;
+        if (!GetClientRect(hWnd, out RECT r)) return false;
+
+        int clientH = r.bottom - r.top;
+        if (clientH <= 0) return false;
+
+        // Client coordinates are y-down from the top-left; Unity is y-up. Using
+        // the client rect's own height keeps everything in one coordinate space
+        // regardless of the process's DPI-awareness mode.
+        pos = new Vector3(pt.X, clientH - pt.Y, 0f);
+        return true;
+#elif UNITY_STANDALONE_OSX
+        IntPtr e = CGEventCreate(IntPtr.Zero);
+        if (e == IntPtr.Zero) return false;
+        CGPoint loc = CGEventGetLocation(e);
+        CFRelease(e);
+
+        CGRect bounds = CGDisplayBounds(CGMainDisplayID());
+        if (bounds.size.width <= 0 || bounds.size.height <= 0) return false;
+
+        // CGEvent coordinates are y-down from the top-left of the main display,
+        // in points. Mapping proportionally onto Unity's screen size sidesteps
+        // the points-vs-pixels question on Retina displays.
+        pos = new Vector3(
+            (float)(loc.x / bounds.size.width) * Screen.width,
+            Screen.height - (float)(loc.y / bounds.size.height) * Screen.height,
+            0f);
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    private void Update()
+    {
+        // Window upkeep and the clickthrough decision run every frame. This used
+        // to be a 10 Hz coroutine, but 100 ms is long enough for a quick flick
+        // onto the toolbar followed by an immediate click to be routed to the
+        // window underneath instead. GetCursorPos costs microseconds; the
+        // SetWindowLong call still only happens on a state change.
+        if (EnsureWindow())
         {
-            if (EnsureWindow())
+            bool clickthrough = !feedbackState && IsCoordinateOutsidePanel();
+            if (clickthrough != _lastClickthrough || !_appliedOnce)
             {
-                bool clickthrough = !feedbackState && IsCoordinateOutsidePanel();
-                if (clickthrough != _lastClickthrough || !_appliedOnce)
-                {
-                    SetClickthrough(clickthrough);
-                    _lastClickthrough = clickthrough;
-                    _appliedOnce = true;
-                }
-                ClickthroughActive = clickthrough;
+                SetClickthrough(clickthrough);
+                _lastClickthrough = clickthrough;
+                _appliedOnce = true;
             }
-            else
-            {
-                ClickthroughActive = null;
-            }
-            yield return wait;
+            ClickthroughActive = clickthrough;
         }
-        clickRoutine = null;
+        else
+        {
+            ClickthroughActive = null;
+        }
     }
 
     /// <summary>
@@ -319,9 +407,9 @@ public class TransparentWindow : MonoBehaviour {
     private void ReportAcquisitionFailure()
     {
         _acquireAttempts++;
-        // ~5 s at 10 Hz. Reported once, because until this succeeds the overlay
-        // blocks the desktop and the user needs to be told why.
-        if (_acquireAttempts == 50)
+        // ~5 s at the 30 fps frame rate. Reported once, because until this
+        // succeeds the overlay blocks the desktop and the user needs to be told why.
+        if (_acquireAttempts == 150)
         {
             Debug.LogError("TransparentWindow: no native window found for this process after 5 s. " +
                            "The overlay will keep swallowing clicks. Press Ctrl+Alt+Q to quit.");
@@ -420,7 +508,9 @@ public class TransparentWindow : MonoBehaviour {
             return true;
         }
 
-        Vector2 screenPosition = Input.mousePosition;
+        // CursorPosition, not Input.mousePosition: this test must keep working
+        // while the window is unfocused, which is its normal operating state.
+        Vector2 screenPosition = CursorPosition;
         // Use the built-in rectangle check to avoid per-frame allocations
         bool inside = RectTransformUtility.RectangleContainsScreenPoint(
             panelRectTransform, screenPosition, null);

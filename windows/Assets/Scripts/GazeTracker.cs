@@ -196,12 +196,16 @@ public class GazeTracker : MonoBehaviour
 
     private void UpdateFromMouse()
     {
-        // Input.mousePosition already uses a bottom-left origin, matching xy_norm.
+        // TransparentWindow.CursorPosition, not Input.mousePosition: the latter
+        // freezes whenever the overlay is not the foreground window -- and the
+        // user spends most of a session focused on the application they are
+        // inspecting, during which the gaze point must keep following the
+        // pointer. Same bottom-left origin, matching xy_norm.
         float w = Screen.width;
         float h = Screen.height;
         if (w <= 0f || h <= 0f) return;
 
-        Vector3 m = Input.mousePosition;
+        Vector3 m = TransparentWindow.CursorPosition;
         ApplyGaze(new Vector2(Mathf.Clamp(m.x, 0f, w) / w,
                               Mathf.Clamp(m.y, 0f, h) / h));
     }

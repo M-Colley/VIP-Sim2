@@ -188,8 +188,17 @@ every click on the whole screen.
 
 The Cocoa equivalent is `-[NSWindow setIgnoresMouseEvents:]`, called here through
 the Objective-C runtime (`/usr/lib/libobjc.A.dylib`) so it needs no native
-plugin. **This is the one change in this file I could not run even once** — it
-compiles on Windows but nothing on Windows can execute a single line of it.
+plugin. The hover test that drives it reads the cursor from CoreGraphics
+(`CGEventCreate`/`CGEventGetLocation`) rather than `Input.mousePosition`, because
+Unity's mouse position freezes whenever the overlay is not the foreground
+window — which, for a tool whose whole point is clicking into *another*
+application, is most of the time. **None of this could be run even once from
+Windows** — it compiles, but nothing here can execute a line of it.
+
+Concretely, while some other app has focus: move the pointer on and off the
+VIP-Sim panel and check that panel clicks go to VIP-Sim while everywhere else
+scrolls/clicks the app below; then confirm the mouse gaze source still moves the
+simulated symptom while VIP-Sim is unfocused.
 
 If it fails, F10 shows the state directly:
 
