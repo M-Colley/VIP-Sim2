@@ -16143,6 +16143,14 @@ PrefabInstance:
       propertyPath: m_Name
       value: UnitEye
       objectReference: {fileID: 0}
+    - target: {fileID: 7170499054878513874, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
+      propertyPath: _requestedFps
+      value: 30
+      objectReference: {fileID: 0}
+    - target: {fileID: 7170499054878513874, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
+      propertyPath: _preferableDefaultWidth
+      value: 640
+      objectReference: {fileID: 0}
     - target: {fileID: 8076264650888145063, guid: 24a5d1cccb5291249a020c0f69815cf6, type: 3}
       propertyPath: drawDot
       value: 0
