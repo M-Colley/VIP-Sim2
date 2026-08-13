@@ -20,7 +20,7 @@ public class UwcManager : MonoBehaviour
     {
         if (instance_ != null) return instance_;
 
-        var manager = FindFirstObjectByType<UwcManager>();
+        var manager = FindAnyObjectByType<UwcManager>();
         if (manager) {
             instance_ = manager;
             return manager;

@@ -126,7 +126,7 @@ public class SettingsManager : MonoBehaviour
         UpdatePublicFields();
 
         // Beispiel: wende Licht-Intensität an
-        Light[] lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+        Light[] lights = FindObjectsByType<Light>();
         foreach (var light in lights)
         {
             light.intensity = appSettings.intensity;

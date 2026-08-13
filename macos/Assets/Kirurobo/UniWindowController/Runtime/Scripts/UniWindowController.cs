@@ -374,7 +374,7 @@ namespace Kirurobo
                 //// もしメインカメラが見つからなければ、Findで探す
                 //if (!currentCamera)
                 //{
-                //    currentCamera = GameObject.FindFirstObjectByType<Camera>();
+                //    currentCamera = GameObject.FindAnyObjectByType<Camera>();
                 //}
             }
 
@@ -430,7 +430,7 @@ namespace Kirurobo
         /// <returns></returns>
         private static UniWindowController FindOrCreateInstance()
         {
-            var instance = GameObject.FindFirstObjectByType<UniWindowController>();
+            var instance = GameObject.FindAnyObjectByType<UniWindowController>();
             
             // 勝手に生成するのは今のところ無効としてみる
             // // シーンに見つからなければ新規作成

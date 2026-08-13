@@ -62,7 +62,7 @@ namespace  Kirurobo
         void Start()
         {
             // シーン中の UniWindowController を取得
-            _uniwinc = GameObject.FindFirstObjectByType<UniWindowController>();
+            _uniwinc = GameObject.FindAnyObjectByType<UniWindowController>();
             if (_uniwinc) _isHitTestEnabled = _uniwinc.isHitTestEnabled;
 
             //// ↓なくても良さそうなので勝手に変更しないようコメントアウト

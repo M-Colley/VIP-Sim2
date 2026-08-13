@@ -24,9 +24,21 @@ namespace VipSim.EditorTools
     public static class VipSimBuild
     {
         // IL2CPP gives a substantial CPU win over Mono for the per-frame effect
-        // parameter syncing, at the cost of longer build times. Effects run every
-        // frame on the main thread, so this is worth it for release builds.
-        private const ScriptingImplementation Backend = ScriptingImplementation.IL2CPP;
+        // parameter syncing, and effects run every frame on the main thread, so it
+        // is the right choice for release builds. It is not the default here
+        // because it needs the IL2CPP editor module plus an MSVC toolchain, and a
+        // machine missing either would fail the build rather than produce a slower
+        // one. CI and release builds pass -scriptingBackend il2cpp explicitly.
+        private static ScriptingImplementation Backend
+        {
+            get
+            {
+                var requested = ArgValue("-scriptingBackend", "mono").ToLowerInvariant();
+                return requested == "il2cpp"
+                    ? ScriptingImplementation.IL2CPP
+                    : ScriptingImplementation.Mono2x;
+            }
+        }
 
         [MenuItem("VIP-Sim/Build/Windows (x64)")]
         public static void BuildWindows() => Build(BuildTarget.StandaloneWindows64, "VIP-Sim.exe");
@@ -76,7 +88,8 @@ namespace VipSim.EditorTools
             var group = BuildPipeline.GetBuildTargetGroup(target);
             var named = NamedBuildTarget.FromBuildTargetGroup(group);
 
-            PlayerSettings.SetScriptingBackend(named, Backend);
+            var backend = Backend;
+            PlayerSettings.SetScriptingBackend(named, backend);
             PlayerSettings.SetApiCompatibilityLevel(named, ApiCompatibilityLevel.NET_Unity_4_8);
 
             // The overlay must never steal focus or letterbox: it sits on top of the
@@ -95,7 +108,7 @@ namespace VipSim.EditorTools
             };
 
             Debug.Log($"[VipSimBuild] {target} -> {options.locationPathName} " +
-                      $"({options.scenes.Length} scene(s), backend={Backend})");
+                      $"({options.scenes.Length} scene(s), backend={backend})");
 
             var report = BuildPipeline.BuildPlayer(options);
             var s = report.summary;

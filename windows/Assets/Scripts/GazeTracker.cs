@@ -88,9 +88,11 @@ public class GazeTracker : MonoBehaviour
     {
         get
         {
-            // FindObjectOfType is obsolete in Unity 6; FindFirstObjectByType is the replacement.
+            // FindObjectOfType is obsolete in Unity 6, and its first replacement
+            // (FindFirstObjectByType) is itself deprecated in 6.5 for relying on
+            // instance-ID ordering. FindAnyObjectByType is the current API.
             if (instance == null)
-                instance = FindFirstObjectByType<GazeTracker>();
+                instance = FindAnyObjectByType<GazeTracker>();
 
             return instance;
         }
