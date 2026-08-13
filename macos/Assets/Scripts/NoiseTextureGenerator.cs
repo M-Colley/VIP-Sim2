@@ -9,6 +9,18 @@ public class NoiseTextureGenerator : MonoBehaviour
 
     void Start()
     {
+        // This component is attached to objects that do not always carry a
+        // Renderer, and the unguarded GetComponent<Renderer>().material below
+        // threw a NullReferenceException on every startup of the built player.
+        var renderer = GetComponent<Renderer>();
+        if (renderer == null)
+        {
+            Debug.LogWarning($"[NoiseTextureGenerator] No Renderer on '{name}'; " +
+                             "skipping noise texture generation.", this);
+            enabled = false;
+            return;
+        }
+
         Texture2D noiseTex = new Texture2D(width, height);
         Color[] colors = new Color[width * height];
 
@@ -25,7 +37,7 @@ public class NoiseTextureGenerator : MonoBehaviour
 
         noiseTex.SetPixels(colors);
         noiseTex.Apply();
-        GetComponent<Renderer>().material.SetTexture("_NoiseTex", noiseTex);
+        renderer.material.SetTexture("_NoiseTex", noiseTex);
     }
 }
 
