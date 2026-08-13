@@ -176,6 +176,29 @@ These are the macOS changes I made blind. Each has a concrete way to falsify it.
 | 5 | **Permission detection** | Run with Screen Recording *denied* | Should log the explicit "no Screen Recording permission… quit and reopen" error, not show black silently |
 | 6 | **Field Loss parity** | Compare Central Vision Loss at the same severity against Windows | Should now look identical — macOS previously had a clamp Windows lacked |
 | 7 | **Vertical gaze direction** (see below) | Enable Central Vision Loss, gaze source = Mouse, move the pointer **up** | The dark spot must move **up** with it. If it moves *down*, the Y flip is inverted on Metal |
+| 8 | **Click-through** (see below) — macOS has never had any | Put a scrollable window behind VIP-Sim and scroll it with the pointer **outside** VIP-Sim's panel | It must scroll. If nothing responds, `setIgnoresMouseEvents:` is not landing — press F10 and read the `clicks` line |
+
+### Why test 8 exists
+
+`TransparentWindow.cs` in `macos/` was, until now, a byte-for-byte copy of the
+Windows one: `DllImport("user32.dll")`, `Dwmapi.dll`, `WS_EX_TRANSPARENT`. Those
+raise `DllNotFoundException` on a Mac, which aborted `Start()` and left the
+window handle null forever. The macOS overlay has therefore **always** captured
+every click on the whole screen.
+
+The Cocoa equivalent is `-[NSWindow setIgnoresMouseEvents:]`, called here through
+the Objective-C runtime (`/usr/lib/libobjc.A.dylib`) so it needs no native
+plugin. **This is the one change in this file I could not run even once** — it
+compiles on Windows but nothing on Windows can execute a single line of it.
+
+If it fails, F10 shows the state directly:
+
+```
+clicks  ALL CAPTURED - no native window found   <- acquisition failed
+clicks  passing through to the app below        <- working
+```
+
+and `Ctrl+Alt+Q` always quits regardless.
 
 ### Why test 7 matters most
 

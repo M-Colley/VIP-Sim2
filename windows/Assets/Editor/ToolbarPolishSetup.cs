@@ -104,7 +104,77 @@ namespace VipSim.EditorTools
                 }
             }
 
-            // --- 2. Shared tooltip label ---------------------------------------
+            // --- 2. Make the button row fit its buttons -------------------------
+            //
+            // TitleBarB is 220px wide but has always been laid out by a
+            // HorizontalLayoutGroup whose children overflow it: six 60px buttons
+            // needed 360. That happened to line up, because the parent's
+            // force-expand pushed TitleBarB's left edge to exactly 360px short of
+            // the title bar's right edge. Adding a seventh button broke the
+            // coincidence and pushed the exit button 60px past the right edge of
+            // the screen -- and past the panel rect TransparentWindow uses to
+            // decide where clicks are captured, so it stopped being clickable as
+            // well as visible.
+            //
+            // Sizing the box to its content and pinning it to the title bar's
+            // right edge removes the coincidence instead of re-tuning it. As a
+            // side effect the group's existing UpperRight alignment finally does
+            // something: with the box the right size, a hidden button leaves the
+            // rest flush right instead of leaving a hole.
+            var bar = all.FirstOrDefault(g => g.name == "TitleBarB" &&
+                                              g.GetComponentsInChildren<Button>(true)
+                                               .Any(b => b.name == "CalibrateGazeButton"));
+            if (bar != null)
+            {
+                var rt = (RectTransform)bar.transform;
+                var group = bar.GetComponent<HorizontalLayoutGroup>();
+
+                float content = 0f;
+                int buttons = 0;
+                foreach (RectTransform child in rt)
+                {
+                    if (child.GetComponent<Button>() == null) continue;
+                    content += child.sizeDelta.x;
+                    buttons++;
+                }
+                if (group != null)
+                    content += group.spacing * Mathf.Max(0, buttons - 1) + group.padding.horizontal;
+
+                // ignoreLayout takes TitleBarB out of the parent row's
+                // force-expand maths, which is what made its position depend on
+                // its own width in the first place.
+                var element = bar.GetComponent<LayoutElement>() ?? bar.AddComponent<LayoutElement>();
+                bool touched = !element.ignoreLayout;
+                element.ignoreLayout = true;
+
+                var anchor = new Vector2(1f, 1f);
+                if (rt.anchorMin != anchor || rt.anchorMax != anchor || rt.pivot != anchor ||
+                    !Mathf.Approximately(rt.sizeDelta.x, content) ||
+                    rt.anchoredPosition != Vector2.zero)
+                {
+                    rt.anchorMin = anchor;
+                    rt.anchorMax = anchor;
+                    rt.pivot = anchor;
+                    rt.sizeDelta = new Vector2(content, rt.sizeDelta.y);
+                    rt.anchoredPosition = Vector2.zero;
+                    touched = true;
+                }
+
+                if (touched)
+                {
+                    EditorUtility.SetDirty(bar);
+                    changed++;
+                    Debug.Log($"TOOLBAR_POLISH: row sized to {buttons} button(s) ({content:F0}px) " +
+                              "and pinned to the title bar's right edge.");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("TOOLBAR_POLISH: no TitleBarB containing CalibrateGazeButton; " +
+                                 "row geometry left alone.");
+            }
+
+            // --- 3. Shared tooltip label ---------------------------------------
             var label = all.FirstOrDefault(g => g.name == LabelName);
             if (label == null)
             {
@@ -145,7 +215,7 @@ namespace VipSim.EditorTools
                 changed++;
             }
 
-            // --- 3. Attach help to each button ---------------------------------
+            // --- 4. Attach help to each button ---------------------------------
             foreach (var kv in Help)
             {
                 foreach (var go in all.Where(g => g != null && g.name == kv.Key))

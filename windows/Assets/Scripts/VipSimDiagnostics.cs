@@ -230,6 +230,16 @@ public class VipSimDiagnostics : MonoBehaviour
 
         sb.AppendLine($"effects {ActiveEffects().Count} enabled");
 
+        // Whether clicks reach the application underneath. Worth a line of its
+        // own: when the native window could not be acquired the overlay silently
+        // swallows every click, and nothing on screen says so.
+        sb.AppendLine("clicks  " + (TransparentWindow.ClickthroughActive switch
+        {
+            null  => "ALL CAPTURED - no native window found",
+            true  => "passing through to the app below",
+            false => "captured by VIP-Sim (pointer is over the panel)",
+        }));
+
         // Gaze
         try
         {
@@ -251,7 +261,7 @@ public class VipSimDiagnostics : MonoBehaviour
     {
         if (!showOverlay) return;
 
-        const int w = 430, h = 190;
+        const int w = 470, h = 210;
         var rect = new Rect(10, Screen.height - h - 10, w, h);
 
         GUI.color = new Color(0f, 0f, 0f, 0.75f);
