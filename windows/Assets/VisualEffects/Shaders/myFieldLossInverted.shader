@@ -17,7 +17,7 @@
         AlphaTest Off
         Cull Back
         Lighting Off
-        Tags { "Queue"="Transparent" "RenderType"="Transparent" "IgnoreProjector"="True"}
+        Tags { "Queue"="Overlay+1" "RenderType"="Transparent" "IgnoreProjector"="True"}
         Blend SrcAlpha OneMinusSrcAlpha
         ZWrite Off
 
@@ -92,10 +92,11 @@
                 // Copy over view texture uv coordinates and
                 // map the bias term from [0-1] to [0-min_lod] where min_lod is
                 // the coarsest mipmap level
-                float4 bias_uv = float4(i.uv[0], 0.0, w * _MaxLODlevel - 1); // -1 since w will always be > 0
+                float lodBias = saturate(w) * _MaxLODlevel - 1;
+                lodBias = max(0.0, lodBias); // Clamp to prevent negative LOD
+                float4 bias_uv = float4(i.uv[0], 0.0, lodBias);
+                return saturate(tex2Dlod(_MainTex, bias_uv)); // Clamp final color to [0,1]
 
-                // Return pixel RGBA info
-                return tex2Dlod(_MainTex, bias_uv);
             }
 
 

@@ -9,8 +9,20 @@ public class NoiseTextureGenerator : MonoBehaviour
 
     void Start()
     {
+        // This component is attached to objects that do not always carry a
+        // Renderer, and the unguarded GetComponent<Renderer>().material below
+        // threw a NullReferenceException on every startup of the built player.
+        var renderer = GetComponent<Renderer>();
+        if (renderer == null)
+        {
+            Debug.LogWarning($"[NoiseTextureGenerator] No Renderer on '{name}'; " +
+                             "skipping noise texture generation.", this);
+            enabled = false;
+            return;
+        }
+
         Texture2D noiseTex = new Texture2D(width, height);
-        Color[] pixels = new Color[width * height];
+        Color[] colors = new Color[width * height];
 
         for (int y = 0; y < height; y++)
         {
@@ -19,13 +31,13 @@ public class NoiseTextureGenerator : MonoBehaviour
                 float xCoord = (float)x / width * scale;
                 float yCoord = (float)y / height * scale;
                 float sample = Mathf.PerlinNoise(xCoord, yCoord);
-                pixels[x + y * width] = new Color(sample, sample, sample);
+                colors[y * width + x] = new Color(sample, sample, sample);
             }
         }
 
-        noiseTex.SetPixels(pixels);
+        noiseTex.SetPixels(colors);
         noiseTex.Apply();
-        GetComponent<Renderer>().material.SetTexture("_NoiseTex", noiseTex);
+        renderer.material.SetTexture("_NoiseTex", noiseTex);
     }
 }
 

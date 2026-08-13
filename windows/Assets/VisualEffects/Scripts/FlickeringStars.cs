@@ -20,7 +20,6 @@ public class FlickeringStars : MonoBehaviour
     private float fade = 1.0f;
     private float[] fadeInStartTimes;
     private float[] fadeOutEndTimes;
-    private float elapsed;
 
     void Start()
     {
@@ -35,22 +34,18 @@ public class FlickeringStars : MonoBehaviour
         fadeInStartTimes = new float[numCoordinates];
         fadeOutEndTimes = new float[numCoordinates];
         GenerateRandomCoordinates();
+        InvokeRepeating(nameof(GenerateRandomCoordinates), 5f, 5f);
     }
 
     void Update()
     {
-        elapsed += Time.deltaTime;
-        if (elapsed >= 5f)
-        {
-            GenerateRandomCoordinates();
-            elapsed = 0f;
-        }
+        float currentTime = Time.time;
 
         // Update fade states for each coordinate
         for (int i = 0; i < numCoordinates; i++)
         {
-            float timeSinceFadeInStart = Time.time - fadeInStartTimes[i];
-            float timeSinceFadeOutEnd = Time.time - fadeOutEndTimes[i];
+            float timeSinceFadeInStart = currentTime - fadeInStartTimes[i];
+            float timeSinceFadeOutEnd = currentTime - fadeOutEndTimes[i];
 
             // Determine fade factor based on current time
             float fade = 0.0f;
@@ -65,6 +60,11 @@ public class FlickeringStars : MonoBehaviour
 
             coordinates[i].w = fade; // Store fade value in the 'w' component
         }
+    }
+
+    void OnDisable()
+    {
+        CancelInvoke(nameof(GenerateRandomCoordinates));
     }
 
     void OnRenderImage(RenderTexture source, RenderTexture destination)

@@ -94,7 +94,7 @@ public class FirestoreRESTManager : MonoBehaviour
         sessionData.Learnings = learnings;
         sessionData.OpenFeedback = openFeedback;
 
-        // Jetzt die sessionData an Firestore senden (siehe vorherige L�sung)
+        // Jetzt die sessionData an Firestore senden (siehe vorherige Loesung)
         string jsonData = JsonUtility.ToJson(sessionData);
         StartCoroutine(SendSessionDataToFirestore(jsonData));
     }

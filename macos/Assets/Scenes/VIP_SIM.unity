@@ -23604,7 +23604,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 3485875271864216948}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 90a247a81d15d934a806676e3fe51cfa, type: 3}
+  m_Script: {fileID: 11500000, guid: 4b74be08913df3347a0855a6feeb81bc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   webCamInput: {fileID: 3128903030170700243}
@@ -23649,7 +23649,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 3485875271864216948}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 05df763e3ac34b245986eeaddf61cb1f, type: 3}
+  m_Script: {fileID: 11500000, guid: ace43cf5f92ff0940807f0979c5e3860, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   webCamInput: {fileID: 3128903030170700243}

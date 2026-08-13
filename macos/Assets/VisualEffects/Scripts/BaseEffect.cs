@@ -37,13 +37,6 @@ namespace VisSim
 
 		protected virtual void Start()
 		{
-			// Disable if we don't support image effects
-			if (!SystemInfo.supportsImageEffects)
-			{
-				Debug.LogWarning("Image effects aren't supported on this device");
-				enabled = false;
-				return;
-			}
 
 			// Disable the image effect if the shader can't run on the users graphics card
 			if (!ShaderSafe || !Shader.isSupported)

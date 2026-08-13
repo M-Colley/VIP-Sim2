@@ -85,7 +85,50 @@ namespace VisSim
         private ComputeShader shader;
         private RenderTexture _inpainterTexture;
         private ComputeShader shader2;
-        
+
+        // computeMask()/compute() allocate GPU and CPU textures on every invocation
+        // and previously released none of them, so each parameter change leaked a
+        // RenderTexture plus two or three Texture2Ds.
+        //
+        // inpainterTexture is public, so it may hold an asset assigned in the
+        // Inspector rather than something we created. Destroying that would delete
+        // the asset from disk, so ownership is tracked and only our own
+        // allocations are ever destroyed.
+        private bool _ownsInpainterTexture;
+
+        /// <summary>Destroy a texture we allocated at runtime. Null-safe.</summary>
+        private static void DisposeOwned<T>(ref T tex) where T : Object
+        {
+            if (tex == null) return;
+            if (tex is RenderTexture rt) rt.Release();
+            DestroyImmediate(tex);
+            tex = null;
+        }
+
+        private void ReplaceInpainterTexture(Texture2D replacement)
+        {
+            if (_ownsInpainterTexture)
+            {
+                var old = inpainterTexture;
+                DisposeOwned(ref old);
+            }
+            inpainterTexture = replacement;
+            _ownsInpainterTexture = true;
+        }
+
+        protected void OnDestroy()
+        {
+            DisposeOwned(ref _inpainterTexture);
+            DisposeOwned(ref cardinalOffsetsTexture);
+            if (_ownsInpainterTexture)
+            {
+                var old = inpainterTexture;
+                DisposeOwned(ref old);
+                inpainterTexture = null;
+                _ownsInpainterTexture = false;
+            }
+        }
+
         private void computeMask()
         {
             if (useComputeShader && SystemInfo.supportsComputeShaders)
@@ -110,10 +153,17 @@ namespace VisSim
                 shader.SetTexture(kernelIndex, "Result", _inpainterTexture);
                 shader.Dispatch(kernelIndex, _scotomaTexture.width, _scotomaTexture.height, 1);
 
-                inpainterTexture = new Texture2D(_inpainterTexture.width, _inpainterTexture.height, TextureFormat.ARGB32, false); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
+                ReplaceInpainterTexture(new Texture2D(_inpainterTexture.width, _inpainterTexture.height, TextureFormat.ARGB32, false)); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
+                var prevActive = RenderTexture.active;
                 RenderTexture.active = _inpainterTexture;
                 inpainterTexture.ReadPixels(new Rect(0, 0, _inpainterTexture.width, _inpainterTexture.height), 0, 0);
                 inpainterTexture.Apply(false); // actually apply all SetPixels, don't recalculate mip levels
+                RenderTexture.active = prevActive;
+
+                // Local low-res clone; nothing else references it. NB: _inpainterTexture
+                // is deliberately NOT released here -- compute() runs straight after and
+                // uses it as its compute target. It is released at the end of compute().
+                DestroyImmediate(_scotomaTexture);
             } else
             {
                 //Debug.Log("Compute shader is NOT supported");
@@ -124,7 +174,7 @@ namespace VisSim
 
                 // generate texture
                 Color[] px_in = _scotomaTexture.GetPixels();
-                inpainterTexture = new Texture2D(_scotomaTexture.width, _scotomaTexture.height, TextureFormat.RGB24, false); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
+                ReplaceInpainterTexture(new Texture2D(_scotomaTexture.width, _scotomaTexture.height, TextureFormat.RGB24, false)); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
                 maskImgMatrix = new Color[_scotomaTexture.width * _scotomaTexture.height];
                 isMask = new bool[_scotomaTexture.width, _scotomaTexture.height];
                 for (int x = 0; x < _scotomaTexture.width; x++)
@@ -143,6 +193,8 @@ namespace VisSim
                 }
                 inpainterTexture.SetPixels(maskImgMatrix);
                 inpainterTexture.Apply(false); // actually apply all SetPixels, don't recalculate mip levels
+
+                DestroyImmediate(_scotomaTexture);
             }
         }
 
@@ -160,11 +212,19 @@ namespace VisSim
                 shader2.SetTexture(kernelIndex, "Result", _inpainterTexture);
                 shader2.Dispatch(kernelIndex, _inpainterTexture.width, _inpainterTexture.height, 1);
 
+                DisposeOwned(ref cardinalOffsetsTexture);
                 cardinalOffsetsTexture = new Texture2D(inpainterTexture.width, inpainterTexture.height, TextureFormat.ARGB32, false); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
+                var prevActive = RenderTexture.active;
                 RenderTexture.active = _inpainterTexture;
                 cardinalOffsetsTexture.wrapMode = TextureWrapMode.Clamp;
                 cardinalOffsetsTexture.ReadPixels(new Rect(0, 0, _inpainterTexture.width, _inpainterTexture.height), 0, 0);
                 cardinalOffsetsTexture.Apply(false); // actually apply all SetPixels, don't recalculate mip levels
+                RenderTexture.active = prevActive;
+
+                // Last use of _inpainterTexture. computeMask() recreates it before the
+                // next compute(), so releasing here is safe and stops the effect leaking
+                // a full RenderTexture on every parameter change.
+                DisposeOwned(ref _inpainterTexture);
                 return;
             }
             cardinalOffsetsImgMatrix = new Color[inpainterTexture.width * inpainterTexture.height];
@@ -212,7 +272,8 @@ namespace VisSim
                 }
             }
 
-            cardinalOffsetsTexture = new Texture2D(inpainterTexture.width, inpainterTexture.height, TextureFormat.ARGB32, false); // Create a new texture ARGB32 and no 
+            DisposeOwned(ref cardinalOffsetsTexture);
+            cardinalOffsetsTexture = new Texture2D(inpainterTexture.width, inpainterTexture.height, TextureFormat.ARGB32, false); // Create a new texture ARGB32 and no
             cardinalOffsetsTexture.wrapMode = TextureWrapMode.Clamp;
             cardinalOffsetsTexture.SetPixels(cardinalOffsetsImgMatrix);
             cardinalOffsetsTexture.Apply(false); // actually apply all SetPixels, don't recalculate mip levels

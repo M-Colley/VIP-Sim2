@@ -1,2 +1,77 @@
-.aar filter=lfs diff=lfs merge=lfs -text
-*.aar filter=lfs diff=lfs merge=lfs -text
+# ---------------------------------------------------------------------------
+# VIP-Sim .gitattributes
+#
+# Rationale: the windows/ and macos/ Unity projects were forked from a common
+# ancestor and then edited on different platforms. Without text normalisation,
+# every CRLF/LF flip shows up as a whole-file diff, which is exactly how the
+# genuine divergences (shader fixes on macOS, perf fixes on Windows) stayed
+# hidden for so long. Normalise aggressively so a diff means a real change.
+# ---------------------------------------------------------------------------
+
+# Default: let git detect text and normalise to LF in the repository.
+* text=auto eol=lf
+
+# --- Source -----------------------------------------------------------------
+*.cs        text eol=lf diff=csharp
+*.shader    text eol=lf
+*.compute   text eol=lf
+*.cginc     text eol=lf
+*.hlsl      text eol=lf
+*.glslinc   text eol=lf
+*.wgsl      text eol=lf
+*.rs        text eol=lf
+*.toml      text eol=lf
+*.py        text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.asmdef    text eol=lf
+*.asmref    text eol=lf
+
+# Shell scripts must stay LF or they will not execute on macOS/Linux.
+*.sh        text eol=lf
+*.command   text eol=lf
+
+# Windows-only scripts genuinely want CRLF.
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+
+# --- Unity YAML -------------------------------------------------------------
+# Unity's own YAML must be LF and should use the UnityYAMLMerge driver.
+*.unity     text eol=lf merge=unityyamlmerge diff
+*.prefab    text eol=lf merge=unityyamlmerge diff
+*.asset     text eol=lf merge=unityyamlmerge diff
+*.mat       text eol=lf merge=unityyamlmerge diff
+*.anim      text eol=lf merge=unityyamlmerge diff
+*.controller text eol=lf merge=unityyamlmerge diff
+*.physicMaterial text eol=lf merge=unityyamlmerge diff
+*.meta      text eol=lf
+
+# --- Binary -----------------------------------------------------------------
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.psd       binary
+*.fbx       binary
+*.dll       binary
+*.so        binary
+*.dylib     binary
+*.bundle    binary
+*.onnx      binary
+*.bytes     binary
+*.unitypackage binary
+*.pdf       binary
+
+# --- Git LFS ----------------------------------------------------------------
+*.aar       filter=lfs diff=lfs merge=lfs -text
+
+# --- Linguist ---------------------------------------------------------------
+# Keep vendored third-party code out of the language statistics.
+windows/Assets/Plugins/**       linguist-vendored
+macos/Assets/Plugins/**         linguist-vendored
+windows/Assets/TextMesh?Pro/**  linguist-vendored
+macos/Assets/TextMesh?Pro/**    linguist-vendored
+macos/Assets/Kirurobo/**        linguist-vendored
+*/Assets/VisualEffects/Scripts/alglib*/** linguist-vendored

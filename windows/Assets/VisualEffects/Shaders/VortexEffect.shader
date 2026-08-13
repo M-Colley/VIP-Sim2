@@ -160,7 +160,8 @@ Shader "Hidden/VortexEffect"
                     }
                 }
 
-                return color;
+                return saturate(color); // Clamp RGB to avoid overbright artifacting
+
             }
 
             ENDCG

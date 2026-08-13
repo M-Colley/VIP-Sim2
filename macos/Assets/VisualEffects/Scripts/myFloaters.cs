@@ -46,13 +46,19 @@ namespace VisSim
 
 
         // Store previous values to track changes
+        //private float previousIntensity;
         private float previousFloaterSize;
         private float previousFloaterDensity;
         private float previousRadius;
         private bool previousCenter;
 
+        // Boolean to track if values changed
+        //private bool valuesChanged = false;
+
         // internal
         private float Timer = 0f;
+        //private float _old_floaterSize = 1;
+        //private float _old_floaterDensity = 0.5f;
 
         private const int OverlayWidth = 1024;
         private const int OverlayHeight = 1024;
@@ -62,14 +68,18 @@ namespace VisSim
         private bool overlayRegenerationQueued;
 
         // cellular automata (Game of Life) params
+
+        /*
         private static bool[,] golBoard; // Holds the current state of the board.
         private static int golBoardWidth = 256; // The width of the board in n-cells.
         private static int golBoardHeight = 256; // The height of the board in n-cells.
         private static bool golLoopEdges = false; // True if cell rules can loop around edges.
         private static float[,] smoothedBoard; // Holds the current state of the board.
+        */
 
         public new void OnEnable()
         {
+            //previousIntensity = intensity;
             previousFloaterSize = floaterSize;
             previousFloaterDensity = floaterDensity;
             previousCenter = center;
@@ -94,6 +104,8 @@ namespace VisSim
 
             if (floaterSize != previousFloaterSize || floaterDensity != previousFloaterDensity || previousRadius != circleRadius || previousCenter != center)
             {
+                // Set flag if values have changed
+                //valuesChanged = true;
                 if (!overlayRegenerationQueued)
                 {
                     Debug.Log("Values have changed! Regenerating texture...");
@@ -102,15 +114,20 @@ namespace VisSim
                 RequestOverlayRegeneration();
 
                 // Update the previous values to the new ones
+                //previousIntensity = intensity;
                 previousFloaterSize = floaterSize;
                 previousFloaterDensity = floaterDensity;
                 previousCenter = center;
                 previousRadius = circleRadius;
             }
+            else
+            {
+                //valuesChanged = false; // No changes detected
+            }
 
             // Pass mouse position to shader
             Vector2 xy_norm = GazeTracker.GetInstance.xy_norm;
-            Material.SetFloat("_MouseX", 1 - xy_norm.x);
+            Material.SetFloat("_MouseX", 1 - xy_norm.x); 
             Material.SetFloat("_MouseY", 1 - xy_norm.y);
 
         }
@@ -179,8 +196,8 @@ namespace VisSim
         }
 
 
-        private float minGradient = 0.1f; // Minimum gradient value
-        private float maxGradient = 0.95f; // Maximum gradient value
+        //private float minGradient = 0.1f; // Minimum gradient value
+        //private float maxGradient = 0.95f; // Maximum gradient value
 
 
         private void generateOverlayTexture()
@@ -229,11 +246,7 @@ namespace VisSim
             texture.SetPixels(floaterPixels);
             texture.Apply();
 
-            // Apply Gaussian blur for a natural look
-            // ApplyGaussianBlur(texture, 3); // Adjustable blur amount
-
-            // Create material and set texture
-            Debug.Log("Floaters generated successfully!");
+            Debug.Log($"Floaters generated successfully! ({numFloaters} floaters)");
         }
 
         private void AddFloater(Color[] pixels, int width, int height, float floaterSize)
