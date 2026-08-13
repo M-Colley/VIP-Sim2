@@ -143,7 +143,9 @@ namespace mcDesktopCapture
         public static void StopCapture()
         {
             if (!inited || !isRunning) return;
-            _texture = null;
+            // Destroy the managed wrapper rather than just dropping the reference,
+            // otherwise every start/stop cycle leaks a Texture2D.
+            DestroyTextureWrapper();
             Log("mcDesktopCapture: Stop Capture");
             mcDesktopCapture2_stop();
             isRunning = false;
@@ -154,18 +156,75 @@ namespace mcDesktopCapture
         /// This function must be called after Init.
         /// </summary>
         /// <returns>If null, there is no frame yet received.</returns>
+        /// <remarks>
+        /// VIP-Sim fix: the original implementation created the external-texture
+        /// wrapper once and then returned the cached instance forever. ScreenCaptureKit
+        /// reallocates its backing surface when the captured window is resized (and
+        /// when a display's scale factor changes), so the cached wrapper kept pointing
+        /// at a native texture that had been freed -- showing a frozen or garbage frame,
+        /// and risking a use-after-free. The native pointer and dimensions are now
+        /// re-checked every call: the wrapper is rebound with UpdateExternalTexture
+        /// when only the pointer moved, and fully recreated when the size changed.
+        /// </remarks>
         public static Texture2D GetTexture2D()
         {
             if (!inited || !isRunning) return null;
-            if (_texture != null) return _texture;
-            Log("mcDesktopCapture: Get Current Frame");
-            FrameEntity frameEntity = mcDesktopCapture2_getTexture();
-            if (frameEntity.width > 0 && frameEntity.height > 0 && _texture == null)
+
+            FrameEntity frame = mcDesktopCapture2_getTexture();
+            if (frame.width <= 0 || frame.height <= 0 || frame.texturePtr == IntPtr.Zero)
+                return _texture; // no frame yet; keep showing the previous one
+
+            int w = (int)frame.width;
+            int h = (int)frame.height;
+
+            if (_texture == null || _texture.width != w || _texture.height != h)
             {
-                Log("mcDesktopCapture: Create Texture2D");
-                _texture = Texture2D.CreateExternalTexture((int)frameEntity.width, (int)frameEntity.height, TextureFormat.ARGB32, false, false, frameEntity.texturePtr);
+                Log($"mcDesktopCapture: (re)creating Texture2D {w}x{h}");
+                DestroyTextureWrapper();
+                _texture = Texture2D.CreateExternalTexture(w, h, TextureFormat.ARGB32, false, false, frame.texturePtr);
+                _lastTexturePtr = frame.texturePtr;
             }
+            else if (frame.texturePtr != _lastTexturePtr)
+            {
+                // Same dimensions, new backing surface: rebind rather than reallocate.
+                _texture.UpdateExternalTexture(frame.texturePtr);
+                _lastTexturePtr = frame.texturePtr;
+            }
+
             return _texture;
+        }
+
+        /// <summary>
+        /// Whether the app currently holds macOS Screen Recording permission.
+        /// Without it ScreenCaptureKit silently yields black frames, which previously
+        /// looked to users like a broken overlay rather than a missing grant.
+        /// </summary>
+        public static bool HasScreenRecordingPermission()
+        {
+            if (!inited) return false;
+            try
+            {
+                // SCShareableContent returns an empty window list when permission is denied.
+                var windows = WindowList;
+                return windows != null && windows.Length > 0;
+            }
+            catch (Exception e)
+            {
+                Log($"mcDesktopCapture: permission probe failed: {e.Message}");
+                return false;
+            }
+        }
+
+        private static IntPtr _lastTexturePtr = IntPtr.Zero;
+
+        private static void DestroyTextureWrapper()
+        {
+            if (_texture == null) return;
+            // The native texture is owned by ScreenCaptureKit; only the managed
+            // wrapper is ours to destroy.
+            UnityEngine.Object.Destroy(_texture);
+            _texture = null;
+            _lastTexturePtr = IntPtr.Zero;
         }
 
         private static void Log(object message)
