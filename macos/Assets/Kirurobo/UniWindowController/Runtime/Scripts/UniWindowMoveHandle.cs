@@ -1,4 +1,4 @@
-﻿/*
+/*
  * UniWindowDragMove.cs
  * 
  * Author: Kirurobo http://twitter.com/kirurobo
@@ -62,7 +62,7 @@ namespace  Kirurobo
         void Start()
         {
             // シーン中の UniWindowController を取得
-            _uniwinc = GameObject.FindObjectOfType<UniWindowController>();
+            _uniwinc = GameObject.FindFirstObjectByType<UniWindowController>();
             if (_uniwinc) _isHitTestEnabled = _uniwinc.isHitTestEnabled;
 
             //// ↓なくても良さそうなので勝手に変更しないようコメントアウト

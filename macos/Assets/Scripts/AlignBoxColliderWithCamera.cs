@@ -1,5 +1,4 @@
 using Unity.Mathematics;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class AlignBoxColliderWithCamera : MonoBehaviour

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 #if UNITY_EDITOR
@@ -20,7 +20,7 @@ public class UwcManager : MonoBehaviour
     {
         if (instance_ != null) return instance_;
 
-        var manager = FindObjectOfType<UwcManager>();
+        var manager = FindFirstObjectByType<UwcManager>();
         if (manager) {
             instance_ = manager;
             return manager;

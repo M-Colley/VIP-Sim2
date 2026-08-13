@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -9,7 +9,7 @@ namespace Kirurobo
     public class SampleManager : MonoBehaviour
     {
         private static SampleManager _instance;
-        public static SampleManager Instance => _instance ?? (_instance = GameObject.FindObjectOfType<SampleManager>() ?? new SampleManager());
+        public static SampleManager Instance => _instance ?? (_instance = GameObject.FindFirstObjectByType<SampleManager>() ?? new SampleManager());
 
         public Canvas canvas;
 

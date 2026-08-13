@@ -1,4 +1,4 @@
-﻿/**
+/**
 * UI controller for the fullscreen sample
 * 
 * Author: Kirurobo http://twitter.com/kirurobo
@@ -38,7 +38,7 @@ namespace Kirurobo
         void Start()
         {
             // UniWindowController を探す
-            uniwinc = GameObject.FindObjectOfType<UniWindowController>();
+            uniwinc = GameObject.FindFirstObjectByType<UniWindowController>();
 
             // CanvasのRectTransform取得
             if (menuPanel) canvasRect = menuPanel.GetComponentInParent<Canvas>().GetComponent<RectTransform>();
