@@ -111,11 +111,6 @@ public class CaptureWindowPlacement : MonoBehaviour
         var box = tracked.GetComponent<BoxCollider>();
         if (box != null && box.size.y > 0f) zoom = box.size.y;
 
-        // Assert the projection as well as the size. AlignBoxColliderWithCamera
-        // sets camera.orthographic = true every frame, and this component disables
-        // it while placing -- so without this line nothing keeps the camera
-        // orthographic, and all the maths below silently becomes wrong.
-        targetCamera.orthographic = true;
         targetCamera.orthographicSize = sh * 0.5f * worldPerPixel * zoom;
 
         // Window centre relative to the screen centre, in world units. Desktop y
