@@ -19,7 +19,8 @@ public class FitPlaneToCameraView : MonoBehaviour
         planeTransform = GetFirstChildTransform();
         if (planeTransform != null)
         {
-            Debug.Log("Fit plane");
+            // (No per-frame log here: this runs every frame while a capture is
+            // active and used to write "Fit plane" to the player log 30x/s.)
             FitPlane();
         }
     }

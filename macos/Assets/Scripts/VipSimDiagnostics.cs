@@ -120,7 +120,13 @@ public class VipSimDiagnostics : MonoBehaviour
             Debug.Log("[VipSimDiagnostics] Quit hotkey pressed.");
             Application.Quit();
         }
-        if (Input.GetKeyDown(toggleKey)) showOverlay = !showOverlay;
+        if (Input.GetKeyDown(toggleKey))
+        {
+            showOverlay = !showOverlay;
+            // Release the click-capture region as soon as the box is hidden;
+            // OnGUI will not run again to do it.
+            if (!showOverlay) TransparentWindow.ExtraCaptureRect = Rect.zero;
+        }
         if (Input.GetKeyDown(benchmarkKey) && !_benchmarkRunning) StartCoroutine(RunEffectBenchmark());
 
         _frameMs[_frameIdx] = Time.unscaledDeltaTime * 1000f;
@@ -308,6 +314,14 @@ public class VipSimDiagnostics : MonoBehaviour
 
         const int w = 470, h = 210;
         var rect = new Rect(10, Screen.height - h - 10, w, h);
+
+        // Tell the overlay to capture clicks over this box. It is opaque IMGUI,
+        // which EventSystem.RaycastAll cannot see, so without this a click on
+        // the visible readout passed straight through to whatever application
+        // was hidden underneath it. Rect.y is measured from the top in IMGUI and
+        // from the bottom in the hover test, and here they coincide because the
+        // box is h+10 from the bottom either way.
+        TransparentWindow.ExtraCaptureRect = new Rect(rect.x, 10, w, h);
 
         GUI.color = new Color(0f, 0f, 0f, 0.75f);
         GUI.DrawTexture(rect, Texture2D.whiteTexture);

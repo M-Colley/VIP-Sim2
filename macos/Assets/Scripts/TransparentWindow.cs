@@ -526,11 +526,30 @@ public class TransparentWindow : MonoBehaviour {
     /// </summary>
     public static string LastUiHit { get; private set; } = "";
 
+    /// <summary>
+    /// Extra screen rectangle (Unity pixels, origin bottom-left) that also
+    /// captures clicks, for UI the EventSystem cannot see.
+    ///
+    /// EventSystem.RaycastAll only knows about uGUI graphics. IMGUI panels are a
+    /// separate pipeline and are invisible to it, so a visible, opaque IMGUI box
+    /// -- the F10 diagnostics readout -- sat in a region the hover test reported
+    /// as empty, and clicking it went to whatever application was hidden behind.
+    /// Owners register their rect while shown and clear it when hidden.
+    /// </summary>
+    public static Rect ExtraCaptureRect { get; set; } = Rect.zero;
+
     public bool IsCoordinateOutsidePanel()
     {
         // CursorPosition, not Input.mousePosition: this test must keep working
         // while the window is unfocused, which is its normal operating state.
         Vector2 screenPosition = CursorPosition;
+
+        // IMGUI panels the EventSystem cannot see (see ExtraCaptureRect).
+        if (ExtraCaptureRect.width > 0f && ExtraCaptureRect.Contains(screenPosition))
+        {
+            LastUiHit = "(imgui)";
+            return false;
+        }
 
         // Primary test: is there actually visible, clickable VIP-Sim UI under the
         // cursor? The old single-rectangle test had two failure modes seen in the
