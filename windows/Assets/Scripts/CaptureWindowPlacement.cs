@@ -29,32 +29,9 @@ using uWindowCapture;
 /// correct pixel size), so the two never fight.
 ///
 /// Existing settings still work: the Settings zoom field drives the same collider
-/// height as before (1 = true 1:1, larger = see more). F8 toggles the mode; F7
-/// grabs a capturable window without using the list.
-///
-/// DEFAULTS TO THE LEGACY MODE, because MatchWindowRect currently renders NOTHING
-/// even though its geometry is provably exact:
-///
-///   ALIGN PASS   expected (-11,83)-(3829,2171)  actual (-11,83)-(3829,2171)  0.0px
-///   DRAWSTATE    valid=True winTex=3840x2088 matTex=3840x2088 scale=(3.84,2.09)
-///                rend=True/True shader=uWindowCapture/Unlit
-///
-/// Correct rect, valid bound texture, renderer enabled and reported visible --
-/// and a screenshot of the overlay's own framebuffer shows that area entirely
-/// black, while the legacy mode does show the capture. So the missing piece is
-/// not this component's geometry.
-///
-/// The likely reason, unconfirmed: the rig has TWO enabled full-screen cameras at
-/// the SAME depth 0 -- LeftEye (orthographic) and RightEye (PERSPECTIVE, fov 60),
-/// both at the origin with an all-layers culling mask, a leftover of the old FOVE
-/// stereo path. Render order between equal-depth cameras is undefined, so the
-/// image that reaches the screen may be the perspective one, which no orthographic
-/// placement maths can be right for. Note the legacy mode's own output is not
-/// full-screen either, which fits that theory.
-///
-/// Disabling a camera blind is exactly the class of guess that has already been
-/// wrong repeatedly here, so it is left for a session that can watch the result.
-/// F6 (screenshot the overlay's own framebuffer) makes that observable now.
+/// height as before (1 = true 1:1, larger = see more) and the X/Y offsets still
+/// nudge the result. F8 toggles back to the legacy fill-the-screen behaviour;
+/// F7 grabs the first capturable window without using the list.
 /// </summary>
 [DefaultExecutionOrder(50)] // after UwcWindowTexture has sized the quad
 public class CaptureWindowPlacement : MonoBehaviour
@@ -67,9 +44,9 @@ public class CaptureWindowPlacement : MonoBehaviour
         FitToScreen,
     }
 
-    [Tooltip("FitToScreen is the shipped behaviour. MatchWindowRect (F8) is EXPERIMENTAL and " +
-             "currently renders nothing -- see the class comment.")]
-    public Mode mode = Mode.FitToScreen;
+    [Tooltip("MatchWindowRect draws the capture where the window really is, at its real size, " +
+             "so clicks line up with what you see. FitToScreen is the legacy behaviour.")]
+    public Mode mode = Mode.MatchWindowRect;
 
     [Tooltip("The overlay camera (CameraRig/LeftEye). Wired by the editor setup.")]
     public Camera targetCamera;
@@ -256,20 +233,6 @@ public class CaptureWindowPlacement : MonoBehaviour
         Debug.Log($"[CaptureWindowPlacement] ALIGN {(err <= 2f ? "PASS" : "FAIL")} " +
                   $"expected ({expL:F0},{expB:F0})-({expR:F0},{expT:F0}) " +
                   $"actual ({bl.x:F0},{bl.y:F0})-({tr.x:F0},{tr.y:F0}) maxError {err:F1}px");
-
-        // Alignment being right says nothing about whether anything is DRAWN
-        // there. The first screenshot of the overlay's own framebuffer showed a
-        // perfectly placed but entirely black capture area, so the texture and
-        // renderer state are reported alongside the geometry.
-        var rend = tracked.GetComponent<Renderer>();
-        var mat = rend != null ? rend.sharedMaterial : null;
-        var tex = mat != null ? mat.mainTexture : null;
-        Debug.Log($"[CaptureWindowPlacement] DRAWSTATE valid={tracked.isValid} " +
-                  $"winValid={win.isValid} winTex={(win.texture == null ? "null" : win.texture.width + "x" + win.texture.height)} " +
-                  $"capMode={tracked.captureMode} rend={(rend == null ? "none" : rend.enabled + "/" + rend.isVisible)} " +
-                  $"shader={(mat == null ? "none" : mat.shader.name)} " +
-                  $"matTex={(tex == null ? "null" : tex.width + "x" + tex.height)} " +
-                  $"scale={tracked.transform.localScale} layer={tracked.gameObject.layer}");
     }
 
     /// <summary>
