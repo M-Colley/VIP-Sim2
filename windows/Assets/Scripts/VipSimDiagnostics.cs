@@ -42,18 +42,6 @@ public class VipSimDiagnostics : MonoBehaviour
              "the only remaining option is Task Manager. This guarantees a way out.")]
     public KeyCode quitKey = KeyCode.F12;
 
-    [Tooltip("Write a PNG of what VIP-Sim is actually rendering, next to the player log.\n\n" +
-             "VIP-Sim is a layered window and ordinary screen capture (BitBlt) excludes those, so a " +
-             "desktop screenshot of it comes back without the overlay in it. Rendering problems were " +
-             "therefore impossible to see from outside the app, and had to be inferred -- badly. This " +
-             "captures the overlay's own framebuffer.")]
-    public KeyCode screenshotKey = KeyCode.F6;
-
-    [Tooltip("Capture the first available window directly, cycling through them on repeat presses. " +
-             "The window-list rows cannot be driven by synthetic clicks, which made the capture path " +
-             "untestable without a human.")]
-    public KeyCode grabWindowKey = KeyCode.F7;
-
     [Tooltip("Draw the overlay. Off by default: this is an IMGUI overlay and, like " +
              "UnitEye's debug drawing, it paints over the simulation.")]
     public bool showOverlay = false;
@@ -134,35 +122,6 @@ public class VipSimDiagnostics : MonoBehaviour
         }
         if (Input.GetKeyDown(toggleKey)) showOverlay = !showOverlay;
         if (Input.GetKeyDown(benchmarkKey) && !_benchmarkRunning) StartCoroutine(RunEffectBenchmark());
-
-        if (Input.GetKeyDown(screenshotKey))
-        {
-            var path = System.IO.Path.Combine(Application.persistentDataPath, "vipsim-shot.png");
-            ScreenCapture.CaptureScreenshot(path);
-            Debug.Log($"[VipSimDiagnostics] SHOT {path}");
-        }
-
-        // Hosted here, not on CaptureWindowPlacement: that component lives on the
-        // WindowManager, which is INACTIVE until the window list is opened, so its
-        // own Update -- and its own hotkey -- never runs at startup.
-        //
-        // Windows only: CaptureWindowPlacement is built on uWindowCapture, and the
-        // macOS project has no uWindowCapture scripts (it uses ScreenCaptureKit).
-#if UNITY_STANDALONE_WIN
-        if (Input.GetKeyDown(grabWindowKey))
-        {
-            var placement = FindAnyObjectByType<CaptureWindowPlacement>(FindObjectsInactive.Include);
-            if (placement == null)
-            {
-                Debug.LogWarning("[VipSimDiagnostics] No CaptureWindowPlacement in the scene.");
-            }
-            else
-            {
-                if (!placement.gameObject.activeSelf) placement.gameObject.SetActive(true);
-                placement.GrabNextWindow();
-            }
-        }
-#endif
 
         _frameMs[_frameIdx] = Time.unscaledDeltaTime * 1000f;
         _frameIdx = (_frameIdx + 1) % Window;
