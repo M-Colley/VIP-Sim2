@@ -42,10 +42,6 @@ public class VipSimDiagnostics : MonoBehaviour
              "the only remaining option is Task Manager. This guarantees a way out.")]
     public KeyCode quitKey = KeyCode.F12;
 
-    [Tooltip("Capture the first available window directly, bypassing the window list. " +
-             "Exists so the 1:1 placement can be exercised and measured.")]
-    public KeyCode grabWindowKey = KeyCode.F7;
-
     [Tooltip("Draw the overlay. Off by default: this is an IMGUI overlay and, like " +
              "UnitEye's debug drawing, it paints over the simulation.")]
     public bool showOverlay = false;
@@ -132,31 +128,6 @@ public class VipSimDiagnostics : MonoBehaviour
             if (!showOverlay) TransparentWindow.ExtraCaptureRect = Rect.zero;
         }
         if (Input.GetKeyDown(benchmarkKey) && !_benchmarkRunning) StartCoroutine(RunEffectBenchmark());
-
-        // Capture a window without going through the list. Hosted here rather
-        // than on CaptureWindowPlacement itself because that component sits on
-        // the WindowManager, which is inactive until the list is opened -- so
-        // its own Update never runs at startup and its hotkey never fired.
-        //
-        // Windows only: CaptureWindowPlacement is built on uWindowCapture, and
-        // the macOS project has no uWindowCapture scripts at all (it captures
-        // through ScreenCaptureKit). Mirroring this file unguarded broke the
-        // macOS compile once already.
-#if UNITY_STANDALONE_WIN
-        if (Input.GetKeyDown(grabWindowKey))
-        {
-            var placement = FindAnyObjectByType<CaptureWindowPlacement>(FindObjectsInactive.Include);
-            if (placement == null)
-            {
-                Debug.LogWarning("[VipSimDiagnostics] No CaptureWindowPlacement in the scene.");
-            }
-            else
-            {
-                if (!placement.gameObject.activeSelf) placement.gameObject.SetActive(true);
-                placement.GrabFirstWindow();
-            }
-        }
-#endif
 
         _frameMs[_frameIdx] = Time.unscaledDeltaTime * 1000f;
         _frameIdx = (_frameIdx + 1) % Window;
