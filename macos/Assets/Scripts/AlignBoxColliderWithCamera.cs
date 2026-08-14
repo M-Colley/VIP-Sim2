@@ -21,21 +21,10 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         }
         */
 
-        // The camera MUST be orthographic whether or not a window is selected.
-        //
-        // This assignment used to live as the first line of MatchPlaneToScreenSize,
-        // which was called unconditionally and then threw a NullReferenceException
-        // on the next line whenever no window had been picked yet (the collider
-        // lives on the window quad, which only exists after a selection). The throw
-        // was harmless -- but the assignment before it was not optional. Guarding
-        // the call to silence the exception silently stopped the camera ever being
-        // made orthographic, so the whole scene was rendered with a perspective
-        // projection: no usable overlay, and the UI smearing across the screen.
-        //
-        // Keep the exception fixed AND the side effect: assert the projection here,
-        // then only do the collider-dependent work when there is a collider.
-        if (camera != null) camera.orthographic = true;
-
+        // The collider lives on the window quad, which is only instantiated once
+        // a window is picked. MatchPlaneToScreenSize dereferences it, so before
+        // that this threw a NullReferenceException on every frame the
+        // WindowManager was active with nothing selected.
         if (boxCollider != null)
         {
             MatchPlaneToScreenSize();
