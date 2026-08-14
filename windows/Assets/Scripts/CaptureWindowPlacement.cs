@@ -111,7 +111,39 @@ public class CaptureWindowPlacement : MonoBehaviour
         var box = tracked.GetComponent<BoxCollider>();
         if (box != null && box.size.y > 0f) zoom = box.size.y;
 
-        targetCamera.orthographicSize = sh * 0.5f * worldPerPixel * zoom;
+        // Applied to EVERY screen camera, not just targetCamera.
+        //
+        // The rig has two enabled full-screen cameras at the SAME depth 0 --
+        // LeftEye (orthographic, clears transparent) and RightEye (perspective,
+        // clears to the SKYBOX) -- left over from the old FOVE stereo path. Render
+        // order between equal-depth cameras is undefined, and RightEye is the one
+        // that actually reaches the screen: disabling it removed the overlay
+        // entirely, while placement maths computed against LeftEye measured
+        // perfectly and changed nothing visible.
+        //
+        // Rather than pick a winner (guessing wrong once already cost the whole
+        // overlay) or disable one (RightEye turned out to be load-bearing), give
+        // both eyes identical settings. Then whichever wins the race produces the
+        // same image and the undefined ordering stops mattering. They share an
+        // origin and a rotation, so one projection makes them interchangeable.
+        //
+        // orthographic is asserted here because AlignBoxColliderWithCamera used to
+        // set it every frame and this component disables that while it drives --
+        // taking over a component's job means taking over its side effects too.
+        float size = sh * 0.5f * worldPerPixel * zoom;
+        foreach (var cam in Camera.allCameras)
+        {
+            if (cam.targetTexture != null) continue; // not part of the overlay composite
+            cam.orthographic = true;
+            cam.orthographicSize = size;
+            // A skybox clear makes the overlay opaque, which is fatal for
+            // something compositing over the live desktop through a layered
+            // window. Alpha 0 is what lets the desktop show through.
+            if (cam.clearFlags != CameraClearFlags.SolidColor)
+                cam.clearFlags = CameraClearFlags.SolidColor;
+            if (cam.backgroundColor.a != 0f)
+                cam.backgroundColor = new Color(0f, 0f, 0f, 0f);
+        }
 
         // Window centre relative to the screen centre, in world units. Desktop y
         // runs downwards, Unity's runs up.
