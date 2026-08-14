@@ -46,6 +46,12 @@ public class VipSimDiagnostics : MonoBehaviour
              "Exists so the 1:1 placement can be exercised and measured.")]
     public KeyCode grabWindowKey = KeyCode.F7;
 
+    [Tooltip("Write a PNG of what VIP-Sim is actually rendering, next to the player log.\n\n" +
+             "The overlay is a layered window, which ordinary screen capture (BitBlt) does not " +
+             "include -- a screenshot of the desktop comes back without it. Rendering bugs were " +
+             "therefore invisible from outside the app. This captures the overlay's own framebuffer.")]
+    public KeyCode screenshotKey = KeyCode.F6;
+
     [Tooltip("Draw the overlay. Off by default: this is an IMGUI overlay and, like " +
              "UnitEye's debug drawing, it paints over the simulation.")]
     public bool showOverlay = false;
@@ -96,6 +102,20 @@ public class VipSimDiagnostics : MonoBehaviour
     private IEnumerator DumpButtonRectsOnce()
     {
         yield return new WaitForSeconds(3f);
+
+        // Which cameras actually render, and how. The capture placement assumes a
+        // single orthographic camera; the rig carries a second, PERSPECTIVE one
+        // (a leftover of the old FOVE stereo path) and both sit at depth 0, so
+        // which one reaches the screen -- or whether both do -- decides whether
+        // orthographic placement maths can be right at all.
+        var cams = new StringBuilder("[VipSimDiagnostics] cameras:\n");
+        foreach (var c in FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            cams.AppendLine($"  CAM {c.name} enabled={c.enabled} active={c.gameObject.activeInHierarchy} " +
+                            $"ortho={c.orthographic} size={c.orthographicSize:F3} fov={c.fieldOfView:F0} " +
+                            $"depth={c.depth} target={(c.targetTexture == null ? "screen" : c.targetTexture.name)} " +
+                            $"rect={c.rect} mask=0x{c.cullingMask:X} pos={c.transform.position}");
+        Debug.Log(cams.ToString());
+
         var sb = new StringBuilder("[VipSimDiagnostics] button rects (Unity px, origin bottom-left, " +
                                    $"screen {Screen.width}x{Screen.height}):\n");
         var corners = new Vector3[4];
@@ -132,6 +152,13 @@ public class VipSimDiagnostics : MonoBehaviour
             if (!showOverlay) TransparentWindow.ExtraCaptureRect = Rect.zero;
         }
         if (Input.GetKeyDown(benchmarkKey) && !_benchmarkRunning) StartCoroutine(RunEffectBenchmark());
+
+        if (Input.GetKeyDown(screenshotKey))
+        {
+            var path = System.IO.Path.Combine(Application.persistentDataPath, "vipsim-shot.png");
+            ScreenCapture.CaptureScreenshot(path);
+            Debug.Log($"[VipSimDiagnostics] SHOT {path}");
+        }
 
         // Capture a window without going through the list. Hosted here rather
         // than on CaptureWindowPlacement itself because that component sits on
