@@ -41,6 +41,7 @@ public static class OverlayCameraGuard
     {
         private float _until;
         private bool _reported;
+        private bool _loggedInventory;
 
         private void Start() => _until = Time.unscaledTime + AssertForSeconds;
 
@@ -51,14 +52,33 @@ public static class OverlayCameraGuard
             Camera keep = null;
             var cams = FindObjectsByType<Camera>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
 
-            // Prefer the orthographic camera: the capture placement and the
-            // symptom shaders are written against it.
+            // Keep the camera that actually PRODUCES the simulation: the symptom
+            // shaders run as OnRenderImage effects on one specific camera, so
+            // whichever carries that stack is the overlay, whatever its
+            // projection. Preferring the orthographic camera instead removed the
+            // overlay entirely -- the effects were on the other one.
+            int bestEffects = -1;
             foreach (var c in cams)
-                if (c.targetTexture == null && c.orthographic) { keep = c; break; }
-            if (keep == null)
-                foreach (var c in cams)
-                    if (c.targetTexture == null) { keep = c; break; }
+            {
+                if (c.targetTexture != null) continue;
+                int n = c.GetComponents<VisSim.BaseEffect>().Length;
+                if (n > bestEffects || (n == bestEffects && keep != null && !keep.orthographic && c.orthographic))
+                {
+                    bestEffects = n;
+                    keep = c;
+                }
+            }
             if (keep == null) return;
+
+            if (!_loggedInventory)
+            {
+                _loggedInventory = true;
+                foreach (var c in cams)
+                    Debug.Log($"[OverlayCameraGuard] '{c.name}' ortho={c.orthographic} clear={c.clearFlags} " +
+                              $"effects={c.GetComponents<VisSim.BaseEffect>().Length} " +
+                              $"imageFx={c.GetComponents<MonoBehaviour>().Length} depth={c.depth}" +
+                              (c == keep ? "  <-- KEEPING (most effects)" : ""));
+            }
 
             foreach (var c in cams)
             {
