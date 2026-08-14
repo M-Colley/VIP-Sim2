@@ -21,14 +21,7 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         }
         */
 
-        // The collider lives on the window quad, which is only instantiated once
-        // a window is picked. MatchPlaneToScreenSize dereferences it, so before
-        // that this threw a NullReferenceException on every frame the
-        // WindowManager was active with nothing selected.
-        if (boxCollider != null)
-        {
-            MatchPlaneToScreenSize();
-        }
+        MatchPlaneToScreenSize();   
     }
 
     void FindBoxCollider()
@@ -63,6 +56,12 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
 
     private void MatchPlaneToScreenSize()
     {
+        /*
+        float planeToCameradistance = Vector3.Distance(boxCollider.transform.position, camera.transform.position);
+        float planeHeightScale = (2.0f * Mathf.Tan(camera.fieldOfView * 0.5f * Mathf.Deg2Rad) * planeToCameradistance) / 2;
+        camera.orthographicSize = planeHeightScale;
+        */
+        // Ensure the camera is orthographic
         // Ensure the camera is orthographic
         camera.orthographic = true;
 
@@ -73,10 +72,7 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         float boxHeight = bounds.size.y;
 
         // Determine the taskbar height in pixels (you can set this value based on the screen resolution and taskbar size)
-        // Get the display information for the main display.
-        DisplayInfo mainDisplay = Screen.mainWindowDisplayInfo;
-        // Calculate the taskbar height.
-        int taskbarHeightPixels = mainDisplay.height - mainDisplay.workArea.height;
+        int taskbarHeightPixels = 48; // Default medium size for a full HD screen
 
         // Get the screen height in pixels
         int screenHeightPixels = Screen.height;

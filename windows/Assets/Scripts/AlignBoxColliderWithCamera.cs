@@ -21,14 +21,7 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         }
         */
 
-        // The collider lives on the window quad, which is only instantiated once
-        // a window is picked. MatchPlaneToScreenSize dereferences it, so before
-        // that this threw a NullReferenceException on every frame the
-        // WindowManager was active with nothing selected.
-        if (boxCollider != null)
-        {
-            MatchPlaneToScreenSize();
-        }
+        MatchPlaneToScreenSize();   
     }
 
     void FindBoxCollider()

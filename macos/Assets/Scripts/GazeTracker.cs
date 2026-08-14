@@ -86,7 +86,6 @@ public class GazeTracker : MonoBehaviour
     private TransparentWindow transparentWindow;
     private HomulerGazeCalibration calibrationUi;
     private bool calibrationCaptureOn;
-    private bool warnedCalibrationBusy;
 
     // Singleton
     private static GazeTracker instance;
@@ -341,27 +340,6 @@ public class GazeTracker : MonoBehaviour
     private void SetUnitEyeActive(bool active)
     {
         if (unitEye == null || unitEyeActive == active) return;
-
-        // Never tear the rig down mid-calibration. Deactivating the GameObject
-        // does NOT clear HomulerGazeCalibration.enabled, and the only code that
-        // does -- HomulerGaze.UnloadCalibration -- runs from a LateUpdate the
-        // now-inactive rig will never execute. The calibration would be frozen
-        // rather than cancelled: settings left unrestored, CSV logging left
-        // paused, and the still-enabled component springing a fresh full-screen
-        // calibration the moment the user switched back to eye tracking.
-        // Switching the source away simply takes effect once calibration ends.
-        if (!active && calibrationUi != null && calibrationUi.isActiveAndEnabled)
-        {
-            if (!warnedCalibrationBusy)
-            {
-                warnedCalibrationBusy = true;
-                Debug.LogWarning("[GazeTracker] Gaze source changed while calibration is running; " +
-                                 "keeping the UnitEye rig alive until it finishes. " +
-                                 "Press Escape or right-click to cancel the calibration.", this);
-            }
-            return;
-        }
-        warnedCalibrationBusy = false;
 
         unitEye.SetActive(active);
         unitEyeActive = active;

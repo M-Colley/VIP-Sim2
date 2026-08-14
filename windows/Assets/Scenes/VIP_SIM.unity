@@ -23065,7 +23065,6 @@ MonoBehaviour:
   maincam: {fileID: 858823455}
   canvasRectTransform: {fileID: 858849877778733347}
   panelRectTransform: {fileID: 8434332443454203675}
-  forceFullScreenOverlay: 1
 --- !u!4 &1708510701
 Transform:
   m_ObjectHideFlags: 0
@@ -26597,7 +26596,6 @@ GameObject:
   - component: {fileID: 2021308500}
   - component: {fileID: 2021308499}
   - component: {fileID: 2021308503}
-  - component: {fileID: 2021308504}
   m_Layer: 0
   m_Name: WindowManager
   m_TagString: Untagged
@@ -26670,21 +26668,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   camera: {fileID: 858823455}
---- !u!114 &2021308504
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2021308498}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d3b3a051d7a8a554ea0135a2146de6e0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CaptureWindowPlacement
-  mode: 0
-  targetCamera: {fileID: 858823455}
-  toggleKey: 289
 --- !u!1 &2057057508
 GameObject:
   m_ObjectHideFlags: 0
