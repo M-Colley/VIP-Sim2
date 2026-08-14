@@ -42,6 +42,14 @@ public class VipSimDiagnostics : MonoBehaviour
              "the only remaining option is Task Manager. This guarantees a way out.")]
     public KeyCode quitKey = KeyCode.F12;
 
+    [Tooltip("Write a PNG of what VIP-Sim is actually rendering, next to the player log.\n\n" +
+             "VIP-Sim is a layered window, and ordinary screen capture (BitBlt) excludes those -- a " +
+             "desktop screenshot comes back without the overlay in it. Rendering problems therefore " +
+             "cannot be seen from outside the app and have to be inferred, which went badly: three " +
+             "rounds of fixes were spent on geometry that was already correct, because nobody could " +
+             "look at the output. This captures the overlay's own framebuffer.")]
+    public KeyCode screenshotKey = KeyCode.F6;
+
     [Tooltip("Draw the overlay. Off by default: this is an IMGUI overlay and, like " +
              "UnitEye's debug drawing, it paints over the simulation.")]
     public bool showOverlay = false;
@@ -122,6 +130,13 @@ public class VipSimDiagnostics : MonoBehaviour
         }
         if (Input.GetKeyDown(toggleKey)) showOverlay = !showOverlay;
         if (Input.GetKeyDown(benchmarkKey) && !_benchmarkRunning) StartCoroutine(RunEffectBenchmark());
+
+        if (Input.GetKeyDown(screenshotKey))
+        {
+            var path = System.IO.Path.Combine(Application.persistentDataPath, "vipsim-shot.png");
+            ScreenCapture.CaptureScreenshot(path);
+            Debug.Log($"[VipSimDiagnostics] SHOT {path}");
+        }
 
         _frameMs[_frameIdx] = Time.unscaledDeltaTime * 1000f;
         _frameIdx = (_frameIdx + 1) % Window;
