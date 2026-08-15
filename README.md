@@ -45,15 +45,41 @@ We are currently in release 1.9.
 
 If you want to use our shaders for your own project or use/contribute to VIP-Sim these are the Prerequisites
 
-- Unity 2022.3.27f1 or newer
+- Unity **6000.5.8f1** (Unity 6.5) — the projects have been upgraded and no longer open on 2022.3
 - .NET Framework ≥ 4.x
 - Windows 10/11 or macOS
-- A webcam (for gaze-based effects)
+- A webcam (optional; without one VIP-Sim follows the mouse instead of your gaze)
+
+Building macOS from Windows additionally needs the **Mac Build Support (Mono)** module
+installed in Unity Hub.
 
 ### 🚀 Quick Start
 
 Download our release to install VIP-Sim on your system.
-Note that the macOS version does need a manual adjustment to the access rights for screen recording.
+
+**Windows** — run `VIP-Sim.exe`. Pick the window you want to simulate from the list, then
+switch on the impairments you want.
+
+**macOS** — the build is produced on Windows, which cannot store the Unix execute bit, and
+the app is not code-signed, so it will not start until both are corrected. Unzip, then:
+
+```bash
+bash setup.sh
+```
+
+That restores the execute bit and clears the quarantine flag. Doing it by hand is
+`chmod +x "VIP-Sim.app/Contents/MacOS/VIP-Sim"` followed by
+`xattr -dr com.apple.quarantine "VIP-Sim.app"`. Transfer the archive rather than the
+`.app` itself — Finder shows the bundle as a single file and some copies flatten it.
+
+macOS then needs **Screen Recording** (required — the capture is blank without it, and the
+app must be **quit and reopened** after granting) and **Camera** (optional, for eye
+tracking). Both live in System Settings → Privacy & Security.
+
+Full instructions and troubleshooting: [docs/MACOS_README.md](docs/MACOS_README.md).
+
+**Ctrl+Alt+Q always quits.** VIP-Sim is a borderless, always-on-top, click-through overlay
+with no title bar, so this is the guaranteed way out if the toolbar is ever unreachable.
 
 ### 🎓 Tutorial
 
@@ -99,6 +125,42 @@ Example shader settings of our participants:
 <p align="center">
   <img src="images/participants.png" alt="Teaser Figure" width="600"/>
 </p>
+
+### 🛠️ Building and diagnostics
+
+Both projects build headlessly:
+
+```bash
+Unity -quit -batchmode -nographics -projectPath windows -executeMethod VipSim.EditorTools.VipSimBuild.BuildWindows -buildOutput <dir>
+```
+
+`BuildMacOS` and `BuildLinux` exist alongside it. The macOS build sets the camera usage
+description and the product name itself, so a clean checkout produces a correct bundle
+without anyone remembering to fix them in the inspector.
+
+**Alpha is load-bearing.** VIP-Sim composites onto the desktop from the framebuffer's
+per-pixel alpha, so an effect shader with perfect colour and wrong alpha is invisible —
+a failure that looks exactly like "the effect does nothing". Every effect must carry alpha
+through untouched. To check all of them:
+
+```bash
+Unity -batchmode -projectPath windows -executeMethod VipSim.EditorTools.VipSimAlphaTest.Run -logFile alpha.log
+```
+
+(No `-nographics`; it needs a device.) It pushes a constant-alpha ramp through each real
+material and reports PASS/FAIL per shader. Constant alpha rather than a gradient is
+deliberate — a gradient cannot tell an effect that *relocates* pixels from one that
+*corrupts* alpha.
+
+Runtime diagnostics are written to the player log. Frame timing and the capture placement
+are logged periodically; **F6** (screenshot of the overlay's own framebuffer, the only way
+to capture a layered window), **F7** (force the effect list visible) and **F8** (framebuffer
+alpha distribution and the cursor→gaze chain) are hotkeys — but note they only fire while
+VIP-Sim holds focus, which as a click-through overlay it usually does not.
+
+Unity batchmode on some machines fails intermittently — shader-compiler crashes, access
+violations in the build program, or an error count with no error text. **Retry a failed
+build once before investigating it.**
 
 ### 📈 Changelog
 View all updates in CHANGELOG.md
