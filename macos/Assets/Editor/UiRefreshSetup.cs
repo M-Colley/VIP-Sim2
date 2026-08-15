@@ -91,6 +91,16 @@ namespace VipSim.EditorTools
         // handle radius; deliberately small, because the panel is only 625 wide and the
         // settings content already reaches close to its right edge.
         private const float SettingsPanelX = 190f;
+        // 16 originally. -18 was tried and is far too tight: these rows are around 60 tall,
+        // so a negative gap overlapped the labels with the sliders above them and the panel
+        // became unreadable. 2 keeps every row clear while still saving about 14px each,
+        // which is roughly one extra control visible on a six-parameter effect.
+        private const float SettingsSpacing = 2f;
+        // 349 originally. 290 was not enough -- the sliders still reached past the panel
+        // edge -- so 240, which leaves a clear margin. If this still needs adjusting, this
+        // constant and SettingsPanelX above are the only two knobs: width pulls the right
+        // edge in, x moves the whole block left or right against the gear column.
+        private const float SettingsPanelWidth = 240f;
 
         // Idle stays at full brightness. Dimming it was tried and is wrong: the gears are
         // already easy to miss, and knocking all sixteen back to 55% made the control less
@@ -397,6 +407,43 @@ namespace VipSim.EditorTools
                     Debug.Log($"UIREFRESH: settings panel x {srt.anchoredPosition.x:F0} -> {SettingsPanelX:F0}.");
                     srt.anchoredPosition = new Vector2(SettingsPanelX, srt.anchoredPosition.y);
                     EditorUtility.SetDirty(srt);
+                    changed++;
+                }
+            }
+
+            // --- 3c. Fit more settings in, and stop the sliders hitting the edge ----
+            //
+            // Effects with a lot of parameters (Retinopathy has six) run off the bottom of
+            // the panel, so the last control cannot be reached at all. Tightening the row
+            // spacing buys back roughly a control's worth of height per three rows without
+            // touching any of the individual widgets.
+            //
+            // The sliders also ran flush to the panel's right edge, which leaves the handle
+            // half off the surface at maximum and reads as clipped rather than deliberate.
+            if (settingsPanel != null)
+            {
+                var svlg = settingsPanel.GetComponent<VerticalLayoutGroup>();
+                if (svlg != null && Mathf.Abs(svlg.spacing - SettingsSpacing) > 0.5f)
+                {
+                    Debug.Log($"UIREFRESH: settings row spacing {svlg.spacing:F0} -> {SettingsSpacing:F0}.");
+                    svlg.spacing = SettingsSpacing;
+                    EditorUtility.SetDirty(svlg);
+                    changed++;
+                }
+
+                // Narrow the CONTAINER rather than the sliders. The settings widgets are
+                // built at runtime, not stored in the scene, so there is nothing here to
+                // resize individually -- an earlier attempt to walk the sliders matched
+                // nothing at all. They stretch to this container, so pulling its right edge
+                // in pulls theirs in too, and it keeps working for widgets created later.
+                var prt2 = settingsPanel.GetComponent<RectTransform>();
+                if (prt2 != null && Mathf.Abs(prt2.rect.width - SettingsPanelWidth) > 0.5f)
+                {
+                    Debug.Log($"UIREFRESH: settings panel width {prt2.rect.width:F0} -> {SettingsPanelWidth:F0} " +
+                              "so the sliders stop running into the panel edge.");
+                    prt2.sizeDelta = new Vector2(prt2.sizeDelta.x + (SettingsPanelWidth - prt2.rect.width),
+                                                 prt2.sizeDelta.y);
+                    EditorUtility.SetDirty(prt2);
                     changed++;
                 }
             }
