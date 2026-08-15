@@ -222,6 +222,36 @@ public class VipSimDiagnostics : MonoBehaviour
                   $"dpi={Screen.dpi:F0} fullscreen={Screen.fullScreenMode} " +
                   $"xy_norm=({norm.x:F3},{norm.y:F3}) " +
                   $"-> expected pixel=({norm.x * Screen.width:F0},{norm.y * Screen.height:F0})");
+
+        LogCapturePlacement();
+    }
+
+    /// <summary>
+    /// Report every number the 1:1 capture placement depends on.
+    ///
+    /// The capture is drawn at the right SIZE but in the wrong PLACE, which narrows the
+    /// fault to the screen-to-world conversion. Logging the window's reported desktop
+    /// rectangle next to the resulting world position makes the discrepancy measurable:
+    /// if win.x/y do not match where the window visibly is, uWindowCapture is reporting a
+    /// different rectangle than expected (frame borders, DPI space, or multi-monitor
+    /// origin); if they do match, the error is in the conversion or in the plane's pivot.
+    /// </summary>
+    private void LogCapturePlacement()
+    {
+        foreach (var t in FindObjectsByType<uWindowCapture.UwcWindowTexture>(FindObjectsInactive.Include))
+        {
+            var w = t.window;
+            if (w == null) continue;
+
+            float upp = t.scalePer1000Pixel / 1000f;
+            float dx = (w.x + w.width * 0.5f) - Screen.width * 0.5f;
+            float dy = Screen.height * 0.5f - (w.y + w.height * 0.5f);
+
+            Debug.Log($"[VipSimDiagnostics] CAPTURE '{w.title}' rect=({w.x},{w.y},{w.width}x{w.height}) " +
+                      $"screen={Screen.width}x{Screen.height} unitsPerPixel={upp:F5} " +
+                      $"deltaPx=({dx:F0},{dy:F0}) planeWorld={t.transform.position} " +
+                      $"planeScale={t.transform.lossyScale} camOrtho={Camera.main?.orthographicSize:F3}");
+        }
     }
 
     private bool _alphaProbeRunning;
