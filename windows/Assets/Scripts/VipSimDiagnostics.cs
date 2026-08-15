@@ -195,6 +195,14 @@ public class VipSimDiagnostics : MonoBehaviour
         {
             _nextLog = Time.unscaledTime + logIntervalSeconds;
             Debug.Log("[VipSimDiagnostics] " + BuildReport().Replace('\n', ' '));
+
+            // Capture placement goes in the periodic report, not only behind the hotkey.
+            // VIP-Sim is click-through and therefore almost never the foreground window, so
+            // Input.GetKeyDown never fires for it -- pressing F8 sends the key to whatever
+            // the user is actually working in. A diagnostic that cannot be triggered is not
+            // a diagnostic. This costs one line every logIntervalSeconds and only prints
+            // when a window is genuinely being captured.
+            LogCapturePlacement();
         }
     }
 
