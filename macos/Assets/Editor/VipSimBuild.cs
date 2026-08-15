@@ -23,6 +23,10 @@ namespace VipSim.EditorTools
     /// </summary>
     public static class VipSimBuild
     {
+        // What the app calls itself: executable name inside the .app, Dock and menu bar
+        // entry, and the name that appears in macOS permission prompts.
+        private const string ProductName = "VIP-Sim";
+
         // IL2CPP gives a substantial CPU win over Mono for the per-frame effect
         // parameter syncing, and effects run every frame on the main thread, so it
         // is the right choice for release builds. It is not the default here
@@ -105,6 +109,17 @@ namespace VipSim.EditorTools
                     "simulated vision impairment can follow where you are looking. Video is " +
                     "processed on this device and is never recorded or transmitted.";
                 Debug.Log("[VipSimBuild] Set macOS camera usage description (required for WebCamTexture).");
+            }
+
+            // productName ends up as the executable name inside the .app and as the name
+            // macOS shows in the Dock, the menu bar and the permission prompts. This
+            // project's is "macos", after the folder it lives in, so the bundle was
+            // VIP-Sim.app containing Contents/MacOS/macos and would have introduced itself
+            // to participants as "macos". Harmless to the build, wrong for a study tool.
+            if (PlayerSettings.productName != ProductName)
+            {
+                Debug.Log($"[VipSimBuild] product name '{PlayerSettings.productName}' -> '{ProductName}'.");
+                PlayerSettings.productName = ProductName;
             }
 
             var backend = Backend;
