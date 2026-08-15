@@ -203,6 +203,12 @@ public class VipSimDiagnostics : MonoBehaviour
             // a diagnostic. This costs one line every logIntervalSeconds and only prints
             // when a window is genuinely being captured.
             LogCapturePlacement();
+            LogCameras();
+
+            // Alpha in the periodic report as well as on F8. Alpha decides whether the
+            // overlay is visible at all, and the hotkey only fires when the overlay holds
+            // focus -- which, being click-through, it almost never does.
+            if (!_alphaProbeRunning) StartCoroutine(ProbeBackbufferAlpha());
         }
     }
 
@@ -259,6 +265,37 @@ public class VipSimDiagnostics : MonoBehaviour
                       $"screen={Screen.width}x{Screen.height} unitsPerPixel={upp:F5} " +
                       $"deltaPx=({dx:F0},{dy:F0}) planeWorld={t.transform.position} " +
                       $"planeScale={t.transform.lossyScale} camOrtho={Camera.main?.orthographicSize:F3}");
+        }
+    }
+
+    /// <summary>
+    /// Report every enabled camera in render order, with the properties that decide what
+    /// reaches the backbuffer.
+    ///
+    /// VIP-Sim carries two full-screen cameras from the retired stereo rig, and they were
+    /// both at depth 0 -- so which one wrote the backbuffer last was undefined. Each also
+    /// CLEARS, so whichever renders second wipes the first; only one of them can actually
+    /// be contributing. Establishing which, and what its clear does to alpha, is the
+    /// prerequisite for deleting the other, and it cannot be settled by reading the scene:
+    /// disabling the seemingly-redundant camera removed the overlay entirely, which is the
+    /// opposite of what the code structure implies.
+    ///
+    /// Clear flags: 1 Skybox, 2 SolidColor, 3 Depth, 4 Nothing. A Skybox clear is opaque,
+    /// which on an alpha-composited overlay is a very different thing from a SolidColor
+    /// clear at alpha 0.
+    /// </summary>
+    private void LogCameras()
+    {
+        var cams = FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        System.Array.Sort(cams, (a, b) => a.depth.CompareTo(b.depth));
+
+        foreach (var c in cams)
+        {
+            var bg = c.backgroundColor;
+            Debug.Log($"[VipSimDiagnostics] CAMERA '{c.name}' enabled={c.enabled} depth={c.depth:F1} " +
+                      $"ortho={c.orthographic} size={c.orthographicSize:F3} clear={c.clearFlags} " +
+                      $"bg=({bg.r:F2},{bg.g:F2},{bg.b:F2},a={bg.a:F2}) " +
+                      $"target={c.targetTexture?.name ?? "backbuffer"} cull=0x{c.cullingMask:X}");
         }
     }
 

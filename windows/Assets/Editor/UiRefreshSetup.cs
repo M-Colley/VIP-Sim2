@@ -497,6 +497,36 @@ namespace VipSim.EditorTools
                           "drawing a second cursor over the desktop.");
             }
 
+            // --- 3e. Make camera render order deterministic -------------------------
+            //
+            // Both cameras sat at depth 0, so which one wrote the backbuffer last was
+            // undefined -- and since both CLEAR, the second one wipes the first. Only one
+            // was ever contributing; which one was luck.
+            //
+            // The orthographic camera is the one that reaches the screen: it is what
+            // AlignBoxColliderWithCamera drives, and the 1:1 capture placement applied to
+            // it is visibly correct, which could not be true if its output were being
+            // discarded. It is given the higher depth so it renders last, deliberately.
+            //
+            // Disabling the other camera previously removed the overlay entirely, which
+            // looked like evidence it was the one rendering. It is not: LinkableBaseEffect
+            // disables itself when it cannot find its opposite-eye twin, so removing that
+            // camera switched every effect off. That distinction is what makes deleting it
+            // safe, and it has to be handled in the same change.
+            foreach (var cam in Resources.FindObjectsOfTypeAll<Camera>())
+            {
+                if (cam == null || cam.gameObject.scene != scene) continue;
+
+                float want = cam.orthographic ? 1f : 0f;
+                if (Mathf.Abs(cam.depth - want) < 0.01f) continue;
+
+                Debug.Log($"UIREFRESH: camera '{cam.name}' depth {cam.depth:F1} -> {want:F1} " +
+                          $"(ortho={cam.orthographic}, clear={cam.clearFlags}).");
+                cam.depth = want;
+                EditorUtility.SetDirty(cam);
+                changed++;
+            }
+
             // --- 4. Make the per-effect settings gear hittable ----------------------
             //
             // Each effect row is a wide "Enable" bar with a 35x32 gear crammed against its
