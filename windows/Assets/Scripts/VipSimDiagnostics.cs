@@ -58,6 +58,15 @@ public class VipSimDiagnostics : MonoBehaviour
              "the alpha distribution alongside the list of enabled effects.")]
     public KeyCode alphaProbeKey = KeyCode.F8;
 
+    [Tooltip("Force the effect list on screen without selecting a window first.\n\n" +
+             "The effect list is gated behind having picked a window to capture, and a " +
+             "click-through overlay cannot be driven by synthetic clicks -- so the whole " +
+             "lower half of the UI was impossible to look at while working on it. A layout " +
+             "change was shipped that left the effect list with no background and " +
+             "overlapping the webcam row, purely because every screenshot showed the " +
+             "pre-selection state. This makes that half of the UI reviewable.")]
+    public KeyCode revealMenuKey = KeyCode.F7;
+
     [Tooltip("Draw the overlay. Off by default: this is an IMGUI overlay and, like " +
              "UnitEye's debug drawing, it paints over the simulation.")]
     public bool showOverlay = false;
@@ -147,6 +156,25 @@ public class VipSimDiagnostics : MonoBehaviour
         }
 
         if (Input.GetKeyDown(alphaProbeKey) && !_alphaProbeRunning) StartCoroutine(ProbeBackbufferAlpha());
+
+        if (Input.GetKeyDown(revealMenuKey))
+        {
+            foreach (var name in new[] { "VerticalMenu", "HorizontalMenu" })
+            {
+                var go = GameObject.Find("Canvas/Menu/Panel/" + name);
+                if (go == null)
+                {
+                    // Find() skips inactive objects, so fall back to a full search.
+                    foreach (var t in Resources.FindObjectsOfTypeAll<Transform>())
+                        if (t.name == name && t.gameObject.scene.IsValid()) { go = t.gameObject; break; }
+                }
+                if (go != null)
+                {
+                    go.SetActive(!go.activeSelf);
+                    Debug.Log($"[VipSimDiagnostics] REVEAL {name} -> {go.activeSelf}");
+                }
+            }
+        }
 
         _frameMs[_frameIdx] = Time.unscaledDeltaTime * 1000f;
         _frameIdx = (_frameIdx + 1) % Window;
