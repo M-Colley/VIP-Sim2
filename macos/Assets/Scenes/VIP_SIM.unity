@@ -27817,7 +27817,7 @@ MonoBehaviour:
   - {fileID: 858823477}
   fontSize: 22
   labelWidth: 350
-  itemWidth: 150
+  itemWidth: 220
   labelColor: {r: 1, g: 1, b: 1, a: 1}
   backgroundColor: {r: 1, g: 1, b: 1, a: 1}
   handleColor: {r: 1, g: 1, b: 1, a: 1}

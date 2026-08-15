@@ -113,10 +113,15 @@ public class ChangeButtonAppearance : MonoBehaviour
             }
             else
             {
-                CloseSettingsPanel();
-
-                // Drop the gear back to idle as well, or the amber "settings open" marker
-                // stays lit on a row that no longer has anything open.
+                // Switching an effect off must NOT touch HideImpairmentSelection's enable
+                // slider. That slider is the master switch for the whole settings panel,
+                // not a per-effect one, so clearing it here made every effect's settings
+                // vanish at once -- far worse than the problem it was meant to solve.
+                //
+                // What is safe, and is the actual original fault, is that the gear used to
+                // be invoked on the way down as well: turning an effect off would OPEN its
+                // settings. Now it only resets the gear, so the amber "settings open"
+                // marker does not stay lit on a row that was just switched off.
                 var gear = settingsButton != null ? settingsButton.GetComponent<ChangeButtonAppearance>() : null;
                 if (gear != null) gear.ResetToIdle();
             }

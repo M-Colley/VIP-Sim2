@@ -105,7 +105,9 @@ namespace VipSim.EditorTools
         // dropdown is given. 200 ran them past the right edge of the panel; 150 leaves a
         // margin. This is the only place that controls it -- there is nothing in the scene
         // to resize, because the widgets do not exist until the effect's settings open.
-        private const float ItemWidth = 150f;
+        // 300 in the scene originally, which overran the panel edge; 150 was too far the
+        // other way and left the sliders stubby. 220 fits inside the panel with a margin.
+        private const float ItemWidth = 220f;
 
         // Idle stays at full brightness. Dimming it was tried and is wrong: the gears are
         // already easy to miss, and knocking all sixteen back to 55% made the control less
