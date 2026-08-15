@@ -113,22 +113,41 @@ public class ChangeButtonAppearance : MonoBehaviour
             }
             else
             {
-                // Switching an effect off must NOT touch HideImpairmentSelection's enable
-                // slider. That slider is the master switch for the whole settings panel,
-                // not a per-effect one, so clearing it here made every effect's settings
-                // vanish at once -- far worse than the problem it was meant to solve.
-                //
-                // What is safe, and is the actual original fault, is that the gear used to
-                // be invoked on the way down as well: turning an effect off would OPEN its
-                // settings. Now it only resets the gear, so the amber "settings open"
-                // marker does not stay lit on a row that was just switched off.
                 var gear = settingsButton != null ? settingsButton.GetComponent<ChangeButtonAppearance>() : null;
-                if (gear != null) gear.ResetToIdle();
+                if (gear != null)
+                {
+                    gear.ResetToIdle();
+
+                    // Only close the panel if the effect being switched off is the one
+                    // whose parameters are actually showing. Without that test this
+                    // hides the panel whenever ANY effect is turned off, which is what
+                    // made every setting disappear at once on the previous attempt.
+                    if (_openGear == gear)
+                    {
+                        _openGear = null;
+                        SetSettingsPanel(false);
+                    }
+                }
             }
             return;
         }
         PerformSwap();
+
+        // Reaching here means a gear was pressed, so this row's settings are now the ones
+        // on display. Recording which gear that is, is the missing piece the UI never had:
+        // it knew a global open/closed state and which gear was last clicked, but nothing
+        // connected the two, so "was the effect I just switched off the one being shown?"
+        // could not be answered.
+        if (CompareTag("Settings"))
+        {
+            _openGear = this;
+            SetSettingsPanel(true);
+        }
     }
+
+    // The gear whose settings are currently displayed. A single static is enough because
+    // only one can be open at a time -- the deselect loop above enforces that.
+    private static ChangeButtonAppearance _openGear;
 
     /// <summary>
     /// Force this button back to its unselected appearance without toggling anything.
@@ -153,12 +172,12 @@ public class ChangeButtonAppearance : MonoBehaviour
     /// deactivating the object directly would be undone on the next frame, since that
     /// component re-evaluates and re-applies the slider's value in Update.
     /// </summary>
-    private static void CloseSettingsPanel()
+    private static void SetSettingsPanel(bool open)
     {
         if (_settingsPanel == null)
-            _settingsPanel = FindFirstObjectByType<HideImpairmentSelection>(FindObjectsInactive.Include);
+            _settingsPanel = FindAnyObjectByType<HideImpairmentSelection>(FindObjectsInactive.Include);
 
-        if (_settingsPanel != null) _settingsPanel.CloseSettings();
+        if (_settingsPanel != null) _settingsPanel.SetSettingsOpen(open);
     }
 
     // Helper method to perform the swap

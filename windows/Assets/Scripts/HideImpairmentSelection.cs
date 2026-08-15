@@ -8,16 +8,19 @@ public class HideImpairmentSelection : MonoBehaviour
     [SerializeField] Slider enableToggle;
 
     /// <summary>
-    /// Hide the per-effect settings panel.
+    /// Show or hide the per-effect settings panel.
     ///
-    /// Clearing the slider rather than deactivating the panel directly, because Update
-    /// re-applies the slider's value every frame and would simply switch it back on.
-    /// Called when an effect is switched off, so its parameters stop being shown for
-    /// something that is no longer running.
+    /// Drives the slider rather than the panel object directly, because Update re-applies
+    /// the slider's value every frame and would undo a SetActive immediately.
+    ///
+    /// Must be driven in BOTH directions. An earlier version only ever cleared it, when an
+    /// effect was switched off, and nothing set it back -- so after the first time any
+    /// effect was disabled the settings panel stayed empty for every effect thereafter.
+    /// Opening a gear now sets it, closing the open effect clears it.
     /// </summary>
-    public void CloseSettings()
+    public void SetSettingsOpen(bool open)
     {
-        if (enableToggle != null) enableToggle.value = 0f;
+        if (enableToggle != null) enableToggle.value = open ? 1f : 0f;
     }
     [SerializeField] Image settingWheel;
 

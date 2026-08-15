@@ -15,9 +15,9 @@ public class HideImpairmentSelection : MonoBehaviour
     /// Called when an effect is switched off, so its parameters stop being shown for
     /// something that is no longer running.
     /// </summary>
-    public void CloseSettings()
+    public void SetSettingsOpen(bool open)
     {
-        if (enableToggle != null) enableToggle.value = 0f;
+        if (enableToggle != null) enableToggle.value = open ? 1f : 0f;
     }
 
     [SerializeField] Image settingWheel;
@@ -52,4 +52,5 @@ public class HideImpairmentSelection : MonoBehaviour
         }
     }
 }
+
 
