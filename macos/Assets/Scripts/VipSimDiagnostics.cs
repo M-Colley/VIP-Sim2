@@ -173,7 +173,11 @@ public class VipSimDiagnostics : MonoBehaviour
             Debug.Log($"[VipSimDiagnostics] SHOT {path}");
         }
 
-        if (Input.GetKeyDown(alphaProbeKey) && !_alphaProbeRunning) StartCoroutine(ProbeBackbufferAlpha());
+        if (Input.GetKeyDown(alphaProbeKey) && !_alphaProbeRunning)
+        {
+            LogCursorAlignment();
+            StartCoroutine(ProbeBackbufferAlpha());
+        }
 
         if (Input.GetKeyDown(revealMenuKey))
         {
@@ -192,6 +196,32 @@ public class VipSimDiagnostics : MonoBehaviour
             _nextLog = Time.unscaledTime + logIntervalSeconds;
             Debug.Log("[VipSimDiagnostics] " + BuildReport().Replace('\n', ' '));
         }
+    }
+
+    /// <summary>
+    /// Report every number involved in turning the pointer into the gaze point, so a
+    /// reported misalignment can be measured instead of guessed at.
+    ///
+    /// The chain is: OS cursor -> client-rect pixels (y flipped) -> divided by Screen size
+    /// -> xy_norm -> the shaders. A constant offset, a scale error and a flipped axis all
+    /// look identical from the outside but disagree at different points in that chain, so
+    /// the fix depends on which number first stops matching the pointer.
+    ///
+    /// Put the pointer somewhere known -- a screen corner is easiest to judge -- and press
+    /// the alpha probe key. Compare CURSOR against where the pointer actually was.
+    /// </summary>
+    private void LogCursorAlignment()
+    {
+        var native = TransparentWindow.CursorPosition;
+        var legacy = Input.mousePosition;
+        var tracker = GazeTracker.GetInstance;
+        var norm = tracker != null ? tracker.xy_norm : new Vector2(-1f, -1f);
+
+        Debug.Log($"[VipSimDiagnostics] CURSOR native=({native.x:F0},{native.y:F0}) " +
+                  $"legacy=({legacy.x:F0},{legacy.y:F0}) screen={Screen.width}x{Screen.height} " +
+                  $"dpi={Screen.dpi:F0} fullscreen={Screen.fullScreenMode} " +
+                  $"xy_norm=({norm.x:F3},{norm.y:F3}) " +
+                  $"-> expected pixel=({norm.x * Screen.width:F0},{norm.y * Screen.height:F0})");
     }
 
     private bool _alphaProbeRunning;
