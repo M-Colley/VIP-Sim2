@@ -37,7 +37,20 @@ namespace VipSim.EditorTools
         // The emptiness is removed instead by growing the window list to fill the panel,
         // which also means more windows are visible without scrolling.
         private const float PanelHeight = 1240f;
-        private const float WindowListHeight = 1000f;
+
+        // 374, the original. Do not grow this. The area below the window list is where
+        // VerticalMenu, the effect list, is drawn, and BOTH lists are on screen at once
+        // once a window has been selected -- the window list stays up so you can switch
+        // capture target. Stretching the list to 1000 to "use the empty space" ran it
+        // straight through the effect list and left the two overlapping.
+        //
+        // That empty region is reserved, not wasted, and this is the second attempt to
+        // reclaim it that broke the layout: first by shrinking the panel out from under
+        // the effect list, then by expanding the window list into it. Making the panel
+        // genuinely fit its content needs the two lists to resize against each other at
+        // runtime, which is a real change and should be done with the effect list visible
+        // on screen, not inferred from a pre-selection screenshot.
+        private const float WindowListHeight = 374f;
 
         // Only the coordinate strip, NOT its parent "Window Info" -- that also holds the
         // window's Title, and hiding the whole block left cards showing a bare icon with
@@ -55,7 +68,11 @@ namespace VipSim.EditorTools
         // 230 wide centred at -35, so it ends at +80: a 50-wide gear left at x=95 would
         // have overlapped it by 10px, turning a fiddly control into a broken one. At 105
         // the gear clears it by 3px.
-        private static readonly Vector2 GearSize = new Vector2(44f, 36f);
+        // Wider but NOT taller. 44x32 keeps the original row height, so the gear is an
+        // easier pointer target without needing extra spacing between rows -- and it was
+        // that extra spacing which pushed the 18-row list past the bottom of the panel and
+        // over the webcam controls.
+        private static readonly Vector2 GearSize = new Vector2(44f, 32f);
         private const float GearX = 105f;
 
         // Spacing here is NEGATIVE and has to stay that way. Each effect row is a 100-tall
@@ -64,7 +81,7 @@ namespace VipSim.EditorTools
         // would have made the step 112 and stretched an 18-row list to roughly 2000px.
         // -54 gives a 46px step: 7px more air than before, which is what the 36-tall gear
         // needs, without touching the rest of the geometry.
-        private const float RowSpacing = -54f;
+        private const float RowSpacing = -61f;
 
         private static readonly Color Surface = new Color(0.098f, 0.102f, 0.114f, 0.965f);
         private static readonly Color Destructive = new Color(0.788f, 0.263f, 0.263f, 1f);

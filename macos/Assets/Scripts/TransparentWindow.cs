@@ -386,13 +386,61 @@ public class TransparentWindow : MonoBehaviour {
 
         if (nsWindow == IntPtr.Zero) { ReportAcquisitionFailure(); return false; }
 
+        ApplyMacTransparency();
+
         Debug.Log($"TransparentWindow: NSWindow 0x{nsWindow.ToInt64():X} acquired after {_acquireAttempts} " +
-                  "retries; clickthrough is active.");
+                  "retries; clickthrough is active and the window composites from framebuffer alpha.");
         return true;
 #else
         return false;
 #endif
     }
+
+#if UNITY_STANDALONE_OSX
+    /// <summary>
+    /// Make the Cocoa window composite from the framebuffer's alpha.
+    ///
+    /// This is the macOS counterpart of DwmExtendFrameIntoClientArea, and it was simply
+    /// absent: the window was made click-through but never made transparent, so VIP-Sim
+    /// would have come up as an opaque rectangle covering the desktop no matter how
+    /// correct the effect shaders' alpha was. Every alpha fix in the effect chain is
+    /// wasted without this, because AppKit never lets the alpha reach the screen.
+    ///
+    /// An NSWindow is opaque by default and paints itself with its background colour.
+    /// setOpaque:NO stops AppKit assuming every pixel is covered, and a clear background
+    /// colour stops it painting one. The content view needs a backing layer for per-pixel
+    /// alpha to survive compositing. The drop shadow has to go as well: AppKit derives the
+    /// shadow from the window's opaque region, so a transparent window otherwise keeps a
+    /// rectangular shadow drawn around content that is no longer there.
+    /// </summary>
+    private void ApplyMacTransparency()
+    {
+        if (nsWindow == IntPtr.Zero) return;
+
+        try
+        {
+            objc_msgSend_bool(nsWindow, sel_registerName("setOpaque:"), false);
+
+            IntPtr clear = objc_msgSend(objc_getClass("NSColor"), sel_registerName("clearColor"));
+            if (clear != IntPtr.Zero)
+                objc_msgSend_ptr(nsWindow, sel_registerName("setBackgroundColor:"), clear);
+
+            IntPtr contentView = objc_msgSend(nsWindow, sel_registerName("contentView"));
+            if (contentView != IntPtr.Zero)
+                objc_msgSend_bool(contentView, sel_registerName("setWantsLayer:"), true);
+
+            objc_msgSend_bool(nsWindow, sel_registerName("setHasShadow:"), false);
+        }
+        catch (Exception e)
+        {
+            // Same reasoning as the acquisition path: a changed selector must not take
+            // the app down. An opaque overlay is bad but recoverable; a crash is not.
+            Debug.LogError($"TransparentWindow: could not make the window transparent " +
+                           $"({e.GetType().Name}: {e.Message}). The overlay will be opaque; " +
+                           "press Ctrl+Alt+Q to quit.");
+        }
+    }
+#endif
 
     /// <summary>
     /// Put the window back to full screen.
