@@ -11,7 +11,12 @@ public class HideImpairmentSelection : MonoBehaviour
     void Update()
     {
         bool hasActiveWindow = UwcWindowList.thereIsActiveWindow;
-        bool desiredActive = hasActiveWindow && enableToggle.value > 0.9f;
+
+        // The F7 diagnostic override has to bypass the enable toggle as well as the
+        // window-selected gate, or the effect list still stays hidden behind the second
+        // condition and the hotkey looks broken for a different reason.
+        bool desiredActive = hasActiveWindow &&
+                             (VipSimDiagnostics.ForceMenusVisible || enableToggle.value > 0.9f);
 
         if (targetGameObject.activeSelf != desiredActive)
         {

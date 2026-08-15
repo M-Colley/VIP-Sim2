@@ -14,9 +14,13 @@ public class HideImpairmentSelection : MonoBehaviour
     void Update()
     {
         // Setzt das target GameObject je nach R�ckgabewert
-        if (macCapture.isRunning)
+        // VipSimDiagnostics.ForceMenusVisible (F7) shows the effect list without a capture
+        // running and without the effect switched on, so that half of the UI can be looked
+        // at during development. The Windows gate is uWindowCapture's thereIsActiveWindow;
+        // here it is macCapture.isRunning, hence the override being applied in both places.
+        if (macCapture.isRunning || VipSimDiagnostics.ForceMenusVisible)
         {
-            if (enableToggle.value > 0.9)
+            if (enableToggle.value > 0.9 || VipSimDiagnostics.ForceMenusVisible)
             {
                 targetGameObject.SetActive(true);
             } else

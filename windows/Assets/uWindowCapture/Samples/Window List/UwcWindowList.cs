@@ -38,7 +38,11 @@ namespace uWindowCapture
 
         private void Update()
         {
-            bool newState = checkForActiveWindows();
+            // VipSimDiagnostics.ForceMenusVisible (F7) pretends a window is selected, so
+            // the effect list can be inspected without one. Without it that half of the UI
+            // cannot be seen at all during development -- a click-through overlay ignores
+            // synthetic clicks, so no window can be selected programmatically.
+            bool newState = VipSimDiagnostics.ForceMenusVisible || checkForActiveWindows();
             if (thereIsActiveWindow != newState)
             {
                 thereIsActiveWindow = newState;

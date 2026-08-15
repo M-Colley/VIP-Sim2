@@ -67,6 +67,24 @@ public class VipSimDiagnostics : MonoBehaviour
              "pre-selection state. This makes that half of the UI reviewable.")]
     public KeyCode revealMenuKey = KeyCode.F7;
 
+    /// <summary>
+    /// While true, the parts of the UI that are normally gated behind "a window has been
+    /// selected and the effect is switched on" are shown anyway.
+    ///
+    /// The first attempt at this hotkey just called SetActive on the menus, which did
+    /// nothing: the gates re-evaluate every frame in Update and immediately switched them
+    /// back off. The flag has to be read by the gates themselves, which is why it lives
+    /// here -- somewhere both platforms can see. Windows gates on uWindowCapture's
+    /// UwcWindowList, macOS uses a different capture backend entirely, so neither is a
+    /// suitable home for a shared switch.
+    ///
+    /// This exists because the effect list is otherwise impossible to look at while
+    /// working on it: it only appears once a window is selected, and a click-through
+    /// overlay cannot be driven by synthetic clicks. Two layout changes were shipped
+    /// broken because every screenshot showed the pre-selection state.
+    /// </summary>
+    public static bool ForceMenusVisible { get; private set; }
+
     [Tooltip("Draw the overlay. Off by default: this is an IMGUI overlay and, like " +
              "UnitEye's debug drawing, it paints over the simulation.")]
     public bool showOverlay = false;
@@ -159,21 +177,8 @@ public class VipSimDiagnostics : MonoBehaviour
 
         if (Input.GetKeyDown(revealMenuKey))
         {
-            foreach (var name in new[] { "VerticalMenu", "HorizontalMenu" })
-            {
-                var go = GameObject.Find("Canvas/Menu/Panel/" + name);
-                if (go == null)
-                {
-                    // Find() skips inactive objects, so fall back to a full search.
-                    foreach (var t in Resources.FindObjectsOfTypeAll<Transform>())
-                        if (t.name == name && t.gameObject.scene.IsValid()) { go = t.gameObject; break; }
-                }
-                if (go != null)
-                {
-                    go.SetActive(!go.activeSelf);
-                    Debug.Log($"[VipSimDiagnostics] REVEAL {name} -> {go.activeSelf}");
-                }
-            }
+            ForceMenusVisible = !ForceMenusVisible;
+            Debug.Log($"[VipSimDiagnostics] REVEAL force-menus={ForceMenusVisible}");
         }
 
         _frameMs[_frameIdx] = Time.unscaledDeltaTime * 1000f;
