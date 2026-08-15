@@ -61,7 +61,11 @@ namespace VipSim.EditorTools
         // because the HorizontalLayoutGroup lays its three children out from a 100-wide
         // rect and overflows to the right. Re-centring it at 0 pushed the label off the
         // panel edge. Only the y is ours to set, to lift it clear of the bottom border.
-        private const float WebcamX = -240f;
+        // 0, not the -240 this used to need. That offset existed only to compensate for a
+        // 100-wide rect whose HorizontalLayoutGroup overflowed rightwards; now the rect is
+        // sized to its contents, the same offset pushed the whole control off the left edge
+        // of the panel. A correctly sized row just centres.
+        private const float WebcamX = 0f;
         private const float WebcamBottomInset = 34f;
 
         // 44x36 rather than the original 35x32, and nudged right to 105. The Enable bar is
@@ -95,6 +99,12 @@ namespace VipSim.EditorTools
         // idle sprite, which differs in colour and value at once and needs no new art.
         private static readonly Color GearIdle = Color.white;
         private static readonly Color GearActive = new Color(1f, 0.58f, 0.11f, 1f);
+
+        // Wide enough for a real device name on one line -- "HD Pro Webcam C920" still
+        // wrapped at 290, and the second line is what collided with the effect list.
+        private static readonly Vector2 WebcamRowSize = new Vector2(500f, 62f);
+        private const float CamLabelWidth = 360f;
+        private static readonly Color FooterSurface = new Color(0.13f, 0.13f, 0.15f, 1f);
 
         private static readonly Color ItemSelected = new Color(0.72f, 0.42f, 0.09f, 1f);
         private static readonly Color ItemIdle = new Color(0.16f, 0.16f, 0.18f, 1f);
@@ -302,6 +312,71 @@ namespace VipSim.EditorTools
                               $"{ColorUtility.ToHtmlStringRGBA(Destructive)}.");
                     eimg.color = Destructive;
                     EditorUtility.SetDirty(eimg);
+                    changed++;
+                }
+            }
+
+            // --- 3a. Turn the webcam row into a readable footer control -------------
+            //
+            // Three problems at once. The label wrapped onto a second line and that line
+            // landed on top of the bottom of the effect list, so it read as broken. The
+            // prev/next arrows sat at the extreme left and right edges of a 100-wide rect
+            // that its HorizontalLayoutGroup overflowed, far away from the name they act
+            // on, so nothing suggested they were a stepper for it. And the row had no
+            // background, so it floated over whatever happened to be behind it.
+            //
+            // Sizing the rect to its contents pulls the arrows in against the label, and a
+            // surface behind it separates it from the list as a distinct footer.
+            var webcamRow = all.FirstOrDefault(g => g.name == "WebcamMenu");
+            if (webcamRow != null)
+            {
+                var wrt = webcamRow.GetComponent<RectTransform>();
+                if (wrt != null && Mathf.Abs(wrt.rect.width - WebcamRowSize.x) > 0.5f)
+                {
+                    Debug.Log($"UIREFRESH: webcam row size {wrt.rect.size} -> {WebcamRowSize}.");
+                    wrt.sizeDelta += WebcamRowSize - wrt.rect.size;
+                    EditorUtility.SetDirty(wrt);
+                    changed++;
+                }
+
+                var hlg = webcamRow.GetComponent<HorizontalLayoutGroup>();
+                if (hlg != null && (hlg.childAlignment != TextAnchor.MiddleCenter || hlg.spacing != 10f))
+                {
+                    hlg.childAlignment = TextAnchor.MiddleCenter;
+                    hlg.spacing = 10f;
+                    hlg.childForceExpandWidth = false;
+                    EditorUtility.SetDirty(hlg);
+                    changed++;
+                    Debug.Log("UIREFRESH: webcam row centred, arrows pulled in beside the name.");
+                }
+
+                // Widen the label so a typical device name fits on one line instead of
+                // wrapping into the effect list.
+                var camLabel = webcamRow.GetComponentsInChildren<Transform>(true)
+                                        .FirstOrDefault(t => t.name == "CamLabel");
+                if (camLabel != null)
+                {
+                    var crt = camLabel.GetComponent<RectTransform>();
+                    if (crt != null && Mathf.Abs(crt.rect.width - CamLabelWidth) > 0.5f)
+                    {
+                        Debug.Log($"UIREFRESH: camera label width {crt.rect.width:F0} -> {CamLabelWidth:F0}.");
+                        crt.sizeDelta = new Vector2(crt.sizeDelta.x + (CamLabelWidth - crt.rect.width), crt.sizeDelta.y);
+                        EditorUtility.SetDirty(crt);
+                        changed++;
+                    }
+                }
+
+                var bg = webcamRow.GetComponent<Image>();
+                if (bg == null)
+                {
+                    bg = webcamRow.AddComponent<Image>();
+                    Debug.Log("UIREFRESH: added a background to the webcam row so it stops floating over the list.");
+                    changed++;
+                }
+                if (bg.color != FooterSurface)
+                {
+                    bg.color = FooterSurface;
+                    EditorUtility.SetDirty(bg);
                     changed++;
                 }
             }

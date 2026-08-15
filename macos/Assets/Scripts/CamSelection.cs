@@ -65,7 +65,10 @@ public class CamSelection : MonoBehaviour
     {
         previousName = CurrentCameraName();
         if (webcamtext != null)
-            webcamtext.text = "Webcam: " + (string.IsNullOrEmpty(previousName) ? "none" : previousName);
+            // "Camera" rather than "Webcam" purely for length: the device name is often
+            // long enough to wrap onto a second line, and the second line was landing on
+            // top of the effect list above it.
+            webcamtext.text = "Camera: " + (string.IsNullOrEmpty(previousName) ? "none" : previousName);
     }
 
     private string CurrentCameraName()
