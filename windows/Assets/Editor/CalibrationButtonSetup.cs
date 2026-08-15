@@ -86,6 +86,17 @@ namespace VipSim.EditorTools
 
             var clone = Object.Instantiate(template, parent);
             clone.name = ButtonName;
+
+            // Cloning MouseEyeSwitch buys its styling, but it also drags in its
+            // behaviour: the clone carries a second SwitchInput, the component that
+            // toggles the gaze source and keeps the button's icon in sync with
+            // GazeTracker. Its onClick is replaced further down, which is enough to
+            // stop it reacting to presses but not enough to stop it acting -- it
+            // repaints its Image every frame, so it would overwrite the calibration
+            // crosshair with the eye sprite and leave two identical toolbar buttons.
+            // Strip it here so the clone inherits appearance and nothing else.
+            foreach (var stray in clone.GetComponentsInChildren<SwitchInput>(true))
+                Object.DestroyImmediate(stray);
             // Sit immediately after the gaze toggle: calibration is what you want
             // right after turning eye tracking on.
             clone.transform.SetSiblingIndex(template.transform.GetSiblingIndex() + 1);
