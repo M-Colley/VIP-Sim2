@@ -27,6 +27,10 @@ namespace VipSim.EditorTools
         // entry, and the name that appears in macOS permission prompts.
         private const string ProductName = "VIP-Sim";
 
+        // Must match the Windows project: CI enforces that the two agree, and this feeds
+        // the persistent-data and log paths on both platforms.
+        private const string CompanyName = "Zefwih";
+
         // IL2CPP gives a substantial CPU win over Mono for the per-frame effect
         // parameter syncing, and effects run every frame on the main thread, so it
         // is the right choice for release builds. It is not the default here
@@ -120,6 +124,16 @@ namespace VipSim.EditorTools
             {
                 Debug.Log($"[VipSimBuild] product name '{PlayerSettings.productName}' -> '{ProductName}'.");
                 PlayerSettings.productName = ProductName;
+            }
+
+            // companyName is not cosmetic: together with productName it forms the
+            // persistent-data and log paths, so leaving it at Unity's DefaultCompany put
+            // the macOS player log under ~/Library/Logs/DefaultCompany/VIP-Sim while every
+            // instruction pointed at Zefwih. CI also requires the two projects to agree.
+            if (PlayerSettings.companyName != CompanyName)
+            {
+                Debug.Log($"[VipSimBuild] company name '{PlayerSettings.companyName}' -> '{CompanyName}'.");
+                PlayerSettings.companyName = CompanyName;
             }
 
             var backend = Backend;
