@@ -543,6 +543,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1951aa67453c3d84189494eb997a6c08, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  image_: {fileID: 0}
   selected: {r: 1, g: 1, b: 1, a: 0.5019608}
   notSelected: {r: 0, g: 0, b: 0, a: 0.5019608}
   icon: {fileID: 114077072792280268}
@@ -1412,7 +1413,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &224696671352075658
 RectTransform:
   m_ObjectHideFlags: 0

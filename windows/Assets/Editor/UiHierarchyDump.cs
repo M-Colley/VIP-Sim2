@@ -8,66 +8,35 @@ using UnityEngine.UI;
 namespace VipSim.EditorTools
 {
     /// <summary>
-    /// Dumps the UI hierarchy with active state, screen rect and interactability.
-    ///
-    /// Placing the calibration button by reasoning about names failed three times:
-    /// WebcamMenu turned out to be a sub-menu, TitleBarB turned out to be a 51px
-    /// icon strip. Guessing at a fourth location would be the same mistake again.
-    /// This prints the ground truth instead -- which containers actually exist,
-    /// which are active, and where they sit on screen -- so the decision is made
-    /// from data rather than from names.
+    /// Prints the UI hierarchy with sizes, so layout work is done against what is
+    /// actually in the scene rather than against a guess. Blind UI editing is what
+    /// produced the earlier round of misplaced buttons.
     /// </summary>
     public static class UiHierarchyDump
     {
-        private const string ScenePath = "Assets/Scenes/VIP_SIM.unity";
-
         [MenuItem("VIP-Sim/Dump UI hierarchy")]
         public static void Dump()
         {
-            EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
-
-            var sb = new StringBuilder();
-            sb.AppendLine("UI_DUMP_BEGIN");
-
-            foreach (var canvas in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include)
-                                         .OrderBy(c => c.name))
-            {
-                sb.AppendLine($"CANVAS '{canvas.name}' active={canvas.gameObject.activeInHierarchy}");
-                Walk(canvas.transform, 1, sb);
-            }
-
-            sb.AppendLine("UI_DUMP_END");
+            var scene = EditorSceneManager.OpenScene("Assets/Scenes/VIP_SIM.unity", OpenSceneMode.Single);
+            var roots = scene.GetRootGameObjects();
+            var sb = new StringBuilder("UIDUMP\n");
+            foreach (var r in roots)
+                foreach (var c in r.GetComponentsInChildren<Canvas>(true))
+                    Walk(c.transform, 0, sb);
             Debug.Log(sb.ToString());
+            EditorApplication.Exit(0);
         }
 
         private static void Walk(Transform t, int depth, StringBuilder sb)
         {
-            // Deep hierarchies are mostly label/icon children that add noise.
-            if (depth > 4) return;
-
-            foreach (Transform child in t)
-            {
-                var go = child.gameObject;
-                var rt = child as RectTransform;
-                var btn = go.GetComponent<Button>();
-                var hasText = go.GetComponentInChildren<TMPro.TMP_Text>(true) != null;
-
-                // Only report containers and interactive things; plain images and
-                // label children are not candidate parents for a new control.
-                bool interesting = btn != null || child.childCount > 0 || hasText;
-                if (interesting)
-                {
-                    string size = rt != null ? $"{rt.rect.width:F0}x{rt.rect.height:F0}" : "-";
-                    string pos = rt != null ? $"({rt.anchoredPosition.x:F0},{rt.anchoredPosition.y:F0})" : "-";
-                    sb.AppendLine($"{new string(' ', depth * 2)}{go.name}" +
-                                  $"  active={go.activeSelf}/{go.activeInHierarchy}" +
-                                  $"  size={size} pos={pos}" +
-                                  $"  children={child.childCount}" +
-                                  (btn != null ? "  [BUTTON]" : ""));
-                }
-
-                Walk(child, depth + 1, sb);
-            }
+            if (depth > 6) return;
+            var rt = t as RectTransform;
+            string size = rt != null ? $"{rt.rect.width:F0}x{rt.rect.height:F0}@{rt.anchoredPosition.x:F0},{rt.anchoredPosition.y:F0}" : "-";
+            var bits = t.GetComponents<Component>()
+                        .Where(c => c != null && !(c is RectTransform) && !(c is CanvasRenderer))
+                        .Select(c => c.GetType().Name);
+            sb.AppendLine($"UIDUMP {new string(' ', depth * 2)}{t.name} [{size}] active={t.gameObject.activeSelf} {{{string.Join(",", bits)}}}");
+            for (int i = 0; i < t.childCount; i++) Walk(t.GetChild(i), depth + 1, sb);
         }
     }
 }
