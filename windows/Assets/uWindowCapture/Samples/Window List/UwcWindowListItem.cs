@@ -7,6 +7,11 @@ namespace uWindowCapture
 [RequireComponent(typeof(Image))]
 public class UwcWindowListItem : MonoBehaviour 
 {
+    // Cached per row. WindowIconLoader caches by executable path, but resolving a process's
+    // path opens and closes a handle, and this runs every frame for every window in the list.
+    private int _iconProcessId = -1;
+    private Texture2D _exeIcon;
+
     public Image image_;
     [SerializeField] public Color selected;
     [SerializeField] public Color notSelected;
@@ -34,7 +39,21 @@ public class UwcWindowListItem : MonoBehaviour
     {
         if (window == null) return;
 
-        if (!window.hasIconTexture && !window.isIconic) {
+        // Prefer the icon inside the owning process's executable. The window icon is 16 or
+        // 32px and is drawn here at roughly 100, so it arrives blocky, and a good number of
+        // applications register no window icon at all -- Electron ones especially -- leaving
+        // uWindowCapture to substitute a placeholder that identifies nothing. Falls through
+        // to the original behaviour whenever the executable cannot be read, which is normal
+        // for protected and elevated processes.
+        if (_iconProcessId != window.processId)
+        {
+            _iconProcessId = window.processId;
+            _exeIcon = WindowIconLoader.GetIcon(_iconProcessId);
+        }
+
+        if (_exeIcon != null) {
+            icon.texture = _exeIcon;
+        } else if (!window.hasIconTexture && !window.isIconic) {
             icon.texture = window.texture;
         } else {
             icon.texture = window.iconTexture;
