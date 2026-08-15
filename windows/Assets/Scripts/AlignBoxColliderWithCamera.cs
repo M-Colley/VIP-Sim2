@@ -1,5 +1,6 @@
 using Unity.Mathematics;
 using UnityEngine;
+using uWindowCapture;
 
 public class AlignBoxColliderWithCamera : MonoBehaviour
 {
@@ -54,48 +55,63 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         
     }
 
+    /// <summary>
+    /// Draw the captured window at 1:1, where it actually is on the desktop.
+    ///
+    /// This used to set orthographicSize from the capture plane's own bounds, which
+    /// zoomed the camera until whatever had been captured filled the display. A small
+    /// window and a maximised one both ended up full-screen -- hence "the windows are
+    /// always maximized once selected" -- and because the image was then a different size
+    /// and in a different place from the real window underneath it, nothing lined up:
+    /// the pointer sat somewhere other than the content it was over.
+    ///
+    /// The fix is to stop the camera chasing the plane. The camera is pinned to the
+    /// SCREEN, so one captured pixel is one screen pixel, and the plane is moved to the
+    /// window's real screen rectangle. Its size already follows the texture via
+    /// UwcWindowTexture's own scaling, so 1:1 falls out once the zoom is gone.
+    /// </summary>
     private void MatchPlaneToScreenSize()
     {
-        // Ensure the camera is orthographic
+        // MUST stay, and must stay unconditional. An earlier attempt guarded this behind a
+        // null check; the camera fell back to perspective, the UI smeared and the overlay
+        // disappeared completely. It is the single most load-bearing line in this file.
         camera.orthographic = true;
 
-        // Get the bounds of the BoxCollider
-        Bounds bounds = boxCollider.bounds;
+        // Guarded here and not earlier, deliberately: the line above must run on every
+        // frame regardless. The original dereferenced boxCollider unconditionally and threw
+        // once per frame until a window was picked.
+        if (boxCollider == null) return;
 
-        // Calculate the full height of the BoxCollider
-        float boxHeight = bounds.size.y;
+        var texture = GetComponentInChildren<UwcWindowTexture>();
+        var win = texture != null ? texture.window : null;
 
-        // Determine the taskbar height in pixels (you can set this value based on the screen resolution and taskbar size)
-        // Get the display information for the main display.
-        DisplayInfo mainDisplay = Screen.mainWindowDisplayInfo;
-        // Calculate the taskbar height.
-        int taskbarHeightPixels = mainDisplay.height - mainDisplay.workArea.height;
+        // Nothing captured yet, or a minimised window reporting a stale rect. Leave the
+        // camera exactly as it is: zooming to an empty or stale plane is what produced the
+        // "capture renders black" reports that sent three earlier attempts chasing geometry
+        // that was already correct.
+        if (texture == null || win == null || win.width <= 0 || win.height <= 0) return;
 
-        // Get the screen height in pixels
-        int screenHeightPixels = Screen.height;
+        // World units per captured pixel, taken from uWindowCapture's own scale so this
+        // stays correct if scalePer1000Pixel is ever changed in the inspector.
+        float unitsPerPixel = texture.scalePer1000Pixel / 1000f;
+        if (unitsPerPixel <= 0f) return;
 
-        // Calculate the height of the taskbar in world units
-        float taskbarHeightWorldUnits = (taskbarHeightPixels / (float)screenHeightPixels) * camera.orthographicSize * 2;
+        // Pin the camera to the screen rather than to the plane.
+        camera.orthographicSize = Screen.height * unitsPerPixel * 0.5f;
 
-        // Calculate the orthographic size to fit the box height and the taskbar height
-        camera.orthographicSize = (boxHeight / 2.0f) + taskbarHeightWorldUnits / 2.0f;
+        // Screen coordinates are y-down from the top-left corner of the desktop; world
+        // space is y-up from the camera's centre. Offsets are computed relative to the
+        // camera's own position, so this does not care where the rig sits in world space.
+        float dxPixels = (win.x + win.width * 0.5f) - Screen.width * 0.5f;
+        float dyPixels = Screen.height * 0.5f - (win.y + win.height * 0.5f);
 
-        // Ensure the camera's aspect ratio remains unchanged
-        float aspectRatio = camera.aspect;
+        Vector3 planePos = boxCollider.transform.position;
+        planePos.x = camera.transform.position.x + dxPixels * unitsPerPixel;
+        planePos.y = camera.transform.position.y + dyPixels * unitsPerPixel;
+        boxCollider.transform.position = planePos;
 
-        // Adjust the position of the boxCollider to account for the taskbar height
-        Vector3 newPosition = boxCollider.transform.position;
-        newPosition.y = camera.transform.position.y - (bounds.extents.y) + (taskbarHeightWorldUnits / 2.0f);
-
-        // Center the boxCollider horizontally within the camera view
-        newPosition.x = camera.transform.position.x;
-
-        // Apply the new position to the boxCollider to account for the taskbar height
-        boxCollider.transform.position = newPosition;
-
-        // Ensure the camera is centered on the object
-        camera.transform.position = new Vector3(newPosition.x, camera.transform.position.y, camera.transform.position.z);
-
-
+        // The camera is deliberately NOT moved. It used to be re-centred on the plane every
+        // frame, which is the other half of why the capture could never line up with the
+        // desktop: both the camera and the plane were chasing each other.
     }
 }
