@@ -33,7 +33,6 @@ public class GridInterpolator : ScriptableObject
 	public static double ffMin = -30;
 	public static double ffMax = 0;
 
-    alglib.rbfmodel model;
 	public double[,] xy;
 
     private static GridInterpolator instance; // Singleton instance
@@ -64,18 +63,9 @@ public class GridInterpolator : ScriptableObject
         // *5. Generate a texture using the pixel matrix, & set it as mipmapblur overlay
         //
 
-        //
-        // Step 1: RBF model creation.
-        //
-        // We have to specify dimensionality of the space (2 or 3) and
-        // dimensionality of the function (scalar or vector).
-        //
-        alglib.rbfcreate(2, 1, out model);
-
-        // i.e., What to do with points outside of measured range
-        //alglib.rbfsetzeroterm(model); // i.e., will be black (full blur)
-        //alglib.rbfsetconstterm(model); // i.e., will be average of all points
-        alglib.rbfsetlinterm(model); // default, i.e., will try to continue on edge points, but often causes a 'dip' overshoot / edge effect
+        // Model creation used to happen here, once, and be mutated later. RbfInterpolator
+        // is built per call instead: it is a pure fit over the points it is given, so
+        // there is no long-lived object to keep in sync with the current grid.
     }
     
     /*
@@ -137,6 +127,10 @@ public class GridInterpolator : ScriptableObject
         // Debugging
         //Debug.Log ("Grid array: " + xy.GetLength(0));
         
+		// The point set the surface is fitted to: either the grid as measured, or the
+		// grid plus synthesised edge points when extrapolating.
+		double[,] points;
+
 		// PJ: Trying to improve the stability at the edges by expanding outwards -- doesn't always work well however
 		if (extrapolate) {
 
@@ -198,9 +192,9 @@ public class GridInterpolator : ScriptableObject
 				ii++;
 			}
 
-			alglib.rbfsetpoints (model, xy1);
+			points = xy1;
 		} else {
-			alglib.rbfsetpoints (model, xy);
+			points = xy;
 		}
 
         //
@@ -220,30 +214,21 @@ public class GridInterpolator : ScriptableObject
         // multilayer RBF algorithm, which sometimes is a better
         // option than QNN.
         //
-        alglib.rbfreport rep;
+        // Same configuration ALGLIB was given -- rbfsetalgomultilayer(RBase 5.0, NLayers 1,
+        // LambdaV 1e-3) with a linear tail. A single layer is a single Gaussian scale, so
+        // these are the radius and regularisation directly. See RbfInterpolator for why the
+        // dependency is gone: the copy of ALGLIB here was the GPL edition and would have
+        // made the whole application GPL on distribution.
+        var model = RbfInterpolator.Build(points, radius: 5.0, lambda: 1.0e-3);
 
-        // set model type
-        //alglib.rbfsetalgoqnn(model);
-
-		// used in pilot:
-        alglib.rbfsetalgomultilayer(model, 5.0, 1, 1.0e-3); // Manual example, use 5.0+ as 2nd input param for more reasonable smoothness
-
-		// new mess:
-		//alglib.rbfsetalgomultilayer(model, 2.0, 2, 1.0e-3); // Manual example, use 5.0+ as 2nd input param for more reasonable smoothness
-
-        // build model
-        alglib.rbfbuildmodel(model, out rep);
-
-        // check built successfully
-        /*Rep.TerminationType:
-                  *-5 - non - distinct basis function centers were detected,
-                         interpolation aborted
-                  *-4 - nonconvergence of the internal SVD solver
-                  *  1 - successful termination
-        */
-        if (rep.terminationtype != 1)
+        if (model == null)
         {
-            throw new System.ArgumentException("RBF model failed to converge (could revert to some default?)");
+            // Was a thrown ArgumentException. A degenerate grid is user input -- duplicate
+            // or collinear points are easy to enter by hand -- and taking the application
+            // down over it is the wrong response for a tool used in front of participants.
+            Debug.LogError("GridInterpolator: could not fit a surface to this grid " +
+                           "(duplicate or collinear points?). Keeping the previous field.");
+            return null;
         }
 
         //
@@ -262,7 +247,9 @@ public class GridInterpolator : ScriptableObject
 
         // interp
         double[,] ff = new double[width_px, height_px];
-        alglib.rbfgridcalc2(model, xx, width_px, yy, height_px, out ff);
+        for (int ix = 0; ix < width_px; ix++)
+            for (int iy = 0; iy < height_px; iy++)
+                ff[ix, iy] = model.Evaluate(xx[ix], yy[iy]);
 
         // Debugging
         /*
