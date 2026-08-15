@@ -105,13 +105,23 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         float dxPixels = (win.x + win.width * 0.5f) - Screen.width * 0.5f;
         float dyPixels = Screen.height * 0.5f - (win.y + win.height * 0.5f);
 
-        Vector3 planePos = boxCollider.transform.position;
-        planePos.x = camera.transform.position.x + dxPixels * unitsPerPixel;
-        planePos.y = camera.transform.position.y + dyPixels * unitsPerPixel;
-        boxCollider.transform.position = planePos;
-
-        // The camera is deliberately NOT moved. It used to be re-centred on the plane every
-        // frame, which is the other half of why the capture could never line up with the
-        // desktop: both the camera and the plane were chasing each other.
+        // Move the CAMERA, not the plane.
+        //
+        // The first version of this set boxCollider.transform.position and had no effect
+        // whatsoever: UwcWindowTexture owns the textured quad's transform, driving its
+        // scale from the texture and holding its position, so anything written there is
+        // overwritten. The diagnostic made it obvious -- planeScale tracked the window size
+        // exactly (1908x1092 px -> 1.91x1.09 world units, so the 1:1 scale was already
+        // right) while planeWorld stayed at the origin no matter what the window did.
+        //
+        // Offsetting the camera by the same amount in the opposite direction puts the plane
+        // where it belongs on screen without fighting uWindowCapture for ownership of a
+        // transform it manages. Read from the plane's ACTUAL position rather than assuming
+        // the origin, so this keeps working if uWindowCapture ever starts placing it.
+        Vector3 planePos = texture.transform.position;
+        Vector3 camPos = camera.transform.position;
+        camPos.x = planePos.x - dxPixels * unitsPerPixel;
+        camPos.y = planePos.y - dyPixels * unitsPerPixel;
+        camera.transform.position = camPos;
     }
 }
