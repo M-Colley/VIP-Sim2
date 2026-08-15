@@ -25,6 +25,30 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         MatchPlaneToScreenSize();   
     }
 
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct RECT { public int left, top, right, bottom; }
+
+    private const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
+
+    [System.Runtime.InteropServices.DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(System.IntPtr hwnd, int attr,
+                                                    out RECT value, int size);
+
+    /// <summary>
+    /// The window's painted bounds, excluding the invisible resize border that
+    /// GetWindowRect reports. Returns false on anything unexpected so the caller falls
+    /// back to the reported rect rather than placing the capture at (0,0).
+    /// </summary>
+    private static bool TryGetVisibleBounds(System.IntPtr hwnd, out RECT bounds)
+    {
+        bounds = default;
+        if (hwnd == System.IntPtr.Zero) return false;
+
+        int hr = DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS,
+                                       out bounds, System.Runtime.InteropServices.Marshal.SizeOf(typeof(RECT)));
+        return hr == 0 && bounds.right > bounds.left && bounds.bottom > bounds.top;
+    }
+
     void FindBoxCollider()
     {
         // Find the BoxCollider in the child objects
@@ -99,11 +123,28 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         // Pin the camera to the screen rather than to the plane.
         camera.orthographicSize = Screen.height * unitsPerPixel * 0.5f;
 
+        // Prefer DWM's extended frame bounds over the reported window rect.
+        //
+        // GetWindowRect, which is what the window rect ultimately comes from, includes the
+        // invisible resize border Windows keeps outside the painted frame -- roughly 7-8px
+        // per side on Windows 10/11, and not drawn. Aligning to it leaves the capture
+        // offset by exactly that much, which is the small residual misalignment that
+        // remained after the placement itself was correct. DWMWA_EXTENDED_FRAME_BOUNDS
+        // returns the bounds actually painted on screen.
+        float wx = win.x, wy = win.y, ww = win.width, wh = win.height;
+        if (TryGetVisibleBounds(win.handle, out RECT visible))
+        {
+            wx = visible.left;
+            wy = visible.top;
+            ww = visible.right - visible.left;
+            wh = visible.bottom - visible.top;
+        }
+
         // Screen coordinates are y-down from the top-left corner of the desktop; world
         // space is y-up from the camera's centre. Offsets are computed relative to the
         // camera's own position, so this does not care where the rig sits in world space.
-        float dxPixels = (win.x + win.width * 0.5f) - Screen.width * 0.5f;
-        float dyPixels = Screen.height * 0.5f - (win.y + win.height * 0.5f);
+        float dxPixels = (wx + ww * 0.5f) - Screen.width * 0.5f;
+        float dyPixels = Screen.height * 0.5f - (wy + wh * 0.5f);
 
         // Move the CAMERA, not the plane.
         //
