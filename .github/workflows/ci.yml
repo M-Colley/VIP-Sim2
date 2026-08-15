@@ -166,7 +166,12 @@ jobs:
             echo "Unity credentials present; tests and builds will run."
           else
             echo "has_licence=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::No Unity licence configured, so the Unity test and build jobs are skipped. Add UNITY_LICENSE (or UNITY_EMAIL + UNITY_PASSWORD) as repository secrets to enable them. See https://game.ci/docs/github/activation"
+            # Warning, not notice, and worded so the consequence is unmissable. A green
+            # tick on this workflow currently means the repository invariants hold -- it
+            # does NOT mean either project compiles, because the jobs that would establish
+            # that are skipped. A notice is easy to miss on an otherwise-green run, and
+            # mistaking one for the other is exactly the failure this should prevent.
+            echo "::warning title=Unity jobs skipped -- nothing was compiled::No Unity licence is configured, so the build and EditMode test jobs did not run. A green result here means the repository invariants passed, NOT that the projects build. Add UNITY_LICENSE (or UNITY_EMAIL + UNITY_PASSWORD) as repository secrets to enable them. See https://game.ci/docs/github/activation"
           fi
 
   # ---------------------------------------------------------------------------

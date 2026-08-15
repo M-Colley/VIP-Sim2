@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Entitlements for the hardened runtime, which notarisation requires.
+
+  Each of these is here because VIP-Sim stops working without it, not as a precaution:
+
+  - com.apple.security.device.camera
+      The gaze tracker drives the webcam. Without this the hardened runtime denies access
+      and eye tracking silently falls back to the mouse.
+
+  - allow-jit / allow-unsigned-executable-memory / disable-executable-page-protection
+      Unity's Mono runtime generates code at runtime. Under the hardened runtime, without
+      these the signed app crashes on launch rather than failing at signing time, which is
+      a considerably harder failure to diagnose.
+
+  - com.apple.security.cs.disable-library-validation
+      Unity loads its own unsigned-by-Apple plug-in dylibs from inside the bundle.
+
+  Screen Recording is deliberately NOT here: it is a TCC privacy permission granted by the
+  user in System Settings, not an entitlement, and cannot be pre-authorised by signing.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.device.camera</key>
+    <true/>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-executable-page-protection</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>
