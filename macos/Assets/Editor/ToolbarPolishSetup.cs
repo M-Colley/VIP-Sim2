@@ -102,6 +102,24 @@ namespace VipSim.EditorTools
                         Debug.Log($"TOOLBAR_POLISH: icon set on '{target.gameObject.name}'.");
                     }
                 }
+
+                // Setting the sprite is not enough on its own. CalibrateGazeButton is a
+                // clone of MouseEyeSwitch, so it inherited that button's SwitchInput
+                // component along with the styling that made cloning worthwhile. That was
+                // harmless while SwitchInput only acted when clicked -- this button's
+                // onClick is rebound to StartCalibration, so it never fired. Once
+                // SwitchInput began keeping the icon in sync with GazeTracker every frame,
+                // the stray copy woke up and started driving THIS button's Image as well,
+                // repainting the crosshair with the eye sprite as soon as the scene loaded.
+                // Both toolbar buttons then showed the same icon. A component does not
+                // need a click binding to do damage.
+                foreach (var stray in calib.GetComponentsInChildren<SwitchInput>(true))
+                {
+                    Debug.Log($"TOOLBAR_POLISH: removing inherited SwitchInput from " +
+                              $"'{stray.gameObject.name}'; it was overwriting the calibration icon.");
+                    Object.DestroyImmediate(stray);
+                    changed++;
+                }
             }
 
             // --- 2. Make the button row fit its buttons -------------------------

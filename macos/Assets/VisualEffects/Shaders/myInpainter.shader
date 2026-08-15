@@ -46,8 +46,14 @@ Shader "Hidden/VisSim/myInpainter"
 		float2 degcoords = i.uv - mouseOffset;
 		degcoords = degcoords*.5 + .25; // map 0-1 to 0.25-0.75 (i.e., since deg tex is twice as big) [this has to be a hack! must be a better way of doing this...)
 
-										// is this necessary???
-		degcoords = UnityStereoScreenSpaceUVAdjust(degcoords, _Overlay_ST);
+			// The stereo UV adjust that used to be here ("is this necessary???" -- no) was
+		// left over from the FOVE VR rig and referred to _Overlay_ST, a scale/offset
+		// for an _Overlay texture that this shader does not have and never declared.
+		// It therefore failed to compile outright:
+		//   undeclared identifier '_Overlay_ST'
+		// so Inpainting was not a subtly wrong effect, it was a shader that did not
+		// exist at runtime. VIP-Sim renders single-pass to a desktop window, so there
+		// is no stereo eye to adjust for and the call has simply been dropped.
 
 		float4 offsetX = tex2D(_OffsetTextureX, degcoords);
 		float4 offsetY = tex2D(_OffsetTextureY, degcoords);
@@ -83,8 +89,8 @@ Shader "Hidden/VisSim/myInpainter"
 		float2 degcoords = i.uv - mouseOffset;
 		degcoords = degcoords*.5 + .25; // map 0-1 to 0.25-0.75 (i.e., since deg tex is twice as big) [this has to be a hack! must be a better way of doing this...)
 
-		// is this necessary???
-		degcoords = UnityStereoScreenSpaceUVAdjust(degcoords, _Overlay_ST);
+		// Dropped for the same reason as in frag_inpaint above: dead FOVE-era stereo
+		// code referencing an _Overlay_ST this shader never declared.
 
 		float4 warpEdges = tex2D(_BlurTexture, degcoords);
 
@@ -122,8 +128,8 @@ Shader "Hidden/VisSim/myInpainter"
 		float2 degcoords = i.uv - mouseOffset;
 		degcoords = degcoords*.5 + .25; // map 0-1 to 0.25-0.75 (i.e., since deg tex is twice as big) [this has to be a hack! must be a better way of doing this...)
 
-		// is this necessary???
-		degcoords = UnityStereoScreenSpaceUVAdjust(degcoords, _Overlay_ST);
+		// Dropped for the same reason as in frag_inpaint above: dead FOVE-era stereo
+		// code referencing an _Overlay_ST this shader never declared.
 
 		float4 warpEdges = tex2D(_BlurTexture, degcoords);
 

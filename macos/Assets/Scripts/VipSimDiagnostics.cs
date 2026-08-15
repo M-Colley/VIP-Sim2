@@ -50,6 +50,14 @@ public class VipSimDiagnostics : MonoBehaviour
              "look at the output. This captures the overlay's own framebuffer.")]
     public KeyCode screenshotKey = KeyCode.F6;
 
+    [Tooltip("Measure the alpha channel of the finished framebuffer.\n\n" +
+             "VIP-Sim composites through DWM (DwmExtendFrameIntoClientArea with a sheet-of-glass " +
+             "margin), so a pixel is only visible on the desktop if its ALPHA is non-zero. RGB can " +
+             "be perfectly correct and the overlay still be invisible. Nothing about that is " +
+             "observable from a normal screenshot, so this reads the backbuffer back and reports " +
+             "the alpha distribution alongside the list of enabled effects.")]
+    public KeyCode alphaProbeKey = KeyCode.F8;
+
     [Tooltip("Draw the overlay. Off by default: this is an IMGUI overlay and, like " +
              "UnitEye's debug drawing, it paints over the simulation.")]
     public bool showOverlay = false;
@@ -138,6 +146,8 @@ public class VipSimDiagnostics : MonoBehaviour
             Debug.Log($"[VipSimDiagnostics] SHOT {path}");
         }
 
+        if (Input.GetKeyDown(alphaProbeKey) && !_alphaProbeRunning) StartCoroutine(ProbeBackbufferAlpha());
+
         _frameMs[_frameIdx] = Time.unscaledDeltaTime * 1000f;
         _frameIdx = (_frameIdx + 1) % Window;
         if (_frameCount < Window) _frameCount++;
@@ -149,6 +159,53 @@ public class VipSimDiagnostics : MonoBehaviour
             _nextLog = Time.unscaledTime + logIntervalSeconds;
             Debug.Log("[VipSimDiagnostics] " + BuildReport().Replace('\n', ' '));
         }
+    }
+
+    private bool _alphaProbeRunning;
+
+    /// <summary>
+    /// Read the finished framebuffer back and report its alpha distribution.
+    ///
+    /// The overlay is composited by DWM from the window's own per-pixel alpha, so
+    /// alpha is what decides whether anything reaches the screen -- and it is the
+    /// one channel a screenshot of the app cannot tell you about. Reported next to
+    /// the enabled-effect list so a "works only alongside another effect" report
+    /// can be checked rather than reasoned about.
+    /// </summary>
+    private System.Collections.IEnumerator ProbeBackbufferAlpha()
+    {
+        _alphaProbeRunning = true;
+        yield return new WaitForEndOfFrame();
+
+        int w = Screen.width, h = Screen.height;
+        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+        tex.Apply();
+
+        var px = tex.GetPixels32();
+        long transparent = 0, partial = 0, opaque = 0, alphaSum = 0;
+        for (int i = 0; i < px.Length; i++)
+        {
+            byte a = px[i].a;
+            alphaSum += a;
+            if (a < 13) transparent++;
+            else if (a > 242) opaque++;
+            else partial++;
+        }
+        Destroy(tex);
+
+        double n = px.Length;
+        var effects = FindObjectsByType<VisSim.LinkableBaseEffect>(FindObjectsSortMode.None);
+        var on = new System.Collections.Generic.List<string>();
+        foreach (var e in effects)
+            if (e.enabled) on.Add(e.GetType().Name + (e.gameObject.tag == "LeftEye" ? "(L)" : "(R)"));
+        on.Sort();
+
+        Debug.Log($"[VipSimDiagnostics] ALPHA {w}x{h} mean={alphaSum / n / 255.0:F3} " +
+                  $"transparent={transparent / n:P1} partial={partial / n:P1} opaque={opaque / n:P1} " +
+                  $"| enabled({on.Count}): {(on.Count == 0 ? "-" : string.Join(",", on))}");
+
+        _alphaProbeRunning = false;
     }
 
     /// <summary>

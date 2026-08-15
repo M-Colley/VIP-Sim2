@@ -15523,6 +15523,8 @@ MonoBehaviour:
   toggleKey: 291
   benchmarkKey: 292
   quitKey: 293
+  screenshotKey: 287
+  alphaProbeKey: 289
   showOverlay: 0
   logIntervalSeconds: 5
 --- !u!114 &1461121527
@@ -17265,6 +17267,7 @@ MonoBehaviour:
   maincam: {fileID: 858823455}
   canvasRectTransform: {fileID: 858849877778733347}
   panelRectTransform: {fileID: 8434332443454203675}
+  forceFullScreenOverlay: 1
 --- !u!4 &1708510701
 Transform:
   m_ObjectHideFlags: 0
@@ -17674,7 +17677,6 @@ GameObject:
   - component: {fileID: 1791315063}
   - component: {fileID: 1791315062}
   - component: {fileID: 1791315061}
-  - component: {fileID: 1791315060}
   - component: {fileID: 1791315064}
   m_Layer: 5
   m_Name: CalibrateGazeButton
@@ -17703,23 +17705,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 60, y: 55}
   m_Pivot: {x: 1, y: 1}
---- !u!114 &1791315060
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1791315058}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7771feecd700472419cb7180bb2a8716, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _spriteMouse: {fileID: 21300000, guid: b91d0893b75e5b543894877b8cbee22a, type: 3}
-  _spriteEye: {fileID: 21300000, guid: 6ce3d4f80172ce54b92fb27c2f8e2bdc, type: 3}
-  _image: {fileID: 1791315062}
-  _tracker: {fileID: 1461121524}
-  logger: {fileID: 748001732}
 --- !u!114 &1791315061
 MonoBehaviour:
   m_ObjectHideFlags: 0

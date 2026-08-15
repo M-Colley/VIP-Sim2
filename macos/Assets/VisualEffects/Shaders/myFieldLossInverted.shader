@@ -18,7 +18,11 @@
         Cull Back
         Lighting Off
         Tags { "Queue"="Overlay+1" "RenderType"="Transparent" "IgnoreProjector"="True"}
-        Blend SrcAlpha OneMinusSrcAlpha
+        // Must be Blend Off -- see the note in myFieldLoss.shader. An image-effect blit
+        // replaces its target; alpha-blending it made output alpha a^2 against VIP-Sim's
+        // transparent backbuffer, so the effect vanished unless another effect happened to
+        // follow it in the chain and give it an opaque intermediate to blit into.
+        Blend Off
         ZWrite Off
 
         Pass

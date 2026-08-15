@@ -45,7 +45,12 @@ Shader "Hidden/VisSim/myGlitch"
 					float g = tex2D(_MainTex, i.uv + half2(displaceNoise * 0.05 * rand(7.0), 0.0)).g;
 					float b = tex2D(_MainTex, i.uv - half2(displaceNoise * 0.05 * rand(13.0), 0.0)).b;
 
-					return half4(r, g, b, 1.0);
+					// Glitch displaces the colour channels against each other; alpha is not
+					// a colour channel. Hardcoding it to 1 made every pixel fully opaque,
+					// so switching Glitch on turned the overlay into a solid rectangle and
+					// blacked out the desktop behind it instead of disturbing the image.
+					float a = tex2D(_MainTex, i.uv).a;
+					return half4(r, g, b, a);
 				}
 
 			ENDCG

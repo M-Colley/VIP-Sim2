@@ -21,8 +21,17 @@
         Cull Back
         Lighting Off
         Tags { "Queue"="Overlay+1" "RenderType"="Transparent" "IgnoreProjector"="True"}
-        Blend SrcAlpha OneMinusSrcAlpha
-        //Blend DstAlpha OneMinusDstAlpha
+        // Must be Blend Off: this is a full-screen image effect, so the blit REPLACES
+        // the target rather than compositing onto it. With SrcAlpha OneMinusSrcAlpha the
+        // output alpha became a*a + dst.a*(1-a), which made the effect depend on whatever
+        // happened to be in the destination. VIP-Sim is composited by DWM from the
+        // window's own per-pixel alpha, so when this was the only enabled effect it blitted
+        // into the fresh, fully transparent backbuffer, the (1-a) term vanished, and alpha
+        // collapsed to a^2 -- the whole simulation disappeared. Enabling a second effect
+        // moved this blit into an intermediate RenderTexture whose alpha was already ~1,
+        // which restored the missing term and made it look like the effect only worked in
+        // company. Measured, before: a=0.25 out 0.07, a=0.51 out 0.26, a=0.89 out 0.79.
+        Blend Off
         ZWrite Off
 
         Pass
