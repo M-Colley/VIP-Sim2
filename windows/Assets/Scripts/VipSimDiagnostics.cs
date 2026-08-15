@@ -122,6 +122,14 @@ public class VipSimDiagnostics : MonoBehaviour
         Debug.Log($"[VipSimDiagnostics] {toggleKey}=overlay  {benchmarkKey}=effect benchmark  " +
                   $"{quitKey}=quit  F9=gaze calibration");
         StartCoroutine(DumpButtonRectsOnce());
+
+        // Crash reporting. VIP-Sim is a borderless always-on-top overlay with no console,
+        // usually running in front of a participant, and the player log is buried under
+        // AppData -- so an exception currently disappears silently and the session is just
+        // "it stopped working". Exceptions and errors are mirrored to a plain text file
+        // next to the log, with a timestamp and stack, so a failed session leaves something
+        // legible to send back.
+        Application.logMessageReceived += OnLogMessage;
     }
 
     /// <summary>
@@ -154,6 +162,7 @@ public class VipSimDiagnostics : MonoBehaviour
     {
         if (_mainThread.Valid) _mainThread.Dispose();
         if (_drawCalls.Valid) _drawCalls.Dispose();
+        Application.logMessageReceived -= OnLogMessage;
     }
 
     private void Update()
@@ -296,6 +305,35 @@ public class VipSimDiagnostics : MonoBehaviour
                       $"ortho={c.orthographic} size={c.orthographicSize:F3} clear={c.clearFlags} " +
                       $"bg=({bg.r:F2},{bg.g:F2},{bg.b:F2},a={bg.a:F2}) " +
                       $"target={c.targetTexture?.name ?? "backbuffer"} cull=0x{c.cullingMask:X}");
+        }
+    }
+
+    private static int _crashesLogged;
+
+    /// <summary>
+    /// Mirror exceptions and errors to a file the user can actually find and send.
+    /// Capped, because a per-frame exception would otherwise fill the disk -- and a
+    /// per-frame exception is exactly the failure mode most likely to occur here, since
+    /// effects run their OnRenderImage every frame.
+    /// </summary>
+    private void OnLogMessage(string condition, string stackTrace, LogType type)
+    {
+        if (type != LogType.Exception && type != LogType.Error) return;
+        if (_crashesLogged >= 50) return;
+        _crashesLogged++;
+
+        try
+        {
+            var path = System.IO.Path.Combine(Application.persistentDataPath, "vipsim-errors.log");
+            System.IO.File.AppendAllText(path,
+                $"[{System.DateTime.Now:yyyy-MM-dd HH:mm:ss}] {type}: {condition}\n{stackTrace}\n");
+            if (_crashesLogged == 50)
+                System.IO.File.AppendAllText(path, "--- further errors suppressed this session ---\n");
+        }
+        catch
+        {
+            // Never let the error reporter become the error. If the file cannot be written
+            // the player log still has everything; losing the mirror is not worth a crash.
         }
     }
 

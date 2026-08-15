@@ -122,6 +122,14 @@ public class VipSimDiagnostics : MonoBehaviour
         Debug.Log($"[VipSimDiagnostics] {toggleKey}=overlay  {benchmarkKey}=effect benchmark  " +
                   $"{quitKey}=quit  F9=gaze calibration");
         StartCoroutine(DumpButtonRectsOnce());
+
+        // Crash reporting. VIP-Sim is a borderless always-on-top overlay with no console,
+        // usually running in front of a participant, and the player log is buried under
+        // AppData -- so an exception currently disappears silently and the session is just
+        // "it stopped working". Exceptions and errors are mirrored to a plain text file
+        // next to the log, with a timestamp and stack, so a failed session leaves something
+        // legible to send back.
+        Application.logMessageReceived += OnLogMessage;
     }
 
     /// <summary>
@@ -154,6 +162,7 @@ public class VipSimDiagnostics : MonoBehaviour
     {
         if (_mainThread.Valid) _mainThread.Dispose();
         if (_drawCalls.Valid) _drawCalls.Dispose();
+        Application.logMessageReceived -= OnLogMessage;
     }
 
     private void Update()
@@ -195,6 +204,20 @@ public class VipSimDiagnostics : MonoBehaviour
         {
             _nextLog = Time.unscaledTime + logIntervalSeconds;
             Debug.Log("[VipSimDiagnostics] " + BuildReport().Replace('\n', ' '));
+
+            // Capture placement goes in the periodic report, not only behind the hotkey.
+            // VIP-Sim is click-through and therefore almost never the foreground window, so
+            // Input.GetKeyDown never fires for it -- pressing F8 sends the key to whatever
+            // the user is actually working in. A diagnostic that cannot be triggered is not
+            // a diagnostic. This costs one line every logIntervalSeconds and only prints
+            // when a window is genuinely being captured.
+            LogCapturePlacement();
+            LogCameras();
+
+            // Alpha in the periodic report as well as on F8. Alpha decides whether the
+            // overlay is visible at all, and the hotkey only fires when the overlay holds
+            // focus -- which, being click-through, it almost never does.
+            if (!_alphaProbeRunning) StartCoroutine(ProbeBackbufferAlpha());
         }
     }
 
@@ -222,6 +245,96 @@ public class VipSimDiagnostics : MonoBehaviour
                   $"dpi={Screen.dpi:F0} fullscreen={Screen.fullScreenMode} " +
                   $"xy_norm=({norm.x:F3},{norm.y:F3}) " +
                   $"-> expected pixel=({norm.x * Screen.width:F0},{norm.y * Screen.height:F0})");
+
+        LogCapturePlacement();
+    }
+
+    /// <summary>
+    /// Report every number the 1:1 capture placement depends on.
+    ///
+    /// The capture is drawn at the right SIZE but in the wrong PLACE, which narrows the
+    /// fault to the screen-to-world conversion. Logging the window's reported desktop
+    /// rectangle next to the resulting world position makes the discrepancy measurable:
+    /// if win.x/y do not match where the window visibly is, uWindowCapture is reporting a
+    /// different rectangle than expected (frame borders, DPI space, or multi-monitor
+    /// origin); if they do match, the error is in the conversion or in the plane's pivot.
+    /// </summary>
+    private void LogCapturePlacement()
+    {
+        foreach (var t in FindObjectsByType<uWindowCapture.UwcWindowTexture>(FindObjectsInactive.Include))
+        {
+            var w = t.window;
+            if (w == null) continue;
+
+            float upp = t.scalePer1000Pixel / 1000f;
+            float dx = (w.x + w.width * 0.5f) - Screen.width * 0.5f;
+            float dy = Screen.height * 0.5f - (w.y + w.height * 0.5f);
+
+            Debug.Log($"[VipSimDiagnostics] CAPTURE '{w.title}' rect=({w.x},{w.y},{w.width}x{w.height}) " +
+                      $"screen={Screen.width}x{Screen.height} unitsPerPixel={upp:F5} " +
+                      $"deltaPx=({dx:F0},{dy:F0}) planeWorld={t.transform.position} " +
+                      $"planeScale={t.transform.lossyScale} camOrtho={Camera.main?.orthographicSize:F3}");
+        }
+    }
+
+    /// <summary>
+    /// Report every enabled camera in render order, with the properties that decide what
+    /// reaches the backbuffer.
+    ///
+    /// VIP-Sim carries two full-screen cameras from the retired stereo rig, and they were
+    /// both at depth 0 -- so which one wrote the backbuffer last was undefined. Each also
+    /// CLEARS, so whichever renders second wipes the first; only one of them can actually
+    /// be contributing. Establishing which, and what its clear does to alpha, is the
+    /// prerequisite for deleting the other, and it cannot be settled by reading the scene:
+    /// disabling the seemingly-redundant camera removed the overlay entirely, which is the
+    /// opposite of what the code structure implies.
+    ///
+    /// Clear flags: 1 Skybox, 2 SolidColor, 3 Depth, 4 Nothing. A Skybox clear is opaque,
+    /// which on an alpha-composited overlay is a very different thing from a SolidColor
+    /// clear at alpha 0.
+    /// </summary>
+    private void LogCameras()
+    {
+        var cams = FindObjectsByType<Camera>(FindObjectsInactive.Include);
+        System.Array.Sort(cams, (a, b) => a.depth.CompareTo(b.depth));
+
+        foreach (var c in cams)
+        {
+            var bg = c.backgroundColor;
+            Debug.Log($"[VipSimDiagnostics] CAMERA '{c.name}' enabled={c.enabled} depth={c.depth:F1} " +
+                      $"ortho={c.orthographic} size={c.orthographicSize:F3} clear={c.clearFlags} " +
+                      $"bg=({bg.r:F2},{bg.g:F2},{bg.b:F2},a={bg.a:F2}) " +
+                      $"target={c.targetTexture?.name ?? "backbuffer"} cull=0x{c.cullingMask:X}");
+        }
+    }
+
+    private static int _crashesLogged;
+
+    /// <summary>
+    /// Mirror exceptions and errors to a file the user can actually find and send.
+    /// Capped, because a per-frame exception would otherwise fill the disk -- and a
+    /// per-frame exception is exactly the failure mode most likely to occur here, since
+    /// effects run their OnRenderImage every frame.
+    /// </summary>
+    private void OnLogMessage(string condition, string stackTrace, LogType type)
+    {
+        if (type != LogType.Exception && type != LogType.Error) return;
+        if (_crashesLogged >= 50) return;
+        _crashesLogged++;
+
+        try
+        {
+            var path = System.IO.Path.Combine(Application.persistentDataPath, "vipsim-errors.log");
+            System.IO.File.AppendAllText(path,
+                $"[{System.DateTime.Now:yyyy-MM-dd HH:mm:ss}] {type}: {condition}\n{stackTrace}\n");
+            if (_crashesLogged == 50)
+                System.IO.File.AppendAllText(path, "--- further errors suppressed this session ---\n");
+        }
+        catch
+        {
+            // Never let the error reporter become the error. If the file cannot be written
+            // the player log still has everything; losing the mirror is not worth a crash.
+        }
     }
 
     private bool _alphaProbeRunning;

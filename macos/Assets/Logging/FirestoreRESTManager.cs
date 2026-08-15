@@ -34,6 +34,14 @@ public class FirestoreRESTManager : MonoBehaviour
     /// <summary>Whether study instrumentation is active, for UI that shows/hides the questionnaire.</summary>
     public bool QuestionnaireEnabled => enableSessionQuestionnaire;
 
+    [Tooltip("Upload session data to the remote endpoint. OFF by default, deliberately.\n\n" +
+             "VIP-Sim records which programs were captured, which impairments were enabled and " +
+             "at what severity, and free-text feedback; the app also drives a webcam for gaze " +
+             "tracking. Sending that anywhere needs a lawful basis, a privacy notice and " +
+             "recorded consent, and must never happen silently. Switch this on only once " +
+             "participants have actually consented.")]
+    [SerializeField] private bool telemetryEnabled = false;
+
     [Tooltip("Optional. The questionnaire panel, hidden automatically when the " +
              "questionnaire is disabled so the end-of-session button just exits.")]
     [SerializeField] private GameObject questionnairePanel;
@@ -199,6 +207,25 @@ public class FirestoreRESTManager : MonoBehaviour
 
     private IEnumerator SendSessionDataToFirestore(string jsonData)
     {
+        // Consent gate. Off unless explicitly switched on.
+        //
+        // This is the single point at which session data leaves the machine, so it is the
+        // right place to enforce it: everything upstream only accumulates in memory.
+        //
+        // VIP-Sim records which programs were captured, which impairments were enabled and
+        // at what severity, plus free-text feedback, and the app also drives a webcam for
+        // gaze tracking. For a research instrument used with participants -- let alone a
+        // product sold in the EU -- that needs a lawful basis, a privacy notice and a
+        // recorded consent, and it must not happen silently by default. Defaulting to off
+        // is the part that can be decided in code; the rest is a policy question for
+        // whoever runs the study or ships the product.
+        if (!telemetryEnabled)
+        {
+            Debug.Log("[Telemetry] Session upload skipped: telemetry is disabled. " +
+                      "Enable it on FirestoreRESTManager only once participants have consented.");
+            yield break;
+        }
+
         string url = $"ANON";
 
         var requestBody = new
