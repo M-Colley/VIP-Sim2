@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -36,7 +36,7 @@ namespace VipSim.EditorTools
         //
         // The emptiness is removed instead by growing the window list to fill the panel,
         // which also means more windows are visible without scrolling.
-        private const float PanelHeight = 1240f;
+        private static float PanelHeight => Theme.panelHeight;
 
         // 374, the original. Do not grow this. The area below the window list is where
         // VerticalMenu, the effect list, is drawn, and BOTH lists are on screen at once
@@ -50,11 +50,19 @@ namespace VipSim.EditorTools
         // genuinely fit its content needs the two lists to resize against each other at
         // runtime, which is a real change and should be done with the effect list visible
         // on screen, not inferred from a pre-selection screenshot.
-        private const float WindowListHeight = 374f;
+        private static float WindowListHeight => Theme.windowListHeight;
 
         // Only the coordinate strip, NOT its parent "Window Info" -- that also holds the
         // window's Title, and hiding the whole block left cards showing a bare icon with
         // no way to tell which window was which.
+        // Layout and colour values now live in a VipSimUiTheme asset rather than as
+        // constants here. This script mutates the scene; having the values it applies also
+        // live in C# meant the asset and the code drifted, and changing a colour required a
+        // recompile. LoadOrDefault falls back to the defaults on a checkout where no asset
+        // has been created yet, so this keeps working either way.
+        private static VipSimUiTheme _theme;
+        private static VipSimUiTheme Theme => _theme != null ? _theme : (_theme = VipSimUiTheme.LoadOrDefault());
+
         private const string DebugRowName = "Window Position and Scale";
 
         // The webcam row was already anchored bottom-centre; its x of -240 is load-bearing
@@ -65,8 +73,8 @@ namespace VipSim.EditorTools
         // 100-wide rect whose HorizontalLayoutGroup overflowed rightwards; now the rect is
         // sized to its contents, the same offset pushed the whole control off the left edge
         // of the panel. A correctly sized row just centres.
-        private const float WebcamX = 0f;
-        private const float WebcamBottomInset = 34f;
+        private static float WebcamX => Theme.webcamX;
+        private static float WebcamBottomInset => Theme.webcamBottomInset;
 
         // 44x36 rather than the original 35x32, and nudged right to 105. The Enable bar is
         // 230 wide centred at -35, so it ends at +80: a 50-wide gear left at x=95 would
@@ -76,8 +84,8 @@ namespace VipSim.EditorTools
         // easier pointer target without needing extra spacing between rows -- and it was
         // that extra spacing which pushed the 18-row list past the bottom of the panel and
         // over the webcam controls.
-        private static readonly Vector2 GearSize = new Vector2(44f, 32f);
-        private const float GearX = 105f;
+        private static Vector2 GearSize => Theme.gearSize;
+        private static float GearX => Theme.gearX;
 
         // Spacing here is NEGATIVE and has to stay that way. Each effect row is a 100-tall
         // RectTransform carrying about 32px of visible content, so the layout group pulls
@@ -85,21 +93,21 @@ namespace VipSim.EditorTools
         // would have made the step 112 and stretched an 18-row list to roughly 2000px.
         // -54 gives a 46px step: 7px more air than before, which is what the 36-tall gear
         // needs, without touching the rest of the geometry.
-        private const float RowSpacing = -61f;
+        private static float RowSpacing => Theme.rowSpacing;
 
         // 155 originally, which put the sliders' handles over the gears. +35 is roughly one
         // handle radius; deliberately small, because the panel is only 625 wide and the
         // settings content already reaches close to its right edge.
-        private const float SettingsPanelX = 190f;
+        private static float SettingsPanelX => Theme.settingsPanelX;
         // 16 originally. -18 was tried and is far too tight: these rows are around 60 tall,
         // so a negative gap overlapped the labels with the sliders above them and the panel
         // became unreadable. 2 keeps every row clear while still saving about 14px each,
         // which is roughly one extra control visible on a six-parameter effect.
-        private const float SettingsSpacing = 2f;
+        private static float SettingsSpacing => Theme.settingsSpacing;
         // Back to the original 349. Narrowing this container was the wrong lever and did
         // nothing: the sliders are not stretched to it. Their width is set explicitly in
         // DropdownManager when they are constructed, which is what ItemWidth below fixes.
-        private const float SettingsPanelWidth = 349f;
+        private static float SettingsPanelWidth => Theme.settingsPanelWidth;
 
         // DropdownManager.itemWidth, the explicit width every runtime-built slider and
         // dropdown is given. 200 ran them past the right edge of the panel; 150 leaves a
@@ -107,27 +115,27 @@ namespace VipSim.EditorTools
         // to resize, because the widgets do not exist until the effect's settings open.
         // 300 in the scene originally, which overran the panel edge; 150 was too far the
         // other way and left the sliders stubby. 220 fits inside the panel with a margin.
-        private const float ItemWidth = 220f;
+        private static float ItemWidth => Theme.itemWidth;
 
         // Idle stays at full brightness. Dimming it was tried and is wrong: the gears are
         // already easy to miss, and knocking all sixteen back to 55% made the control less
         // discoverable to fix a problem with the state that only one of them is ever in.
         // The open one is separated by HUE instead -- a saturated amber against the pale
         // idle sprite, which differs in colour and value at once and needs no new art.
-        private static readonly Color GearIdle = Color.white;
-        private static readonly Color GearActive = new Color(1f, 0.58f, 0.11f, 1f);
+        private static Color GearIdle => Theme.gearIdle;
+        private static Color GearActive => Theme.gearActive;
 
         // Wide enough for a real device name on one line -- "HD Pro Webcam C920" still
         // wrapped at 290, and the second line is what collided with the effect list.
-        private static readonly Vector2 WebcamRowSize = new Vector2(500f, 62f);
-        private const float CamLabelWidth = 360f;
-        private static readonly Color FooterSurface = new Color(0.13f, 0.13f, 0.15f, 1f);
+        private static Vector2 WebcamRowSize => Theme.webcamRowSize;
+        private static float CamLabelWidth => Theme.camLabelWidth;
+        private static Color FooterSurface => Theme.footerSurface;
 
-        private static readonly Color ItemSelected = new Color(0.72f, 0.42f, 0.09f, 1f);
-        private static readonly Color ItemIdle = new Color(0.16f, 0.16f, 0.18f, 1f);
+        private static Color ItemSelected => Theme.itemSelected;
+        private static Color ItemIdle => Theme.itemIdle;
 
-        private static readonly Color Surface = new Color(0.098f, 0.102f, 0.114f, 0.965f);
-        private static readonly Color Destructive = new Color(0.788f, 0.263f, 0.263f, 1f);
+        private static Color Surface => Theme.surface;
+        private static Color Destructive => Theme.destructive;
 
         [MenuItem("VIP-Sim/Refresh panel layout")]
         public static void Setup()
