@@ -1,7 +1,31 @@
 # Roadmap: product gaps and engineering debt
 
-Written at `0fcda1f`, after the alglib removal. Ordered by leverage, with the specific
-traps this codebase has already sprung so they are not rediscovered.
+**Status as of `1808730`.** Six of the eight items are closed. The two that remain are
+blocked on credentials only the repository owner can supply — no further engineering
+advances them.
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Per-eye duplication | **Done** — 816 lines removed, verified by identical alpha before/after |
+| 2 | Plain-language names | **Done** — 7 clinical terms replaced; presets still need clinical input |
+| 3 | Settings selection model | **Done** — the panel derives from the selected effect |
+| 4 | Editor-script scene mutation | **Done** — values live in a `VipSimUiTheme` asset |
+| 5 | Telemetry consent | **Done** — off by default, gated at the single egress point |
+| 6 | Signing / notarisation | **Blocked** — script and entitlements ready; needs an Apple Developer ID |
+| 7 | CI that actually builds | **Blocked** — skip now warns loudly; needs `UNITY_LICENSE` secrets |
+| 8 | Warnings and crash reporting | **Done** — 514 → 0 warnings, error log added |
+
+Item 2's presets are deliberately not invented. Which effects and severities represent
+macular degeneration or glaucoma is a clinical research decision; guessing at them in a
+tool that shows participants what a condition looks like would misrepresent those
+conditions with a machine's guesses wearing the paper's authority.
+
+Nothing below has been verified on screen. Everything builds and the measurable claims are
+measured, but the UI changes need eyes, and macOS has not been run since the per-eye
+refactor deleted a camera.
+
+Originally written at `0fcda1f`, after the alglib removal. Ordered by leverage, with the
+specific traps this codebase has already sprung so they are not rediscovered.
 
 Baseline to revert to if anything here goes wrong: **`83973f6`** — user-confirmed working
 on Windows, and `2.0.0beta` is confirmed running on macOS.
