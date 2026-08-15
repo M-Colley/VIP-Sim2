@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Unity.Profiling;
@@ -258,7 +258,7 @@ public class VipSimDiagnostics : MonoBehaviour
         Destroy(tex);
 
         double n = px.Length;
-        var effects = FindObjectsByType<VisSim.LinkableBaseEffect>(FindObjectsSortMode.None);
+        var effects = FindObjectsByType<VisSim.LinkableBaseEffect>(FindObjectsInactive.Exclude);
         var on = new System.Collections.Generic.List<string>();
         foreach (var e in effects)
             if (e.enabled) on.Add(e.GetType().Name + (e.gameObject.tag == "LeftEye" ? "(L)" : "(R)"));
