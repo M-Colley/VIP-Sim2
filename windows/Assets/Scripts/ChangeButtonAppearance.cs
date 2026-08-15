@@ -12,6 +12,16 @@ public class ChangeButtonAppearance : MonoBehaviour
     [SerializeField] private TextMeshProUGUI buttonText; // Reference to the button's text
     [SerializeField] private Color color1 = Color.white; // First color
     [SerializeField] private Color color2 = Color.black; // Second color
+
+    // Tint applied to the Image itself, on top of the sprite swap.
+    //
+    // The sprite swap alone is not enough to read as a state change on the per-effect
+    // settings gears: settingsOffBG and settingONBG differ only in shade, so the row
+    // whose settings are currently open was almost indistinguishable from the fifteen
+    // that were not. Both default to white, which multiplies to a no-op, so every
+    // existing button keeps its current appearance until a tint is deliberately set.
+    [SerializeField] private Color imageColor1 = Color.white; // tint in state 1
+    [SerializeField] private Color imageColor2 = Color.white; // tint in state 2
     [SerializeField] private Button settingsButton; // Use this to enable the settings with the most current impairment
 
     private Image buttonImage;
@@ -33,6 +43,7 @@ public class ChangeButtonAppearance : MonoBehaviour
 
         // Set the initial sprite and text color
         buttonImage.sprite = sprite1;
+        buttonImage.color = imageColor1;
         if (buttonText != null)
             buttonText.color = color1;
     }
@@ -74,8 +85,13 @@ public class ChangeButtonAppearance : MonoBehaviour
 
             foreach (GameObject buttonObj in settingsButtons)
             {
-                buttonObj.GetComponent<Image>().sprite = sprite1;
-                
+                var otherImage = buttonObj.GetComponent<Image>();
+                otherImage.sprite = sprite1;
+                // The tint has to be reset alongside the sprite. Only one effect's
+                // settings can be open at a time, so this loop is what deselects the
+                // other fifteen gears -- leaving their colour on the selected tint
+                // would mean every gear ever clicked stayed highlighted.
+                otherImage.color = imageColor1;
             }
         }
         if (CompareTag("Settings"))
@@ -95,13 +111,15 @@ public class ChangeButtonAppearance : MonoBehaviour
         if (isSprite1Active)
         {
             buttonImage.sprite = sprite2;
-            if(buttonText != null)  
+            buttonImage.color = imageColor2;
+            if(buttonText != null)
             buttonText.color = color2;
         }
         else
         {
             buttonImage.sprite = sprite1;
-            if(buttonText != null)  
+            buttonImage.color = imageColor1;
+            if(buttonText != null)
             buttonText.color = color1;
         }
 

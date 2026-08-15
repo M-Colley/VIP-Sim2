@@ -832,6 +832,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &29062438
@@ -1583,6 +1585,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &66120001
@@ -2081,6 +2085,8 @@ MonoBehaviour:
   buttonText: {fileID: 1882198133}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 2005491068}
   isSprite1Active: 1
 --- !u!114 &73720589
@@ -3241,6 +3247,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &154248282
@@ -3557,6 +3565,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &181815030
@@ -4358,6 +4368,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &212533226
@@ -6386,6 +6398,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &341621765
@@ -6701,6 +6715,8 @@ MonoBehaviour:
   buttonText: {fileID: 705573587}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 1325075912}
   isSprite1Active: 1
 --- !u!114 &357715337
@@ -7321,6 +7337,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &431707564
@@ -7764,6 +7782,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &460352113
@@ -8889,6 +8909,8 @@ MonoBehaviour:
   buttonText: {fileID: 154855150}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 66120001}
   isSprite1Active: 1
 --- !u!114 &577858249
@@ -10223,6 +10245,8 @@ MonoBehaviour:
   buttonText: {fileID: 104516937}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 1370649937}
   isSprite1Active: 1
 --- !u!1 &673786475
@@ -10984,6 +11008,8 @@ MonoBehaviour:
   buttonText: {fileID: 868173739}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 212533226}
   isSprite1Active: 1
 --- !u!114 &710379089
@@ -12660,6 +12686,8 @@ MonoBehaviour:
   buttonText: {fileID: 627932072}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 2126731582}
   isSprite1Active: 1
 --- !u!114 &850052975
@@ -12826,6 +12854,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &852820427
@@ -13777,6 +13807,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &907613190
@@ -14598,6 +14630,8 @@ MonoBehaviour:
   buttonText: {fileID: 23970948}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 29062438}
   isSprite1Active: 1
 --- !u!114 &967889739
@@ -15139,6 +15173,8 @@ MonoBehaviour:
   buttonText: {fileID: 379840042}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 181815030}
   isSprite1Active: 1
 --- !u!114 &993250611
@@ -15953,6 +15989,8 @@ MonoBehaviour:
   buttonText: {fileID: 356965755}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 907613190}
   isSprite1Active: 1
 --- !u!114 &1080787020
@@ -16441,6 +16479,8 @@ MonoBehaviour:
   buttonText: {fileID: 1100495662}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 341621765}
   isSprite1Active: 1
 --- !u!114 &1115614454
@@ -17332,6 +17372,8 @@ MonoBehaviour:
   buttonText: {fileID: 50523865}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 1797043992}
   isSprite1Active: 1
 --- !u!114 &1224382966
@@ -17634,6 +17676,8 @@ MonoBehaviour:
   buttonText: {fileID: 1344356019}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 1511855782}
   isSprite1Active: 1
 --- !u!114 &1250469333
@@ -18495,6 +18539,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &1325075912
@@ -19238,6 +19284,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &1370649941
@@ -19739,6 +19787,8 @@ MonoBehaviour:
   buttonText: {fileID: 1097143297}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 1687816212}
   isSprite1Active: 1
 --- !u!114 &1418537657
@@ -20005,6 +20055,8 @@ MonoBehaviour:
   buttonText: {fileID: 197875403}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 460352113}
   isSprite1Active: 1
 --- !u!114 &1458675856
@@ -20803,6 +20855,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &1511855782
@@ -21519,6 +21573,8 @@ MonoBehaviour:
   buttonText: {fileID: 362316165}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 154248282}
   isSprite1Active: 1
 --- !u!114 &1607068752
@@ -22467,6 +22523,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &1687816212
@@ -23671,6 +23729,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &1797043992
@@ -23849,6 +23909,8 @@ MonoBehaviour:
   buttonText: {fileID: 1350136664}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 1830563036}
   isSprite1Active: 1
 --- !u!114 &1798139764
@@ -24778,6 +24840,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &1830563036
@@ -26117,6 +26181,8 @@ MonoBehaviour:
   buttonText: {fileID: 810750567}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 431707564}
   isSprite1Active: 1
 --- !u!114 &1995455317
@@ -26283,6 +26349,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &2005491068
@@ -26461,6 +26529,8 @@ MonoBehaviour:
   buttonText: {fileID: 1905525045}
   color1: {r: 1, g: 0.6784314, b: 0.2509804, a: 1}
   color2: {r: 1, g: 1, b: 1, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 1, b: 1, a: 1}
   settingsButton: {fileID: 852820427}
   isSprite1Active: 1
 --- !u!114 &2018934308
@@ -26851,6 +26921,8 @@ MonoBehaviour:
   buttonText: {fileID: 0}
   color1: {r: 1, g: 1, b: 1, a: 1}
   color2: {r: 0, g: 0, b: 0, a: 1}
+  imageColor1: {r: 1, g: 1, b: 1, a: 1}
+  imageColor2: {r: 1, g: 0.58, b: 0.11, a: 1}
   settingsButton: {fileID: 0}
   isSprite1Active: 1
 --- !u!114 &2126731582

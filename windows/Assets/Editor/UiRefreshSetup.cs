@@ -88,6 +88,14 @@ namespace VipSim.EditorTools
         // settings content already reaches close to its right edge.
         private const float SettingsPanelX = 190f;
 
+        // Idle stays at full brightness. Dimming it was tried and is wrong: the gears are
+        // already easy to miss, and knocking all sixteen back to 55% made the control less
+        // discoverable to fix a problem with the state that only one of them is ever in.
+        // The open one is separated by HUE instead -- a saturated amber against the pale
+        // idle sprite, which differs in colour and value at once and needs no new art.
+        private static readonly Color GearIdle = Color.white;
+        private static readonly Color GearActive = new Color(1f, 0.58f, 0.11f, 1f);
+
         private static readonly Color Surface = new Color(0.098f, 0.102f, 0.114f, 0.965f);
         private static readonly Color Destructive = new Color(0.788f, 0.263f, 0.263f, 1f);
 
@@ -317,6 +325,32 @@ namespace VipSim.EditorTools
             if (gears.Count > 0)
                 Debug.Log($"UIREFRESH: enlarged {gears.Count} settings gear(s) to " +
                           $"{GearSize.x}x{GearSize.y} at x={GearX}.");
+
+            // Give the open effect's gear a visible state.
+            //
+            // Selected vs not was only settingONBG vs settingsOffBG, two shades of the same
+            // cream, so the row whose settings panel was showing looked the same as the
+            // fifteen that were not. Tinting is done by DIMMING the unselected gears rather
+            // than brightening the selected one: an Image tint multiplies, so it can only
+            // darken, and a "brighter" selected colour would have had no effect at all.
+            // Unselected at 55% against full brightness is an unmistakable difference and
+            // needs no new art.
+            foreach (var gear in gears)
+            {
+                var so = new SerializedObject(gear.GetComponent<ChangeButtonAppearance>());
+                var p1 = so.FindProperty("imageColor1");
+                var p2 = so.FindProperty("imageColor2");
+                if (p1 == null || p2 == null) continue;
+                if (p1.colorValue == GearIdle && p2.colorValue == GearActive) continue;
+
+                p1.colorValue = GearIdle;
+                p2.colorValue = GearActive;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                changed++;
+            }
+            if (gears.Count > 0)
+                Debug.Log($"UIREFRESH: tinted {gears.Count} gear(s) -- idle " +
+                          $"{ColorUtility.ToHtmlStringRGB(GearIdle)}, open {ColorUtility.ToHtmlStringRGB(GearActive)}.");
 
             var menu = all.FirstOrDefault(g => g.name == "VerticalMenu");
             var vlg = menu != null ? menu.GetComponent<VerticalLayoutGroup>() : null;
