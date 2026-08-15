@@ -261,20 +261,10 @@ public class VipSimDiagnostics : MonoBehaviour
     /// </summary>
     private void LogCapturePlacement()
     {
-        foreach (var t in FindObjectsByType<uWindowCapture.UwcWindowTexture>(FindObjectsInactive.Include))
-        {
-            var w = t.window;
-            if (w == null) continue;
-
-            float upp = t.scalePer1000Pixel / 1000f;
-            float dx = (w.x + w.width * 0.5f) - Screen.width * 0.5f;
-            float dy = Screen.height * 0.5f - (w.y + w.height * 0.5f);
-
-            Debug.Log($"[VipSimDiagnostics] CAPTURE '{w.title}' rect=({w.x},{w.y},{w.width}x{w.height}) " +
-                      $"screen={Screen.width}x{Screen.height} unitsPerPixel={upp:F5} " +
-                      $"deltaPx=({dx:F0},{dy:F0}) planeWorld={t.transform.position} " +
-                      $"planeScale={t.transform.lossyScale} camOrtho={Camera.main?.orthographicSize:F3}");
-        }
+        // Windows only. The capture placement numbers come from uWindowCapture, which does
+        // not exist in this project -- macOS uses a different capture backend entirely --
+        // so there is nothing here to report. Kept as a no-op rather than removed so the
+        // two copies of this file stay structurally comparable.
     }
 
     /// <summary>

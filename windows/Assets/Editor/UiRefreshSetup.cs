@@ -557,6 +557,42 @@ namespace VipSim.EditorTools
                 all = all.Where(g => g != null).ToList();
             }
 
+            // --- 3g. Plain-language effect names -------------------------------------
+            //
+            // The list was clinical vocabulary: Teichopsia, Metamorphopsia2, Hyperopia.
+            // Correct terminology, and opaque to the designer who is the intended user --
+            // someone cannot choose to simulate a condition they cannot identify from its
+            // name. "Metamorphopsia2" is a developer name that reached the UI outright.
+            //
+            // Replacements are kept to roughly the original length on purpose. The buttons
+            // are a fixed 230px with auto-sizing text, and a longer name shrinks the type
+            // rather than wrapping, which trades one legibility problem for another. Terms
+            // that are already plain -- Cataract, Double Vision, Distortion -- are left
+            // alone; renaming those would lose precision for no gain.
+            var rename = new System.Collections.Generic.Dictionary<string, string>
+            {
+                { "Teichopsia",        "Visual Aura" },
+                { "Metamorphopsia",    "Wavy Distortion" },
+                { "Metamorphopsia2",   "Wavy Distortion II" },
+                { "Hyperopia",         "Farsightedness" },
+                { "Nystagmus",         "Eye Tremor" },
+                { "Foveal Darkness",   "Central Dark Spot" },
+                { "Flickering Stars",  "Flickering Specks" },
+            };
+
+            int renamed = 0;
+            foreach (var tmp in Resources.FindObjectsOfTypeAll<TMPro.TMP_Text>())
+            {
+                if (tmp == null || tmp.gameObject.scene != scene) continue;
+                if (!rename.TryGetValue(tmp.text, out var plain)) continue;
+
+                Debug.Log($"UIREFRESH: effect label '{tmp.text}' -> '{plain}'.");
+                tmp.text = plain;
+                EditorUtility.SetDirty(tmp);
+                renamed++;
+            }
+            if (renamed > 0) changed++;
+
             // --- 4. Make the per-effect settings gear hittable ----------------------
             //
             // Each effect row is a wide "Enable" bar with a 35x32 gear crammed against its
