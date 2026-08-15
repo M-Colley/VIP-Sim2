@@ -96,6 +96,9 @@ namespace VipSim.EditorTools
         private static readonly Color GearIdle = Color.white;
         private static readonly Color GearActive = new Color(1f, 0.58f, 0.11f, 1f);
 
+        private static readonly Color ItemSelected = new Color(0.72f, 0.42f, 0.09f, 1f);
+        private static readonly Color ItemIdle = new Color(0.16f, 0.16f, 0.18f, 1f);
+
         private static readonly Color Surface = new Color(0.098f, 0.102f, 0.114f, 0.965f);
         private static readonly Color Destructive = new Color(0.788f, 0.263f, 0.263f, 1f);
 
@@ -155,6 +158,32 @@ namespace VipSim.EditorTools
                     changed++;
                     Debug.Log("UIREFRESH: hid 'Window Info' debug row on the window cards.");
                 }
+                // Selected vs not was two near-identical greys, so which window is being
+                // captured was hard to pick out of the list. Selected now uses the same
+                // amber as an open settings gear, giving the app one consistent signal for
+                // "this is the thing you are acting on".
+                // Matched by type NAME rather than referenced directly: UwcWindowListItem
+                // is uWindowCapture, which only exists in the Windows project, and this
+                // script runs against both. A direct reference fails to compile on macOS.
+                foreach (var listItem in root.GetComponentsInChildren<Component>(true))
+                {
+                    if (listItem == null || listItem.GetType().Name != "UwcWindowListItem") continue;
+                    var lso = new SerializedObject(listItem);
+                    var sel = lso.FindProperty("selected");
+                    var notSel = lso.FindProperty("notSelected");
+                    if (sel == null || notSel == null) continue;
+                    if (sel.colorValue == ItemSelected && notSel.colorValue == ItemIdle) continue;
+
+                    Debug.Log($"UIREFRESH: window card selected {ColorUtility.ToHtmlStringRGB(sel.colorValue)} -> " +
+                              $"{ColorUtility.ToHtmlStringRGB(ItemSelected)}, idle " +
+                              $"{ColorUtility.ToHtmlStringRGB(notSel.colorValue)} -> {ColorUtility.ToHtmlStringRGB(ItemIdle)}.");
+                    sel.colorValue = ItemSelected;
+                    notSel.colorValue = ItemIdle;
+                    lso.ApplyModifiedPropertiesWithoutUndo();
+                    PrefabUtility.SaveAsPrefabAsset(root, ItemPrefab);
+                    changed++;
+                }
+
                 PrefabUtility.UnloadPrefabContents(root);
             }
 

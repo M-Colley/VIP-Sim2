@@ -544,8 +544,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   image_: {fileID: 0}
-  selected: {r: 1, g: 1, b: 1, a: 0.5019608}
-  notSelected: {r: 0, g: 0, b: 0, a: 0.5019608}
+  selected: {r: 0.72, g: 0.42, b: 0.09, a: 1}
+  notSelected: {r: 0.16, g: 0.16, b: 0.18, a: 1}
   icon: {fileID: 114077072792280268}
   title: {fileID: 114574426293880858}
   x: {fileID: 114532918860829926}
