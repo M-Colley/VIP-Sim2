@@ -83,6 +83,11 @@ namespace VipSim.EditorTools
         // needs, without touching the rest of the geometry.
         private const float RowSpacing = -61f;
 
+        // 155 originally, which put the sliders' handles over the gears. +35 is roughly one
+        // handle radius; deliberately small, because the panel is only 625 wide and the
+        // settings content already reaches close to its right edge.
+        private const float SettingsPanelX = 190f;
+
         private static readonly Color Surface = new Color(0.098f, 0.102f, 0.114f, 0.965f);
         private static readonly Color Destructive = new Color(0.788f, 0.263f, 0.263f, 1f);
 
@@ -260,6 +265,26 @@ namespace VipSim.EditorTools
                               $"{ColorUtility.ToHtmlStringRGBA(Destructive)}.");
                     eimg.color = Destructive;
                     EditorUtility.SetDirty(eimg);
+                    changed++;
+                }
+            }
+
+            // --- 3b. Stop the settings panel colliding with the gear column ---------
+            //
+            // The per-effect settings (Mode, Timer, Speed, sliders) sit immediately to the
+            // right of the gear column, and a uGUI slider centres its handle ON the start
+            // of its track -- so the handle sticks out half its own width to the left of
+            // where the panel appears to begin and lands on top of the gears. Shifting the
+            // container right by the handle radius clears it without reflowing anything.
+            var settingsPanel = all.FirstOrDefault(g => g.name == "UICointainer");
+            if (settingsPanel != null)
+            {
+                var srt = settingsPanel.GetComponent<RectTransform>();
+                if (srt != null && Mathf.Abs(srt.anchoredPosition.x - SettingsPanelX) > 0.5f)
+                {
+                    Debug.Log($"UIREFRESH: settings panel x {srt.anchoredPosition.x:F0} -> {SettingsPanelX:F0}.");
+                    srt.anchoredPosition = new Vector2(SettingsPanelX, srt.anchoredPosition.y);
+                    EditorUtility.SetDirty(srt);
                     changed++;
                 }
             }

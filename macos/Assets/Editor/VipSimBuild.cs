@@ -88,6 +88,25 @@ namespace VipSim.EditorTools
             var group = BuildPipeline.GetBuildTargetGroup(target);
             var named = NamedBuildTarget.FromBuildTargetGroup(group);
 
+            // macOS refuses to build at all if anything references WebCamTexture and no
+            // camera usage description is set -- the build dies in
+            // OSXDesktopStandalonePostProcessor with "WebCamTexture class is used but
+            // Camera Usage Description is empty in Player Settings", several seconds in and
+            // after compilation has already succeeded, which reads like a toolchain fault
+            // rather than a missing setting. VIP-Sim uses the webcam for gaze tracking, so
+            // this is required, and the string is what macOS shows the user in the camera
+            // permission prompt at first launch. Set here rather than by hand so the build
+            // is reproducible on a clean checkout.
+            if (target == BuildTarget.StandaloneOSX &&
+                string.IsNullOrEmpty(PlayerSettings.macOS.cameraUsageDescription))
+            {
+                PlayerSettings.macOS.cameraUsageDescription =
+                    "VIP-Sim uses the camera for optional webcam eye tracking, so that the " +
+                    "simulated vision impairment can follow where you are looking. Video is " +
+                    "processed on this device and is never recorded or transmitted.";
+                Debug.Log("[VipSimBuild] Set macOS camera usage description (required for WebCamTexture).");
+            }
+
             var backend = Backend;
             PlayerSettings.SetScriptingBackend(named, backend);
             PlayerSettings.SetApiCompatibilityLevel(named, ApiCompatibilityLevel.NET_Unity_4_8);

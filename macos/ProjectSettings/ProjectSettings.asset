@@ -327,7 +327,9 @@ PlayerSettings:
   enableInternalProfiler: 0
   logObjCUncaughtExceptions: 1
   enableCrashReportAPI: 0
-  cameraUsageDescription: 
+  cameraUsageDescription: VIP-Sim uses the camera for optional webcam eye tracking,
+    so that the simulated vision impairment can follow where you are looking. Video
+    is processed on this device and is never recorded or transmitted.
   locationUsageDescription: 
   microphoneUsageDescription: 
   bluetoothUsageDescription: 
