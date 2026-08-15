@@ -469,6 +469,34 @@ namespace VipSim.EditorTools
                 changed++;
             }
 
+            // --- 3d. Stop UnitEye drawing a second cursor --------------------------
+            //
+            // HomulerGaze paints a crosshair at the gaze point with GUI.DrawTexture on
+            // every frame. On a full-screen transparent overlay that lands on top of the
+            // real desktop, so the user sees their own mouse pointer AND a second cursor
+            // -- and because it marks where the eye tracker thinks they are looking rather
+            // than where the pointer is, the two do not coincide. That is what the
+            // "cursor is not properly aligned" report was: not a coordinate bug, a debug
+            // overlay that was never meant to ship switched on.
+            //
+            // The crosshair is a development aid for checking the gaze pipeline. It stays
+            // in the build and can be re-enabled on the component when diagnosing tracking.
+            foreach (var comp in Resources.FindObjectsOfTypeAll<MonoBehaviour>())
+            {
+                if (comp == null || comp.gameObject.scene != scene) continue;
+                if (comp.GetType().Name != "HomulerGaze") continue;
+
+                var gso = new SerializedObject(comp);
+                var dd = gso.FindProperty("drawDot");
+                if (dd == null || !dd.boolValue) continue;
+
+                dd.boolValue = false;
+                gso.ApplyModifiedPropertiesWithoutUndo();
+                changed++;
+                Debug.Log("UIREFRESH: turned off UnitEye's gaze crosshair (drawDot); it was " +
+                          "drawing a second cursor over the desktop.");
+            }
+
             // --- 4. Make the per-effect settings gear hittable ----------------------
             //
             // Each effect row is a wide "Enable" bar with a 35x32 gear crammed against its
