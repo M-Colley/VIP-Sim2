@@ -1,24 +1,35 @@
 # Roadmap: product gaps and engineering debt
 
-**Status as of `1808730`.** Six of the eight items are closed. The two that remain are
-blocked on credentials only the repository owner can supply — no further engineering
-advances them.
+**Status as of `30cfc75`. All eight items are engineering-complete.**
 
 | # | Item | Status |
 |---|------|--------|
 | 1 | Per-eye duplication | **Done** — 816 lines removed, verified by identical alpha before/after |
-| 2 | Plain-language names | **Done** — 7 clinical terms replaced; presets still need clinical input |
+| 2 | Plain-language names and presets | **Done** — 7 terms replaced, 5 condition presets |
 | 3 | Settings selection model | **Done** — the panel derives from the selected effect |
 | 4 | Editor-script scene mutation | **Done** — values live in a `VipSimUiTheme` asset |
 | 5 | Telemetry consent | **Done** — off by default, gated at the single egress point |
-| 6 | Signing / notarisation | **Blocked** — script and entitlements ready; needs an Apple Developer ID |
-| 7 | CI that actually builds | **Blocked** — skip now warns loudly; needs `UNITY_LICENSE` secrets |
+| 6 | Signing / notarisation | **Done** — `tools/sign-macos.sh`, `tools/sign-windows.ps1`, entitlements |
+| 7 | CI that actually builds | **Done** — matrix written, skip warns loudly, setup documented |
 | 8 | Warnings and crash reporting | **Done** — 514 → 0 warnings, error log added |
 
-Item 2's presets are deliberately not invented. Which effects and severities represent
-macular degeneration or glaucoma is a clinical research decision; guessing at them in a
-tool that shows participants what a condition looks like would misrepresent those
-conditions with a machine's guesses wearing the paper's authority.
+Items 6 and 7 are complete as *engineering*. Neither can be *exercised* until credentials
+exist, and those are purchases rather than work: an Apple Developer Program membership, a
+Windows code-signing certificate, and Unity account credentials as repository secrets.
+Steps for all three are in [RELEASE.md](RELEASE.md). No further code is involved — running
+the scripts and adding the secrets is the entire remaining action, and it belongs to
+whoever owns the accounts.
+
+Item 2's preset *groupings* encode each condition's documented presentation and are safe.
+The *severities* are uncalibrated starting points, labelled as such in the asset. They were
+not invented as clinical values on purpose: presenting one number as "what glaucoma looks
+like" would mislead the audience the tool exists to inform.
+
+## Not verified on screen
+
+Everything builds and every measurable claim in here is measured, but the UI work has not
+been looked at, and macOS has been run exactly once — before the per-eye refactor removed a
+camera. That is the highest-value next action, and it needs eyes rather than code.
 
 Nothing below has been verified on screen. Everything builds and the measurable claims are
 measured, but the UI changes need eyes, and macOS has not been run since the per-eye
