@@ -96,11 +96,16 @@ namespace VipSim.EditorTools
         // became unreadable. 2 keeps every row clear while still saving about 14px each,
         // which is roughly one extra control visible on a six-parameter effect.
         private const float SettingsSpacing = 2f;
-        // 349 originally. 290 was not enough -- the sliders still reached past the panel
-        // edge -- so 240, which leaves a clear margin. If this still needs adjusting, this
-        // constant and SettingsPanelX above are the only two knobs: width pulls the right
-        // edge in, x moves the whole block left or right against the gear column.
-        private const float SettingsPanelWidth = 240f;
+        // Back to the original 349. Narrowing this container was the wrong lever and did
+        // nothing: the sliders are not stretched to it. Their width is set explicitly in
+        // DropdownManager when they are constructed, which is what ItemWidth below fixes.
+        private const float SettingsPanelWidth = 349f;
+
+        // DropdownManager.itemWidth, the explicit width every runtime-built slider and
+        // dropdown is given. 200 ran them past the right edge of the panel; 150 leaves a
+        // margin. This is the only place that controls it -- there is nothing in the scene
+        // to resize, because the widgets do not exist until the effect's settings open.
+        private const float ItemWidth = 150f;
 
         // Idle stays at full brightness. Dimming it was tried and is wrong: the gears are
         // already easy to miss, and knocking all sixteen back to 55% made the control less
@@ -446,6 +451,20 @@ namespace VipSim.EditorTools
                     EditorUtility.SetDirty(prt2);
                     changed++;
                 }
+            }
+
+            // Narrow the runtime-built widgets at their source.
+            foreach (var dm in Resources.FindObjectsOfTypeAll<DropdownManager>())
+            {
+                if (dm == null || dm.gameObject.scene != scene) continue;
+                var dso = new SerializedObject(dm);
+                var iw = dso.FindProperty("itemWidth");
+                if (iw == null || Mathf.Abs(iw.floatValue - ItemWidth) < 0.5f) continue;
+
+                Debug.Log($"UIREFRESH: slider/dropdown width {iw.floatValue:F0} -> {ItemWidth:F0}.");
+                iw.floatValue = ItemWidth;
+                dso.ApplyModifiedPropertiesWithoutUndo();
+                changed++;
             }
 
             // --- 4. Make the per-effect settings gear hittable ----------------------

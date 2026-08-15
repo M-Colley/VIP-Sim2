@@ -6,6 +6,19 @@ public class HideImpairmentSelection : MonoBehaviour
 {
     [SerializeField] private GameObject targetGameObject;
     [SerializeField] Slider enableToggle;
+
+    /// <summary>
+    /// Hide the per-effect settings panel.
+    ///
+    /// Clearing the slider rather than deactivating the panel directly, because Update
+    /// re-applies the slider's value every frame and would simply switch it back on.
+    /// Called when an effect is switched off, so its parameters stop being shown for
+    /// something that is no longer running.
+    /// </summary>
+    public void CloseSettings()
+    {
+        if (enableToggle != null) enableToggle.value = 0f;
+    }
     [SerializeField] Image settingWheel;
 
     void Update()

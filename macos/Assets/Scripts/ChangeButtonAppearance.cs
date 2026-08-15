@@ -79,6 +79,7 @@ public class ChangeButtonAppearance : MonoBehaviour
         // Check if the button has the tag "Settings"
         if (CompareTag("Settings"))
         {
+            Debug.Log("settings");
             // Find all buttons with the "Settings" tag in the scene
             GameObject[] settingsButtons = GameObject.FindGameObjectsWithTag("Settings");
 
@@ -98,10 +99,61 @@ public class ChangeButtonAppearance : MonoBehaviour
         else
         {
             PerformSwap();
-            settingsButton.onClick.Invoke();
+
+            // PerformSwap has already flipped the state, so isSprite1Active == false now
+            // means the effect was just switched ON.
+            //
+            // The gear used to be invoked either way, which is how a disabled effect ended
+            // up with its settings still on screen: turning an effect off opened -- or left
+            // open -- a panel of parameters for something that was no longer running, with
+            // no way to tell they belonged to a dead effect.
+            if (!isSprite1Active)
+            {
+                settingsButton.onClick.Invoke();
+            }
+            else
+            {
+                CloseSettingsPanel();
+
+                // Drop the gear back to idle as well, or the amber "settings open" marker
+                // stays lit on a row that no longer has anything open.
+                var gear = settingsButton != null ? settingsButton.GetComponent<ChangeButtonAppearance>() : null;
+                if (gear != null) gear.ResetToIdle();
+            }
             return;
         }
         PerformSwap();
+    }
+
+    /// <summary>
+    /// Force this button back to its unselected appearance without toggling anything.
+    /// PerformSwap flips state, which is wrong when the state is already known.
+    /// </summary>
+    public void ResetToIdle()
+    {
+        if (buttonImage == null) buttonImage = GetComponent<Image>();
+        if (buttonImage == null) return;
+
+        buttonImage.sprite = sprite1;
+        buttonImage.color = imageColor1;
+        if (buttonText != null) buttonText.color = color1;
+        isSprite1Active = true;
+    }
+
+    private static HideImpairmentSelection _settingsPanel;
+
+    /// <summary>
+    /// Hide the per-effect settings panel. Its visibility is driven by
+    /// HideImpairmentSelection's enable slider, so that is what has to be cleared --
+    /// deactivating the object directly would be undone on the next frame, since that
+    /// component re-evaluates and re-applies the slider's value in Update.
+    /// </summary>
+    private static void CloseSettingsPanel()
+    {
+        if (_settingsPanel == null)
+            _settingsPanel = FindFirstObjectByType<HideImpairmentSelection>(FindObjectsInactive.Include);
+
+        if (_settingsPanel != null) _settingsPanel.CloseSettings();
     }
 
     // Helper method to perform the swap

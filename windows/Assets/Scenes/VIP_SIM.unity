@@ -29600,7 +29600,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
   m_AnchoredPosition: {x: 190, y: 471}
-  m_SizeDelta: {x: 240, y: 463.75}
+  m_SizeDelta: {x: 349, y: 463.75}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &3294750347597362752
 MonoBehaviour:
@@ -31774,7 +31774,7 @@ MonoBehaviour:
   - {fileID: 858823477}
   fontSize: 22
   labelWidth: 350
-  itemWidth: 300
+  itemWidth: 150
   labelColor: {r: 1, g: 1, b: 1, a: 1}
   backgroundColor: {r: 1, g: 1, b: 1, a: 1}
   handleColor: {r: 1, g: 1, b: 1, a: 1}

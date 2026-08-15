@@ -1,11 +1,25 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 public class HideImpairmentSelection : MonoBehaviour
 {
-    // Serielles Field f�r das GameObject, das gesetzt werden soll
+    // Serielles Field fï¿½r das GameObject, das gesetzt werden soll
     [SerializeField] private GameObject targetGameObject;
     [SerializeField] Slider enableToggle;
+
+    /// <summary>
+    /// Hide the per-effect settings panel.
+    ///
+    /// Clearing the slider rather than deactivating the panel directly, because Update
+    /// re-applies the slider's value every frame and would simply switch it back on.
+    /// Called when an effect is switched off, so its parameters stop being shown for
+    /// something that is no longer running.
+    /// </summary>
+    public void CloseSettings()
+    {
+        if (enableToggle != null) enableToggle.value = 0f;
+    }
+
     [SerializeField] Image settingWheel;
 
     [SerializeField] MacCapture macCapture;
@@ -13,7 +27,7 @@ public class HideImpairmentSelection : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // Setzt das target GameObject je nach R�ckgabewert
+        // Setzt das target GameObject je nach Rï¿½ckgabewert
         // VipSimDiagnostics.ForceMenusVisible (F7) shows the effect list without a capture
         // running and without the effect switched on, so that half of the UI can be looked
         // at during development. The Windows gate is uWindowCapture's thereIsActiveWindow;
@@ -38,3 +52,4 @@ public class HideImpairmentSelection : MonoBehaviour
         }
     }
 }
+
