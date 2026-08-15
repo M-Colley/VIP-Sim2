@@ -17,6 +17,35 @@ The product is monoscopic. This is pure dead complexity and it is what made the 
 bug so hard to diagnose — "the effect is enabled" was true of an instance that was not
 the one reaching the screen.
 
+### Camera facts, established from the scene
+
+| | Camera A `&197203504` | Camera B `&858823455` |
+|---|---|---|
+| Projection | perspective | **orthographic** |
+| Clear flags | **1 = Skybox** | 2 = SolidColor |
+| Background alpha | 0 | 0 |
+| Depth | **0** | **0** |
+| Enabled | yes | yes |
+
+B is orthographic, so B is the camera `AlignBoxColliderWithCamera` drives — that method
+forces `orthographic = true` — and therefore the one showing the capture. A is the
+perspective/Skybox camera, i.e. `RightEye`.
+
+**Both are at depth 0, so which writes the backbuffer last is undefined.** Fix that
+first, on its own, whatever else happens.
+
+**The trap:** camera A clears to **Skybox, which is opaque**. On an alpha-composited
+overlay that clear is a plausible source of the non-zero alpha that makes anything
+visible at all — which would explain why disabling `RightEye` removed the overlay
+entirely even though `LeftEye` is the camera the code treats as primary and the one
+drawing the capture. If that holds, deleting A takes the alpha source with it and
+reproduces the "no overlay at all" failure that already cost one revert. The surviving
+camera's clear flags and background alpha must be corrected in the *same* step, and the
+result checked with F8's alpha readout, not by eye.
+
+Confirm before deleting: give the two cameras distinct depths and distinct background
+colours, run, and read the F8 alpha distribution to see which clear is supplying alpha.
+
 **Establish first, before deleting anything:** which camera actually reaches the display.
 There are two full-screen cameras at depth 0 (`CameraRig/LeftEye`, orthographic,
 SolidColor clear; `CameraRig/RightEye`, perspective, Skybox clear) and **the render order
