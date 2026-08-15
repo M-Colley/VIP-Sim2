@@ -103,9 +103,28 @@ namespace VisSim
 
         public void setGrid(double[,] grid_xy, bool extrapolateEdges)
         {
+            ApplyGrid(grid_xy, extrapolateEdges);
+
+            // Forward to the other eye's instance -- same reasoning as
+            // myFieldLoss.setGrid: the grid arrives through a method, not a
+            // [Linkable] field, and the Material it is pushed into is
+            // per-instance, so the twin rendered with no overlay bound.
+            var twin = TwinEyeEffect as myFieldLossInverted;
+            if (twin != null && twin != this)
+            {
+                twin.ApplyGrid(grid_xy, extrapolateEdges);
+            }
+        }
+
+        /// <summary>Sets the grid on THIS instance only. See setGrid.</summary>
+        private void ApplyGrid(double[,] grid_xy, bool extrapolateEdges)
+        {
             overlayRawGrid_xy = grid_xy;
             overlayTexture = GridInterpolator.Instance.interpolateGridAndMakeTexture(grid_xy, extrapolateEdges);
-            Material.SetTexture("_Overlay", overlayTexture);
+            if (Material != null)
+            {
+                Material.SetTexture("_Overlay", overlayTexture);
+            }
         }
 
         public double[,] getGrid()

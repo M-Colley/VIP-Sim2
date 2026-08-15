@@ -25,6 +25,23 @@ namespace VisSim
         private LinkableBaseEffect rightEyeEffectInstance;
         private LinkableBaseEffect leftEyeEffectInstance;
 
+        /// <summary>
+        /// This effect's counterpart on the other eye, or null before the pair has
+        /// been resolved.
+        ///
+        /// Exposed because linking only copies fields marked [Linkable], which is
+        /// not enough for effects configured through a METHOD rather than a field.
+        /// myFieldLoss is the case in point: setGrid() both stores the grid and
+        /// pushes the generated texture into this instance's Material, and the
+        /// Material is per-instance. The twin therefore rendered with no overlay --
+        /// enabled, correct, and invisible -- which is why Vision Loss did nothing
+        /// on its own while scalar-only effects worked.
+        /// </summary>
+        protected LinkableBaseEffect TwinEyeEffect
+        {
+            get { return isLeftEye ? rightEyeEffectInstance : leftEyeEffectInstance; }
+        }
+
         // Cache all fields marked with LinkableAttribute to avoid expensive
         // reflection every frame in Update(). This significantly reduces the
         // overhead when running the simulator in the background.

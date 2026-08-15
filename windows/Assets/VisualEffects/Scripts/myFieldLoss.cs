@@ -127,9 +127,38 @@ namespace VisSim
         }
 		public void setGrid(double[,] grid_xy, bool extrapolateEdges)
 		{
+			ApplyGrid(grid_xy, extrapolateEdges);
+
+			// Forward to the other eye's instance.
+			//
+			// The eye linking copies fields marked [Linkable], and overlayTexture is
+			// one -- but the grid arrives through this METHOD, and the method also
+			// pushes the texture into Material, which is per-instance. So the twin
+			// ended up enabled, rendering every frame, with no _Overlay bound: a
+			// field-loss effect with no field loss, i.e. invisible. Since the
+			// displayed camera is the one whose instance was never told, switching
+			// Vision Loss on by itself appeared to do nothing, while effects
+			// configured purely through [Linkable] scalars worked normally.
+			//
+			// ApplyGrid rather than setGrid, so the twin does not forward back.
+			var twin = TwinEyeEffect as myFieldLoss;
+			if (twin != null && twin != this)
+			{
+				twin.ApplyGrid(grid_xy, extrapolateEdges);
+			}
+		}
+
+		/// <summary>Sets the grid on THIS instance only. See setGrid.</summary>
+		private void ApplyGrid(double[,] grid_xy, bool extrapolateEdges)
+		{
 			overlayRawGrid_xy = grid_xy;
 			overlayTexture = GridInterpolator.Instance.interpolateGridAndMakeTexture(grid_xy, extrapolateEdges);
-			Material.SetTexture("_Overlay", overlayTexture);
+			// Material lazily creates the material; guard so a call before this
+			// instance is enabled cannot throw and abort the caller's own setup.
+			if (Material != null)
+			{
+				Material.SetTexture("_Overlay", overlayTexture);
+			}
 		}
         public double[,] getGrid()
         {
