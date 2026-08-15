@@ -527,6 +527,36 @@ namespace VipSim.EditorTools
                 changed++;
             }
 
+            // --- 3f. Delete the second eye ------------------------------------------
+            //
+            // The final step of the per-eye refactor. VIP-Sim is monoscopic; RightEye is a
+            // full-screen camera carrying a duplicate of all nineteen effects, from the
+            // retired FOVE stereo rig. Both cameras clear, so only one was ever
+            // contributing to the backbuffer anyway -- the other's work was discarded every
+            // frame, at full cost.
+            //
+            // Safe only in this order. While LinkableBaseEffect still looked up its
+            // opposite-eye twin it disabled ITSELF when the twin was missing, so removing
+            // this object switched every effect off and looked exactly like "RightEye was
+            // the camera doing the rendering". That lookup is gone as of the previous
+            // commit. Measurement also confirmed the overlay's alpha comes from the
+            // captured window content, not from this camera's Skybox clear.
+            var rightEye = all.FirstOrDefault(g => g.CompareTag("RightEye"));
+            if (rightEye != null)
+            {
+                int effects = rightEye.GetComponentsInChildren<VisSim.LinkableBaseEffect>(true).Length;
+                Debug.Log($"UIREFRESH: deleting '{rightEye.name}' and its {effects} duplicate effect(s); " +
+                          "VIP-Sim is monoscopic and this camera's output was discarded every frame.");
+                Object.DestroyImmediate(rightEye);
+                changed++;
+
+                // `all` was collected before the delete and still holds every child of the
+                // object just destroyed. Unity's fake-null makes those entries compare
+                // equal to null but they are still in the list, so every later step that
+                // iterates it throws. Rebuild it.
+                all = all.Where(g => g != null).ToList();
+            }
+
             // --- 4. Make the per-effect settings gear hittable ----------------------
             //
             // Each effect row is a wide "Enable" bar with a 35x32 gear crammed against its
