@@ -150,6 +150,20 @@ public class ChangeButtonAppearance : MonoBehaviour
     private static ChangeButtonAppearance _openGear;
 
     /// <summary>
+    /// Whether any effect currently has its settings panel open.
+    ///
+    /// This is the piece of state the UI was missing. It previously tracked a global
+    /// open/closed flag AND which gear was last clicked, with nothing connecting them, so
+    /// "are the parameters on screen the ones belonging to a selected effect?" had no
+    /// answer. Two bugs came out of that gap in a single session: parameters lingering for
+    /// an effect that had been switched off, and -- when the first fix reached for the
+    /// global flag instead -- every effect's settings vanishing at once.
+    ///
+    /// The panel derives from this rather than being pushed at, so the two cannot disagree.
+    /// </summary>
+    public static bool HasOpenSettings => _openGear != null;
+
+    /// <summary>
     /// Force this button back to its unselected appearance without toggling anything.
     /// PerformSwap flips state, which is wrong when the state is already known.
     /// </summary>
