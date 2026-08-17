@@ -86,6 +86,8 @@ These are developer aids, not features. They are harmless to press.
 | Key | Effect |
 |---|---|
 | **Ctrl+Alt+Q** | Quit. Always works. |
+| **F1** | The symptom reference — what every effect simulates, in plain language, plus the tutorial and the display switcher. Also on the (i) toolbar button. |
+| **F3** | Move VIP-Sim to the next monitor. Hotkeys need the overlay focused; the same action is a button in the F1 panel, which always works. |
 | **F6** | Write a PNG of what VIP-Sim is rendering, next to the player log. Ordinary screenshots exclude overlay windows, so this is the only way to capture what the simulation actually looks like. |
 | **F7** | Force the effect list on screen *when no window has been selected*. Only useful for inspecting that part of the UI in isolation — **if a window is already selected it does nothing visible, because the list is showing anyway.** |
 | **F8** | Log the alpha distribution of the finished frame. Alpha is what decides whether the overlay is visible at all on a composited desktop, and it cannot be seen in a screenshot. |
