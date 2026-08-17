@@ -6,6 +6,13 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
     public Camera camera;
     private BoxCollider boxCollider;
 
+    // The camera's orthographic size, captured ONCE from the plane's authored height.
+    // It used to be recomputed from the plane's bounds every frame, which is what
+    // stretched every capture to fill the screen: MacCapture now reshapes the plane to
+    // each captured window's aspect ratio, and a camera that zooms to the plane would
+    // cancel that letterboxing frame by frame.
+    private float pinnedOrthoSize = -1f;
+
     void Update()
     {
         
@@ -65,39 +72,27 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         // Ensure the camera is orthographic
         camera.orthographic = true;
 
-        // Get the bounds of the BoxCollider
-        Bounds bounds = boxCollider.bounds;
+        // Guarded AFTER the orthographic line above, which must run unconditionally --
+        // skipping it once turned the camera perspective and removed the overlay
+        // entirely on Windows.
+        if (boxCollider == null) return;
 
-        // Calculate the full height of the BoxCollider
-        float boxHeight = bounds.size.y;
+        // Pin the camera to the plane's AUTHORED height, once. Everything this method
+        // used to do beyond that was wrong on this platform: it re-zoomed to the
+        // plane's current bounds every frame (stretching every captured window to
+        // fill the screen -- the reported distortion), it shifted the plane down by a
+        // hardcoded 48px WINDOWS taskbar that does not exist on macOS, and it
+        // re-centred the camera on the plane each frame. MacCapture now shapes the
+        // plane to the captured window's aspect; the camera's job is only to hold a
+        // stable full-screen view for it to sit in.
+        if (pinnedOrthoSize < 0f)
+        {
+            float h = boxCollider.bounds.size.y;
+            if (h <= 0f) return; // not laid out yet; try again next frame
+            pinnedOrthoSize = h * 0.5f;
+        }
 
-        // Determine the taskbar height in pixels (you can set this value based on the screen resolution and taskbar size)
-        int taskbarHeightPixels = 48; // Default medium size for a full HD screen
-
-        // Get the screen height in pixels
-        int screenHeightPixels = Screen.height;
-
-        // Calculate the height of the taskbar in world units
-        float taskbarHeightWorldUnits = (taskbarHeightPixels / (float)screenHeightPixels) * camera.orthographicSize * 2;
-
-        // Calculate the orthographic size to fit the box height and the taskbar height
-        camera.orthographicSize = (boxHeight / 2.0f) + taskbarHeightWorldUnits / 2.0f;
-
-        // Ensure the camera's aspect ratio remains unchanged
-        float aspectRatio = camera.aspect;
-
-        // Adjust the position of the boxCollider to account for the taskbar height
-        Vector3 newPosition = boxCollider.transform.position;
-        newPosition.y = camera.transform.position.y - (bounds.extents.y) + (taskbarHeightWorldUnits / 2.0f);
-
-        // Center the boxCollider horizontally within the camera view
-        newPosition.x = camera.transform.position.x;
-
-        // Apply the new position to the boxCollider to account for the taskbar height
-        boxCollider.transform.position = newPosition;
-
-        // Ensure the camera is centered on the object
-        camera.transform.position = new Vector3(newPosition.x, camera.transform.position.y, camera.transform.position.z);
+        camera.orthographicSize = pinnedOrthoSize;
 
 
     }

@@ -54,10 +54,20 @@ public class MacCapture : MonoBehaviour
     private Texture currentTexture;
     private int currentWindowID = -1;
 
+    // The plane's authored scale, recorded before any capture reshapes it. The
+    // authored plane roughly fills the screen, so it is the footprint captures are
+    // fitted INTO, and the shape captures are restored to when they stop.
+    private Vector3 authoredPlaneScale;
+    private bool authoredScaleKnown;
+
     private void Awake()
     {
         if (planeRenderer != null)
+        {
             captureMaterial = planeRenderer.sharedMaterial;
+            authoredPlaneScale = planeRenderer.transform.localScale;
+            authoredScaleKnown = true;
+        }
     }
 
     public void Init()
@@ -171,6 +181,25 @@ public class MacCapture : MonoBehaviour
         currentWindowID = window.windowID;
         isRunning = true;
 
+        // Shape the plane to the captured window instead of stretching the window to
+        // the plane. The plane is authored at one fixed aspect; drawing every capture
+        // onto it forced a Settings window, a Finder window and a full-screen browser
+        // into the same shape, which is the distortion users saw. The capture is
+        // fitted inside the authored footprint at its own aspect ratio -- letterboxed
+        // rather than stretched -- and only the x:y ratio is changed, so this holds
+        // for whatever mesh the plane happens to be.
+        float fw = (float)window.frame.width;
+        float fh = (float)window.frame.height;
+        if (authoredScaleKnown && planeRenderer != null && fw > 0f && fh > 0f)
+        {
+            float aspect = fw / fh;
+            var s = authoredPlaneScale;
+            float w = s.x, h = s.y;
+            if (h > 0f && w / h > aspect) w = h * aspect;
+            else if (aspect > 0f) h = w / aspect;
+            planeRenderer.transform.localScale = new Vector3(w, h, s.z);
+        }
+
         if (planeRenderer != null) planeRenderer.enabled = true;
         Debug.Log($"Started capture for window {window.windowID} ({window.owningApplication.applicationName})");
     }
@@ -214,6 +243,10 @@ public class MacCapture : MonoBehaviour
         {
             if (transparentMaterial != null) planeRenderer.material = transparentMaterial;
             planeRenderer.enabled = false;
+
+            // Undo the per-capture aspect fit, so the next capture starts from the
+            // authored footprint rather than the previous window's shape.
+            if (authoredScaleKnown) planeRenderer.transform.localScale = authoredPlaneScale;
         }
     }
 }
