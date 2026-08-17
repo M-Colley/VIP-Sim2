@@ -78,6 +78,14 @@ namespace VipSim.EditorTools
         // 60 -> 48. This alone is what makes eight buttons fit.
         private static readonly Vector2 ToolbarIconSize = new Vector2(48f, 48f);
 
+        // The two buttons whose glyph was written onto the root Image, destroying the
+        // background sprite the Button's SpriteSwap transition animates on hover. Both are
+        // clones of MouseEyeSwitch that had their icon assigned afterwards.
+        private static readonly string[] GlyphOnRootButtons =
+        {
+            "CalibrateGazeButton", "SymptomInfoButton",
+        };
+
         // Hover help for every toolbar button. Keyed on GameObject name. An icon-only
         // toolbar with no labels is unusable without this, and previously only some of the
         // buttons carried a tooltip, so the row explained half of itself.
@@ -736,6 +744,60 @@ namespace VipSim.EditorTools
                     changed++;
                     Debug.Log($"UIREFRESH: {resized} toolbar icon(s) -> {ToolbarIconSize.x}x{ToolbarIconSize.y}, " +
                               $"bar width -> {want:F0} for {titleBarB.transform.childCount} buttons.");
+                }
+
+                // Restore the hover shadow on the cloned buttons.
+                //
+                // The toolbar's Buttons use SpriteSwap, so hovering replaces the Image's
+                // sprite with a highlighted BACKGROUND that carries the shadow. Calibration
+                // and the info button had their glyph written straight onto that root Image,
+                // which destroyed the thing SpriteSwap animates -- so those two alone showed
+                // no hover feedback.
+                //
+                // Fix: give the glyph its own child Image and hand the root back the
+                // background sprite the other six use, taken from a sibling that still has
+                // it rather than hardcoded.
+                var reference = titleBarB.transform.Find("MinimizeButton")
+                                ?? titleBarB.transform.Find("Save");
+                var refSprite = reference != null ? reference.GetComponent<Image>()?.sprite : null;
+
+                foreach (var name in GlyphOnRootButtons)
+                {
+                    var btn = titleBarB.transform.Find(name);
+                    if (btn == null || refSprite == null) continue;
+
+                    var rootImg = btn.GetComponent<Image>();
+                    if (rootImg == null || rootImg.sprite == refSprite) continue; // already fixed
+
+                    var glyph = rootImg.sprite;
+                    if (glyph == null) continue;
+
+                    rootImg.sprite = refSprite;
+                    EditorUtility.SetDirty(rootImg);
+
+                    var holder = btn.Find("Glyph");
+                    if (holder == null)
+                    {
+                        var go = new GameObject("Glyph", typeof(RectTransform), typeof(Image));
+                        holder = go.transform;
+                        holder.SetParent(btn, false);
+                    }
+
+                    var grt = (RectTransform)holder;
+                    grt.anchorMin = Vector2.zero;
+                    grt.anchorMax = Vector2.one;
+                    grt.offsetMin = new Vector2(8f, 8f);   // inset so the background shows
+                    grt.offsetMax = new Vector2(-8f, -8f);
+
+                    var gimg = holder.GetComponent<Image>();
+                    gimg.sprite = glyph;
+                    gimg.preserveAspect = true;
+                    gimg.raycastTarget = false; // the Button on the root must keep the hover
+                    EditorUtility.SetDirty(gimg);
+
+                    changed++;
+                    Debug.Log($"UIREFRESH: '{name}' glyph moved to a child; root restored to the " +
+                              "shared background so SpriteSwap hover works again.");
                 }
 
                 // Hover help on every toolbar button. Some had a ToolbarTooltip and some did

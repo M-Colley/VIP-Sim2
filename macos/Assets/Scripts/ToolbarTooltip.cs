@@ -40,12 +40,27 @@ public class ToolbarTooltip : MonoBehaviour, IPointerEnterHandler, IPointerExitH
 
     private void Awake()
     {
-        // Late binding: the label is created by the editor setup and may be
-        // resolved after this component's Awake, so look it up by name once.
+        // Late binding: the label is created by the editor setup and may be resolved after
+        // this component's Awake, so look it up by name once.
+        //
+        // NOT GameObject.Find. That skips inactive objects, and the label is inactive by
+        // design -- it is only shown while the pointer is over a button, and Register()
+        // deactivates it immediately. So the lookup returned null every time, _label stayed
+        // null, and OnPointerEnter bailed out on its first line: hover help was set on every
+        // button and never appeared on any of them.
         if (_label == null)
         {
-            var found = GameObject.Find("ToolbarTooltipLabel");
-            if (found != null) Register(found.GetComponent<TMP_Text>());
+            foreach (var candidate in Resources.FindObjectsOfTypeAll<TMP_Text>())
+            {
+                if (candidate == null || candidate.name != "ToolbarTooltipLabel") continue;
+
+                // Exclude assets and prefab contents; only take the instance in the loaded
+                // scene, which FindObjectsOfTypeAll does not filter for.
+                if (!candidate.gameObject.scene.IsValid()) continue;
+
+                Register(candidate);
+                break;
+            }
         }
     }
 
