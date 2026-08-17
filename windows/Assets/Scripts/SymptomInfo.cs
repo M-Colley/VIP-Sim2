@@ -163,10 +163,16 @@ public class SymptomInfo : MonoBehaviour
         // Lives here as well as on F3 because this panel forces the overlay interactive
         // (infoState), so this button ALWAYS works -- F3, like every hotkey on a
         // click-through overlay, only fires while VIP-Sim happens to hold focus.
-        if (DisplaySwitcher.DisplayCount > 1 &&
-            GUILayout.Button($"Move to next display  ({DisplaySwitcher.Summary})", _button, GUILayout.Height(bh)))
+        //
+        // Both values are read into locals first. IMGUI runs this method once to lay out
+        // and again to paint; a control that appears in one pass and not the other throws
+        // a mismatched-layout-group error and takes the whole panel down with it.
+        int displays = DisplaySwitcher.DisplayCount;
+        if (displays > 1)
         {
-            DisplaySwitcher.MoveToNext();
+            string where = DisplaySwitcher.Summary;
+            if (GUILayout.Button($"Move to next display  ({where})", _button, GUILayout.Height(bh)))
+                DisplaySwitcher.MoveToNext();
         }
 
         // Close this panel first: both are modal IMGUI surfaces and would stack.
