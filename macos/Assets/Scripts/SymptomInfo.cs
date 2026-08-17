@@ -28,7 +28,7 @@ public class SymptomInfo : MonoBehaviour
 
     private bool _open;
     private Vector2 _scroll;
-    private GUIStyle _title, _term, _body, _group;
+    private GUIStyle _title, _term, _body, _group, _button;
 
     /// <summary>Wired to the toolbar button. Public so the Button onClick can find it.</summary>
     public void Toggle() => SetOpen(!_open);
@@ -156,26 +156,27 @@ public class SymptomInfo : MonoBehaviour
         GUILayout.EndScrollView();
 
         GUILayout.Space(8);
+        float bh = ButtonHeight;
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Open the paper", GUILayout.Height(34))) Application.OpenURL(PaperUrl);
+        if (GUILayout.Button("Open the paper", _button, GUILayout.Height(bh))) Application.OpenURL(PaperUrl);
 
         // Lives here as well as on F3 because this panel forces the overlay interactive
         // (infoState), so this button ALWAYS works -- F3, like every hotkey on a
         // click-through overlay, only fires while VIP-Sim happens to hold focus.
         if (DisplaySwitcher.DisplayCount > 1 &&
-            GUILayout.Button($"Move to next display  ({DisplaySwitcher.Summary})", GUILayout.Height(34)))
+            GUILayout.Button($"Move to next display  ({DisplaySwitcher.Summary})", _button, GUILayout.Height(bh)))
         {
             DisplaySwitcher.MoveToNext();
         }
 
         // Close this panel first: both are modal IMGUI surfaces and would stack.
-        if (GUILayout.Button("Show tutorial", GUILayout.Height(34)))
+        if (GUILayout.Button("Show tutorial", _button, GUILayout.Height(bh)))
         {
             SetOpen(false);
             FirstRunTutorial.Open();
         }
 
-        if (GUILayout.Button("Close  (Esc)", GUILayout.Height(34))) SetOpen(false);
+        if (GUILayout.Button("Close  (Esc)", _button, GUILayout.Height(bh))) SetOpen(false);
         GUILayout.EndHorizontal();
 
         GUILayout.EndArea();
@@ -198,7 +199,17 @@ public class SymptomInfo : MonoBehaviour
         _body = new GUIStyle(GUI.skin.label)
         { fontSize = Mathf.RoundToInt(17 * s), wordWrap = true };
         _group.normal.textColor = new Color(1f, 0.62f, 0.16f);
+
+        // Buttons must scale with the display like everything else. IMGUI's defaults
+        // are authored for 1080p; left unscaled, the footer buttons rendered as thin
+        // slivers with unreadable labels -- confirmed on both a 4K Windows display and
+        // a MacBook.
+        _button = new GUIStyle(GUI.skin.button)
+        { fontSize = Mathf.RoundToInt(18 * s) };
     }
+
+    // Shared footer-button height, display-scaled for the same reason as the fonts.
+    private static float ButtonHeight => 44f * Mathf.Max(1f, Screen.height / 1080f);
 
     private struct Entry
     {
