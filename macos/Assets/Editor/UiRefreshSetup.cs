@@ -65,12 +65,17 @@ namespace VipSim.EditorTools
 
         private const string DebugRowName = "Window Position and Scale";
 
-        // 625 -> 700. Eight toolbar buttons plus the wordmark do not fit in 625, which is why
-        // the bar started overlapping the title.
-        private const float PanelWidth = 700f;
+        // Back to 625, matching TitleBar. Widening it to 700 was unnecessary and caused a
+        // visible fault: Panel is centre-pivoted and TitleBar is not, so the extra 75 hung
+        // off both sides -- covered on the right by the toolbar, and bare black on the left.
+        // Widening TitleBar to match then pushed the whole button row off the right edge of
+        // the screen, taking Exit with it.
+        //
+        // Nothing needed widening. Eight buttons at 48 come to 384, which fits inside 625
+        // with room to spare; shrinking the icons was the only change required.
+        private const float PanelWidth = 625f;
 
-        // 60 -> 48. Together with the wider panel this is what makes eight buttons fit;
-        // neither change alone is enough.
+        // 60 -> 48. This alone is what makes eight buttons fit.
         private static readonly Vector2 ToolbarIconSize = new Vector2(48f, 48f);
 
         // Hover help for every toolbar button. Keyed on GameObject name. An icon-only
