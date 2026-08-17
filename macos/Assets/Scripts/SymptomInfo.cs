@@ -22,6 +22,10 @@ public class SymptomInfo : MonoBehaviour
     [Tooltip("Also opens and closes the panel, for when the toolbar button is unreachable.")]
     public KeyCode toggleKey = KeyCode.F1;
 
+    // The UIST'25 paper. Resolved through doi.org rather than a publisher URL so it keeps
+    // working if the hosting moves.
+    private const string PaperUrl = "https://doi.org/10.1145/3746059.3747704";
+
     private bool _open;
     private Vector2 _scroll;
     private GUIStyle _title, _term, _body, _group;
@@ -74,8 +78,11 @@ public class SymptomInfo : MonoBehaviour
 
         // Sized as a share of the screen rather than in pixels: VIP-Sim runs full-screen on
         // whatever the display is, and this is read on 4K panels as often as 1080p ones.
-        float w = Mathf.Min(Screen.width * 0.55f, 1100f);
-        float h = Screen.height * 0.78f;
+        // 72% rather than 55%, and a higher pixel ceiling. At the old width the title was
+        // being clipped -- "VIP-Sim" did not fit -- and the two-column entries wrapped hard
+        // enough that the clinical term ran onto its own line.
+        float w = Mathf.Min(Screen.width * 0.72f, 1600f);
+        float h = Screen.height * 0.82f;
         var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
 
         // Dim the rest of the screen. Without this the text sits on top of the simulation
@@ -107,10 +114,31 @@ public class SymptomInfo : MonoBehaviour
             GUILayout.Label(entry.description, _body);
             GUILayout.Space(6);
         }
+            GUILayout.Space(14);
+            GUILayout.Label("Further reading", _group);
+            GUILayout.Label("VIP-Sim is described in the UIST'25 paper. The paper covers how " +
+                            "the symptoms were chosen, how the simulation was built with and " +
+                            "for people with visual impairments, and what it was evaluated on.",
+                            _body);
+            GUILayout.Space(4);
+
+            // A link, not just a printed DOI: nobody types a DOI by hand. Rendered as a
+            // button so it is obviously clickable, since IMGUI has no anchor element.
+            var linkStyle = new GUIStyle(_body) { normal = { textColor = new Color(0.45f, 0.72f, 1f) } };
+            if (GUILayout.Button(PaperUrl, linkStyle))
+            {
+                // Opens in the user's browser. Works while the overlay is topmost because
+                // the browser takes focus in front of it.
+                Application.OpenURL(PaperUrl);
+            }
+
         GUILayout.EndScrollView();
 
         GUILayout.Space(8);
-        if (GUILayout.Button("Close  (Esc)", GUILayout.Height(34))) _open = false;
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Open the paper", GUILayout.Height(34))) Application.OpenURL(PaperUrl);
+        if (GUILayout.Button("Close  (Esc)", GUILayout.Height(34))) SetOpen(false);
+        GUILayout.EndHorizontal();
 
         GUILayout.EndArea();
     }
