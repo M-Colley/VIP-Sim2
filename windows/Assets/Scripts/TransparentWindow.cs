@@ -421,10 +421,34 @@ public class TransparentWindow : MonoBehaviour {
         Debug.Log($"TransparentWindow: NSWindow 0x{nsWindow.ToInt64():X} acquired after {_acquireAttempts} " +
                   "retries; clickthrough is active.");
         return true;
+#elif UNITY_STANDALONE_LINUX
+        // Linux overlay integration is not implemented yet, and saying so clearly beats
+        // the generic acquisition error, whose advice is wrong here. The Wayland-native
+        // design (layer-shell presenter + portal capture) is specified in
+        // docs/LINUX_PORT.md; Unity's own window cannot become a layer surface, so the
+        // overlay path on Linux is a separate native component, not a P/Invoke branch.
+        if (!_linuxNoticeShown)
+        {
+            _linuxNoticeShown = true;
+            string wayland = System.Environment.GetEnvironmentVariable("WAYLAND_DISPLAY");
+            string x11 = System.Environment.GetEnvironmentVariable("DISPLAY");
+            string session = System.Environment.GetEnvironmentVariable("XDG_SESSION_TYPE");
+            Debug.LogWarning(
+                "TransparentWindow: Linux support is a work in progress -- the overlay cannot yet " +
+                "be transparent or click-through on this platform. " +
+                $"Session type: '{session ?? "?"}', Wayland display: '{wayland ?? "none"}', " +
+                $"X11/XWayland display: '{x11 ?? "none"}'. See docs/LINUX_PORT.md for the plan. " +
+                "Ctrl+Alt+Q quits.");
+        }
+        return false;
 #else
         return false;
 #endif
     }
+
+#if UNITY_STANDALONE_LINUX
+    private bool _linuxNoticeShown;
+#endif
 
     /// <summary>
     /// Put the window back to full screen.
