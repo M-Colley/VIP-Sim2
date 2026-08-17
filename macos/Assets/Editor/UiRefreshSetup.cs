@@ -601,6 +601,63 @@ namespace VipSim.EditorTools
             }
             if (renamed > 0) changed++;
 
+            // --- 3f. Group related symptoms together --------------------------------
+            //
+            // The list was in the order effects were added over the years, which scattered
+            // related symptoms: the two vision losses sat five rows apart, and the three
+            // distortions were spread across the list. Someone scanning for "the peripheral
+            // one" had to read all eighteen labels.
+            //
+            // Ordered by what part of vision is affected, matching docs/EFFECTS.md so the
+            // reference and the UI cannot drift. Names are the GameObject names, which are
+            // unchanged by the label renames -- the labels are TMP text on a child.
+            var menuForOrder = all.FirstOrDefault(g => g.name == "VerticalMenu");
+            var order = new[]
+            {
+                // Central vision
+                "VisionLossC", "FovealDarkness", "DetailLoss",
+                // Peripheral vision
+                "Vision loss, peripheral", "In-Filling",
+                // Distortion
+                "Metamorphopsia", "Metamorphopsia2", "Distortion",
+                // Blur and refraction
+                "Hyperopia", "Cataract",
+                // Colour and contrast
+                "Color vision deficiency", "Contrast Sensitivity",
+                // Light
+                "Glare Vision/photophobia",
+                // Eye movement
+                "Nystagmus", "DoubleVisionEffect",
+                // Transient and floating
+                "Retinopathy", "StarsBlinking", "Teichopsia",
+            };
+
+            if (menuForOrder != null)
+            {
+                int placed = 0;
+                var rows = new System.Collections.Generic.List<Transform>();
+                foreach (Transform child in menuForOrder.transform) rows.Add(child);
+
+                foreach (var name in order)
+                {
+                    // Matched by iterating children, NOT Transform.Find: Find treats '/' as
+                    // a path separator, so "Glare Vision/photophobia" is read as a child
+                    // "Glare Vision" containing a child "photophobia" and never matches.
+                    // That silently left one row unordered.
+                    var row = rows.FirstOrDefault(r => r != null && r.name == name);
+                    if (row == null) continue;
+                    if (row.GetSiblingIndex() != placed) { row.SetSiblingIndex(placed); changed++; }
+                    placed++;
+                }
+
+                // Anything not in the list keeps its relative position at the end rather
+                // than being dropped, so an effect added later still appears.
+                if (placed > 0)
+                    Debug.Log($"UIREFRESH: ordered {placed} of {menuForOrder.transform.childCount} " +
+                              "effect rows by affected vision; any not listed stay at the end.");
+                EditorUtility.SetDirty(menuForOrder);
+            }
+
             // --- 4. Make the per-effect settings gear hittable ----------------------
             //
             // Each effect row is a wide "Enable" bar with a 35x32 gear crammed against its
