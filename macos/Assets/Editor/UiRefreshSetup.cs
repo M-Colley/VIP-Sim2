@@ -746,58 +746,82 @@ namespace VipSim.EditorTools
                               $"bar width -> {want:F0} for {titleBarB.transform.childCount} buttons.");
                 }
 
-                // Restore the hover shadow on the cloned buttons.
+                // Make the two cloned buttons structurally identical to their siblings, so
+                // they hover identically and carry no border.
                 //
-                // The toolbar's Buttons use SpriteSwap, so hovering replaces the Image's
-                // sprite with a highlighted BACKGROUND that carries the shadow. Calibration
-                // and the info button had their glyph written straight onto that root Image,
-                // which destroyed the thing SpriteSwap animates -- so those two alone showed
-                // no hover feedback.
+                // Measured from the scene, not assumed (an earlier pass got this wrong and
+                // shipped rounded-rect borders): the toolbar Buttons use ColorTint
+                // (m_Transition: 1), tinting m_TargetGraphic to 96% grey on hover. Siblings
+                // like Save have their GLYPH as the root Image, so the glyph itself darkens.
+                // Calibration and Info keep the glyph on a child "Glyph" object instead
+                // (their glyphs are assigned by setup scripts, and SwitchInput-style code
+                // repainting root sprites is what caused earlier icon bugs), so:
                 //
-                // Fix: give the glyph its own child Image and hand the root back the
-                // background sprite the other six use, taken from a sibling that still has
-                // it rather than hardcoded.
-                var reference = titleBarB.transform.Find("MinimizeButton")
-                                ?? titleBarB.transform.Find("Save");
-                var refSprite = reference != null ? reference.GetComponent<Image>()?.sprite : null;
-
+                //   - root Image: no sprite, alpha 0. It stays the raycast target -- uGUI
+                //     raycasts ignore alpha -- but draws nothing. A null-sprite Image at
+                //     alpha 1 renders a SOLID WHITE QUAD, which is the border's successor.
+                //   - Button.targetGraphic -> the Glyph child, so ColorTint darkens the
+                //     glyph exactly as it does on Save/Load/settings.
                 foreach (var name in GlyphOnRootButtons)
                 {
                     var btn = titleBarB.transform.Find(name);
-                    if (btn == null || refSprite == null) continue;
+                    if (btn == null) continue;
 
                     var rootImg = btn.GetComponent<Image>();
-                    if (rootImg == null || rootImg.sprite == refSprite) continue; // already fixed
-
-                    var glyph = rootImg.sprite;
-                    if (glyph == null) continue;
-
-                    rootImg.sprite = refSprite;
-                    EditorUtility.SetDirty(rootImg);
-
+                    var button = btn.GetComponent<Button>();
                     var holder = btn.Find("Glyph");
+                    if (rootImg == null || button == null) continue;
+
+                    // The Glyph child must already exist (created by an earlier pass). If it
+                    // does not, the glyph is still on the root and moving it is step one.
                     if (holder == null)
                     {
+                        if (rootImg.sprite == null)
+                        {
+                            Debug.LogWarning($"UIREFRESH: '{name}' has neither a Glyph child nor a root " +
+                                             "sprite; leaving it alone rather than blanking the button.");
+                            continue;
+                        }
                         var go = new GameObject("Glyph", typeof(RectTransform), typeof(Image));
                         holder = go.transform;
                         holder.SetParent(btn, false);
+                        var grt = (RectTransform)holder;
+                        grt.anchorMin = Vector2.zero;
+                        grt.anchorMax = Vector2.one;
+                        grt.offsetMin = new Vector2(8f, 8f);
+                        grt.offsetMax = new Vector2(-8f, -8f);
+                        var g = holder.GetComponent<Image>();
+                        g.sprite = rootImg.sprite;
+                        g.preserveAspect = true;
+                        g.raycastTarget = false;
+                        EditorUtility.SetDirty(g);
+                        changed++;
+                        Debug.Log($"UIREFRESH: '{name}' glyph moved to a child Image.");
                     }
 
-                    var grt = (RectTransform)holder;
-                    grt.anchorMin = Vector2.zero;
-                    grt.anchorMax = Vector2.one;
-                    grt.offsetMin = new Vector2(8f, 8f);   // inset so the background shows
-                    grt.offsetMax = new Vector2(-8f, -8f);
+                    var glyphImg = holder.GetComponent<Image>();
+                    bool dirty = false;
 
-                    var gimg = holder.GetComponent<Image>();
-                    gimg.sprite = glyph;
-                    gimg.preserveAspect = true;
-                    gimg.raycastTarget = false; // the Button on the root must keep the hover
-                    EditorUtility.SetDirty(gimg);
+                    if (rootImg.sprite != null) { rootImg.sprite = null; dirty = true; }
+                    if (rootImg.color.a > 0.001f)
+                    {
+                        rootImg.color = new Color(1f, 1f, 1f, 0f);
+                        dirty = true;
+                    }
+                    if (button.targetGraphic != glyphImg)
+                    {
+                        button.targetGraphic = glyphImg;
+                        EditorUtility.SetDirty(button);
+                        dirty = true;
+                    }
 
-                    changed++;
-                    Debug.Log($"UIREFRESH: '{name}' glyph moved to a child; root restored to the " +
-                              "shared background so SpriteSwap hover works again.");
+                    if (dirty)
+                    {
+                        EditorUtility.SetDirty(rootImg);
+                        changed++;
+                        Debug.Log($"UIREFRESH: '{name}' root cleared (no sprite, alpha 0) and hover " +
+                                  "tint retargeted to the glyph -- borderless, tints like its siblings.");
+                    }
                 }
 
                 // Hover help on every toolbar button. Some had a ToolbarTooltip and some did
