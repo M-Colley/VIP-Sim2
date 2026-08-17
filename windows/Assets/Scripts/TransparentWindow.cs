@@ -219,6 +219,23 @@ public class TransparentWindow : MonoBehaviour {
         calibrationState = false;
     }
 
+    // Same problem again, for the symptom reference panel. It is IMGUI, so the uGUI
+    // raycast that decides whether the pointer is over the UI cannot see it at all --
+    // the overlay stays click-through while the panel is on screen and the mouse wheel
+    // goes straight through to whatever application is behind it, so the panel cannot be
+    // scrolled. Its own flag rather than sharing one, for the reason above.
+    private bool infoState = false;
+
+    public void enableInfoState()
+    {
+        infoState = true;
+    }
+
+    public void disableInfoState()
+    {
+        infoState = false;
+    }
+
     private static TransparentWindow _instance;
 
     private void OnEnable()
@@ -313,7 +330,7 @@ public class TransparentWindow : MonoBehaviour {
             // the LastUiHit diagnostic keeps reflecting reality instead of
             // freezing at whatever was hit when the modal state began.
             bool outsideUi = IsCoordinateOutsidePanel();
-            bool clickthrough = !feedbackState && !calibrationState && outsideUi;
+            bool clickthrough = !feedbackState && !calibrationState && !infoState && outsideUi;
             if (clickthrough != _lastClickthrough || !_appliedOnce)
             {
                 SetClickthrough(clickthrough);

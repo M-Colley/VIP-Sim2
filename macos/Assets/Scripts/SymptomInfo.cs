@@ -27,9 +27,36 @@ public class SymptomInfo : MonoBehaviour
     private GUIStyle _title, _term, _body, _group;
 
     /// <summary>Wired to the toolbar button. Public so the Button onClick can find it.</summary>
-    public void Toggle() => _open = !_open;
+    public void Toggle() => SetOpen(!_open);
 
-    public void Close() => _open = false;
+    public void Close() => SetOpen(false);
+
+    /// <summary>
+    /// Opening the panel has to switch the overlay out of click-through, or it cannot be
+    /// used at all: the wheel and the clicks pass straight through to whatever application
+    /// is behind it, so the scroll view never receives them and the Close button cannot be
+    /// pressed. The uGUI hover test that normally handles this is blind to IMGUI, which is
+    /// why the panel needs to say so explicitly.
+    /// </summary>
+    private void SetOpen(bool open)
+    {
+        if (_open == open) return;
+        _open = open;
+
+        var window = FindAnyObjectByType<TransparentWindow>(FindObjectsInactive.Include);
+        if (window == null) return;
+
+        if (open) window.enableInfoState();
+        else window.disableInfoState();
+    }
+
+    private void OnDisable()
+    {
+        // Never leave the overlay stuck non-click-through. If this component is disabled
+        // while the panel is open, the flag would stay set and the whole overlay would
+        // keep swallowing clicks with nothing on screen to explain why.
+        if (_open) SetOpen(false);
+    }
 
     private void Update()
     {

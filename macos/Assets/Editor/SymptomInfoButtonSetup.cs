@@ -28,6 +28,9 @@ namespace VipSim.EditorTools
         private const string ButtonName = "SymptomInfoButton";
         private const string TemplateName = "MouseEyeSwitch";
 
+        // Every button in TitleBarB is 60 wide; the bar has to grow by exactly one.
+        private const float ButtonWidth = 60f;
+
         [MenuItem("VIP-Sim/Add symptom info button")]
         public static void Setup()
         {
@@ -59,6 +62,29 @@ namespace VipSim.EditorTools
             }
 
             var info = host.GetComponent<SymptomInfo>() ?? host.AddComponent<SymptomInfo>();
+
+            // Make room BEFORE adding. TitleBarB is a fixed-width HorizontalLayoutGroup and
+            // was already full: adding a button without widening it pushed the EXIT button
+            // off the end of the row, which on a borderless always-on-top overlay removes
+            // the only visible way out. One button's worth of width, no more.
+            var bar = template.transform.parent;
+            var barRect = bar != null ? bar.GetComponent<RectTransform>() : null;
+            if (barRect != null)
+            {
+                float want = barRect.rect.width + ButtonWidth;
+                Debug.Log($"SYMPTOM_INFO: widening '{bar.name}' {barRect.rect.width:F0} -> {want:F0} " +
+                          "to fit the extra button without displacing Exit.");
+                barRect.sizeDelta = new Vector2(barRect.sizeDelta.x + ButtonWidth, barRect.sizeDelta.y);
+                EditorUtility.SetDirty(barRect);
+
+                // A LayoutElement preferred width would override the rect and undo the above.
+                var le = bar.GetComponent<LayoutElement>();
+                if (le != null && le.preferredWidth > 0f)
+                {
+                    le.preferredWidth += ButtonWidth;
+                    EditorUtility.SetDirty(le);
+                }
+            }
 
             var clone = Object.Instantiate(template, template.transform.parent);
             clone.name = ButtonName;
