@@ -62,6 +62,21 @@ public class SymptomInfo : MonoBehaviour
         if (_open) SetOpen(false);
     }
 
+    private void Start()
+    {
+        // Re-apply the display this machine used last session. Delayed, because
+        // TransparentWindow.Start restores full-screen geometry on the PRIMARY display
+        // and both writes land on the same window -- whoever writes last wins, and it
+        // has to be this one.
+        StartCoroutine(RestoreDisplayWhenSettled());
+    }
+
+    private System.Collections.IEnumerator RestoreDisplayWhenSettled()
+    {
+        yield return new WaitForSeconds(1.5f);
+        DisplaySwitcher.ApplySaved();
+    }
+
     private void Update()
     {
         if (Input.GetKeyDown(toggleKey)) Toggle();
@@ -137,6 +152,16 @@ public class SymptomInfo : MonoBehaviour
         GUILayout.Space(8);
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("Open the paper", GUILayout.Height(34))) Application.OpenURL(PaperUrl);
+
+        // Lives here as well as on F3 because this panel forces the overlay interactive
+        // (infoState), so this button ALWAYS works -- F3, like every hotkey on a
+        // click-through overlay, only fires while VIP-Sim happens to hold focus.
+        if (DisplaySwitcher.DisplayCount > 1 &&
+            GUILayout.Button($"Move to next display  ({DisplaySwitcher.Summary})", GUILayout.Height(34)))
+        {
+            DisplaySwitcher.MoveToNext();
+        }
+
         if (GUILayout.Button("Close  (Esc)", GUILayout.Height(34))) SetOpen(false);
         GUILayout.EndHorizontal();
 

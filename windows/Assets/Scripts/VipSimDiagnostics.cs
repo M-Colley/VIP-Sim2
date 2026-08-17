@@ -67,6 +67,11 @@ public class VipSimDiagnostics : MonoBehaviour
              "pre-selection state. This makes that half of the UI reviewable.")]
     public KeyCode revealMenuKey = KeyCode.F7;
 
+    [Tooltip("Move VIP-Sim to the next monitor. Only fires while the overlay holds focus " +
+             "-- click the panel first -- so the same action is also a button in the F1 " +
+             "symptom panel, which forces the overlay interactive and always works.")]
+    public KeyCode displayKey = KeyCode.F3;
+
     /// <summary>
     /// While true, the parts of the UI that are normally gated behind "a window has been
     /// selected and the effect is switched on" are shown anyway.
@@ -187,6 +192,8 @@ public class VipSimDiagnostics : MonoBehaviour
             LogCursorAlignment();
             StartCoroutine(ProbeBackbufferAlpha());
         }
+
+        if (Input.GetKeyDown(displayKey)) DisplaySwitcher.MoveToNext();
 
         if (Input.GetKeyDown(revealMenuKey))
         {

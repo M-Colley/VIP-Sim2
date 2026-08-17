@@ -140,9 +140,18 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
             wh = visible.bottom - visible.top;
         }
 
-        // Screen coordinates are y-down from the top-left corner of the desktop; world
-        // space is y-up from the camera's centre. Offsets are computed relative to the
-        // camera's own position, so this does not care where the rig sits in world space.
+        // Window coordinates arrive in GLOBAL desktop space, y-down from the primary
+        // monitor's top-left -- but the overlay itself may no longer sit at that origin
+        // now that DisplaySwitcher can move it to another monitor. Everything below is
+        // therefore made relative to the overlay window's own top-left. On the primary
+        // display mainWindowPosition is (0,0) and this is exactly the old arithmetic.
+        var winPos = Screen.mainWindowPosition;
+        wx -= winPos.x;
+        wy -= winPos.y;
+
+        // Screen coordinates are y-down from the top-left; world space is y-up from the
+        // camera's centre. Offsets are computed relative to the camera's own position,
+        // so this does not care where the rig sits in world space.
         float dxPixels = (wx + ww * 0.5f) - Screen.width * 0.5f;
         float dyPixels = Screen.height * 0.5f - (wy + wh * 0.5f);
 
