@@ -69,6 +69,12 @@ public class SymptomInfo : MonoBehaviour
         // and both writes land on the same window -- whoever writes last wins, and it
         // has to be this one.
         StartCoroutine(RestoreDisplayWhenSettled());
+
+        // The first-run tutorial is attached AT RUNTIME rather than serialized into the
+        // scene: a component that exists only in code cannot drift between the two
+        // platform projects, and scene surgery is what has repeatedly broken this UI.
+        if (GetComponent<FirstRunTutorial>() == null)
+            gameObject.AddComponent<FirstRunTutorial>();
     }
 
     private System.Collections.IEnumerator RestoreDisplayWhenSettled()
@@ -160,6 +166,13 @@ public class SymptomInfo : MonoBehaviour
             GUILayout.Button($"Move to next display  ({DisplaySwitcher.Summary})", GUILayout.Height(34)))
         {
             DisplaySwitcher.MoveToNext();
+        }
+
+        // Close this panel first: both are modal IMGUI surfaces and would stack.
+        if (GUILayout.Button("Show tutorial", GUILayout.Height(34)))
+        {
+            SetOpen(false);
+            FirstRunTutorial.Open();
         }
 
         if (GUILayout.Button("Close  (Esc)", GUILayout.Height(34))) SetOpen(false);

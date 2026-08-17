@@ -236,6 +236,21 @@ public class TransparentWindow : MonoBehaviour {
         infoState = false;
     }
 
+    // And once more for the first-run tutorial. Its own flag, per the pattern above: the
+    // tutorial can be open at the same moment as the symptom panel is being closed, and
+    // two modal owners sharing one bool fight over it.
+    private bool tutorialState = false;
+
+    public void enableTutorialState()
+    {
+        tutorialState = true;
+    }
+
+    public void disableTutorialState()
+    {
+        tutorialState = false;
+    }
+
     private static TransparentWindow _instance;
 
     private void OnEnable()
@@ -330,7 +345,7 @@ public class TransparentWindow : MonoBehaviour {
             // the LastUiHit diagnostic keeps reflecting reality instead of
             // freezing at whatever was hit when the modal state began.
             bool outsideUi = IsCoordinateOutsidePanel();
-            bool clickthrough = !feedbackState && !calibrationState && !infoState && outsideUi;
+            bool clickthrough = !feedbackState && !calibrationState && !infoState && !tutorialState && outsideUi;
             if (clickthrough != _lastClickthrough || !_appliedOnce)
             {
                 SetClickthrough(clickthrough);
