@@ -19771,6 +19771,7 @@ GameObject:
   - component: {fileID: 1461121524}
   - component: {fileID: 1461121526}
   - component: {fileID: 1461121527}
+  - component: {fileID: 1461121528}
   m_Layer: 0
   m_Name: CameraRig
   m_TagString: Untagged
@@ -19852,6 +19853,19 @@ MonoBehaviour:
   targetFrameRate: 60
   enableVSync: 0
   deferToUnitEye: 1
+--- !u!114 &1461121528
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1461121523}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b43531a350be3124dacfbe68b5b50e13, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SymptomInfo
+  toggleKey: 282
 --- !u!1 &1461462902
 GameObject:
   m_ObjectHideFlags: 0
