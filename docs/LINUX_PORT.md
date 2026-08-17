@@ -1,8 +1,12 @@
 # Linux port — Wayland-native design
 
-Status: **foundation**. The Unity side builds for `StandaloneLinux64` (first verified
-August 2026 — the CI entry existed but had never actually compiled), the platform seam
-logs an honest status at runtime, and this document pins the architecture. The two native
+Status: **foundation, runtime-verified**. The Unity side builds for `StandaloneLinux64`
+(first verified August 2026 — the CI entry existed but had never actually compiled),
+and the player has now **run on Linux** — under WSLg on the development machine: 30s
+without a crash, OpenGL 4.5 via Mesa, and the platform seam reporting real environment
+values (`wayland-0`, XWayland `:0`). Two expected gaps showed as designed: capture inert
+(uWindowCapture's DllNotFoundException — worth gating to a single log line later) and no
+transparency. This document pins the architecture. The two native
 components are specified here and deliberately **not** written yet: they can only be
 compiled and verified on a real Linux machine, and this project's history shows exactly
 what shipping unverifiable code produces.
@@ -106,6 +110,17 @@ No layer-shell → the presenter cannot run there. Options, decided later with d
 run the Unity window itself under XWayland with X11 overlay tricks (works today,
 lives on borrowed time), or declare the overlay unsupported on GNOME while capture
 (portal) still works. Revisit if GNOME's position moves.
+
+## Local development loop (WSLg on the build machine, probed August 2026)
+
+WSL2/WSLg on the Windows build machine runs the player (verified: 30s, OpenGL 4.5,
+seam reporting `wayland-0` / XWayland `:0`) and now carries gcc 15 plus
+`libwayland-dev`/`wayland-protocols`. **WSLg's own compositor exposes no layer-shell**
+(18 globals, zero `zwlr_layer_shell` — measured with `wayland-info`), so the presenter
+cannot run against it directly. The loop that works: compile in WSL, run the presenter
+inside a **nested compositor** that supports layer-shell (Weston 14+ or labwc/Sway as a
+WSLg window). Final verification still wants a real distro, but the edit-compile-run
+cycle no longer does.
 
 ## Phases, each gated on verification on a real Linux machine
 
