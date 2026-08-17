@@ -71,7 +71,10 @@ namespace VipSim.EditorTools
 
             var clone = Object.Instantiate(template, template.transform.parent);
             clone.name = ButtonName;
-            clone.transform.SetSiblingIndex(0); // leftmost: it explains what the rest does
+            // Immediately after the template, NOT at index 0. TitleBarB sits to the right of
+            // the title, so index 0 placed the icon on top of the "VIP-Sim" wordmark rather
+            // than at the start of the button row.
+            clone.transform.SetSiblingIndex(template.transform.GetSiblingIndex() + 1);
 
             foreach (var stray in clone.GetComponentsInChildren<SwitchInput>(true))
                 Object.DestroyImmediate(stray);
