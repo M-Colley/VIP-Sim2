@@ -34,7 +34,7 @@ public class HideImpairmentSelection : MonoBehaviour
         // here it is macCapture.isRunning, hence the override being applied in both places.
         if (macCapture.isRunning || VipSimDiagnostics.ForceMenusVisible)
         {
-            if ((enableToggle.value > 0.9 && ChangeButtonAppearance.HasOpenSettings) || VipSimDiagnostics.ForceMenusVisible)
+            if (enableToggle.value > 0.9 || VipSimDiagnostics.ForceMenusVisible)
             {
                 targetGameObject.SetActive(true);
             } else

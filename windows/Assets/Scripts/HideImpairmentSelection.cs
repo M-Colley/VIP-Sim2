@@ -31,14 +31,17 @@ public class HideImpairmentSelection : MonoBehaviour
         // The F7 diagnostic override has to bypass the enable toggle as well as the
         // window-selected gate, or the effect list still stays hidden behind the second
         // condition and the hotkey looks broken for a different reason.
-        // Derived from the selection, not just from the slider. The slider alone said
-        // "settings are switched on" without reference to WHICH effect they belonged to,
-        // so the panel could show parameters when nothing was selected, or keep showing an
-        // effect's parameters after it had been switched off. Requiring an open gear as
-        // well means the panel and the selection cannot disagree.
+        // Do NOT add a HasOpenSettings condition here. It was tried and it deadlocks:
+        // targetGameObject is the EFFECT LIST, not the per-effect parameters panel, so
+        // requiring an open gear means the list only appears once a gear has been clicked --
+        // and no gear can be clicked while the list is hidden. The result is that the whole
+        // lower half of the UI disappears and cannot be recovered.
+        //
+        // ChangeButtonAppearance.HasOpenSettings is still the right piece of state for
+        // deciding whether an effect's PARAMETERS should show, and it is used for that where
+        // an effect is switched off. It is simply not what gates this object.
         bool desiredActive = hasActiveWindow &&
-                             (VipSimDiagnostics.ForceMenusVisible ||
-                              (enableToggle.value > 0.9f && ChangeButtonAppearance.HasOpenSettings));
+                             (VipSimDiagnostics.ForceMenusVisible || enableToggle.value > 0.9f);
 
         if (targetGameObject.activeSelf != desiredActive)
         {
