@@ -65,6 +65,30 @@ namespace VipSim.EditorTools
 
         private const string DebugRowName = "Window Position and Scale";
 
+        // 625 -> 700. Eight toolbar buttons plus the wordmark do not fit in 625, which is why
+        // the bar started overlapping the title.
+        private const float PanelWidth = 700f;
+
+        // 60 -> 48. Together with the wider panel this is what makes eight buttons fit;
+        // neither change alone is enough.
+        private static readonly Vector2 ToolbarIconSize = new Vector2(48f, 48f);
+
+        // Hover help for every toolbar button. Keyed on GameObject name. An icon-only
+        // toolbar with no labels is unusable without this, and previously only some of the
+        // buttons carried a tooltip, so the row explained half of itself.
+        private static readonly System.Collections.Generic.Dictionary<string, string> ToolbarHelp =
+            new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["settings"]             = "Settings",
+                ["Load"]                 = "Load a saved impairment configuration",
+                ["Save"]                 = "Save the current impairment configuration",
+                ["MouseEyeSwitch"]       = "Switch between mouse-following and webcam eye tracking",
+                ["CalibrateGazeButton"]  = "Calibrate eye tracking (F9).\nFollow the dot; Escape or right-click aborts.",
+                ["SymptomInfoButton"]    = "What do these symptoms mean? (F1)",
+                ["MinimizeButton"]       = "Minimise VIP-Sim",
+                ["ExitButton"]           = "Quit VIP-Sim (Ctrl+Alt+Q always works)",
+            };
+
         // The webcam row was already anchored bottom-centre; its x of -240 is load-bearing
         // because the HorizontalLayoutGroup lays its three children out from a 100-wide
         // rect and overflows to the right. Re-centring it at 0 pushed the label off the
@@ -656,6 +680,73 @@ namespace VipSim.EditorTools
                     Debug.Log($"UIREFRESH: ordered {placed} of {menuForOrder.transform.childCount} " +
                               "effect rows by affected vision; any not listed stay at the end.");
                 EditorUtility.SetDirty(menuForOrder);
+            }
+
+            // --- 3g. Wider panel, smaller toolbar icons, hover help everywhere ------
+            //
+            // TitleBarB grew to eight buttons and started overlapping the "VIP-Sim" wordmark:
+            // the bar is anchored to the right of the title, so widening it extended it
+            // leftwards over the title rather than outwards. Shrinking the buttons and
+            // widening the panel together is what makes eight fit; doing either alone does
+            // not.
+            var panelRt = panel != null ? panel.GetComponent<RectTransform>() : null;
+            if (panelRt != null && Mathf.Abs(panelRt.rect.width - PanelWidth) > 0.5f)
+            {
+                Debug.Log($"UIREFRESH: panel width {panelRt.rect.width:F0} -> {PanelWidth:F0}.");
+                panelRt.sizeDelta = new Vector2(panelRt.sizeDelta.x + (PanelWidth - panelRt.rect.width),
+                                                panelRt.sizeDelta.y);
+                EditorUtility.SetDirty(panelRt);
+                changed++;
+            }
+
+            // Every TitleBarB, not the first found. There are two -- the main toolbar and a
+            // single-button one under SettingsMenu -- and FirstOrDefault picked the latter,
+            // resizing a one-button bar to 48 wide while leaving the eight-button toolbar
+            // untouched. Each is sized from its OWN child count, which is correct for both.
+            foreach (var titleBarB in all.Where(g => g.name == "TitleBarB"))
+            {
+                int resized = 0;
+                foreach (Transform btn in titleBarB.transform)
+                {
+                    var brt = btn.GetComponent<RectTransform>();
+                    if (brt == null || Mathf.Abs(brt.rect.width - ToolbarIconSize.x) <= 0.5f) continue;
+                    brt.sizeDelta += ToolbarIconSize - brt.rect.size;
+                    EditorUtility.SetDirty(brt);
+                    resized++;
+                }
+
+                var brt2 = titleBarB.GetComponent<RectTransform>();
+                float want = titleBarB.transform.childCount * ToolbarIconSize.x;
+                if (brt2 != null && Mathf.Abs(brt2.rect.width - want) > 0.5f)
+                {
+                    brt2.sizeDelta += new Vector2(want - brt2.rect.width, 0f);
+                    EditorUtility.SetDirty(brt2);
+                }
+
+                var le = titleBarB.GetComponent<LayoutElement>();
+                if (le != null && le.preferredWidth > 0f) { le.preferredWidth = want; EditorUtility.SetDirty(le); }
+
+                if (resized > 0)
+                {
+                    changed++;
+                    Debug.Log($"UIREFRESH: {resized} toolbar icon(s) -> {ToolbarIconSize.x}x{ToolbarIconSize.y}, " +
+                              $"bar width -> {want:F0} for {titleBarB.transform.childCount} buttons.");
+                }
+
+                // Hover help on every toolbar button. Some had a ToolbarTooltip and some did
+                // not, so the row taught you what half of it did. An icon-only toolbar with
+                // no labels is unusable without this.
+                int tipped = 0;
+                foreach (Transform btn in titleBarB.transform)
+                {
+                    if (!ToolbarHelp.TryGetValue(btn.name, out var msg)) continue;
+                    var tip = btn.GetComponent<ToolbarTooltip>() ?? btn.gameObject.AddComponent<ToolbarTooltip>();
+                    if (tip.message == msg) continue;
+                    tip.message = msg;
+                    EditorUtility.SetDirty(tip);
+                    tipped++;
+                }
+                if (tipped > 0) { changed++; Debug.Log($"UIREFRESH: hover help set on {tipped} toolbar button(s)."); }
             }
 
             // --- 4. Make the per-effect settings gear hittable ----------------------

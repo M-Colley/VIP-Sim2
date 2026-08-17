@@ -3500,6 +3500,14 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2718392219383312005, guid: 71efb32ed39474cefb1e8c6183b0d544, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 48
+      objectReference: {fileID: 0}
+    - target: {fileID: 2718392219383312005, guid: 71efb32ed39474cefb1e8c6183b0d544, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 48
+      objectReference: {fileID: 0}
+    - target: {fileID: 2718392219383312005, guid: 71efb32ed39474cefb1e8c6183b0d544, type: 3}
       propertyPath: m_AnchoredPosition.x
       value: 0
       objectReference: {fileID: 0}
@@ -3578,6 +3586,10 @@ PrefabInstance:
     - target: {fileID: 6925125545422449593, guid: 71efb32ed39474cefb1e8c6183b0d544, type: 3}
       propertyPath: m_AnchorMin.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 6925125545422449593, guid: 71efb32ed39474cefb1e8c6183b0d544, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 48
       objectReference: {fileID: 0}
     - target: {fileID: 6925125545422449593, guid: 71efb32ed39474cefb1e8c6183b0d544, type: 3}
       propertyPath: m_AnchoredPosition.x
@@ -3716,7 +3728,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1559a9ebc64d4da4d97daeccb6e81b4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
-  message: Exit VIP-Sim (Ctrl+Alt+Q always works)
+  message: Quit VIP-Sim (Ctrl+Alt+Q always works)
 --- !u!1 &316486424
 GameObject:
   m_ObjectHideFlags: 0
@@ -7957,7 +7969,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 60, y: 55}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &721015278
 MonoBehaviour:
@@ -8503,7 +8515,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 60, y: 55}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &769502614
 MonoBehaviour:
@@ -10968,7 +10980,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 60, y: 55}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &983648681
 MonoBehaviour:
@@ -11093,7 +11105,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1559a9ebc64d4da4d97daeccb6e81b4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
-  message: Switch gaze source between mouse and eye tracking
+  message: Switch between mouse-following and webcam eye tracking
 --- !u!1 &993250608
 GameObject:
   m_ObjectHideFlags: 0
@@ -15429,7 +15441,7 @@ MonoBehaviour:
   Rcam: {fileID: 0}
   xy_norm: {x: 0.5, y: 0.5}
   unitEye: {fileID: 1654021345}
-  visualiseGaze: 0
+  visualiseGaze: 1
   crosshairImage: {fileID: 0}
   holdLastGoodGaze: 1
   trackingLossTimeout: 2
@@ -15902,7 +15914,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 60, y: 55}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1531747743
 MonoBehaviour:
@@ -16010,7 +16022,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1559a9ebc64d4da4d97daeccb6e81b4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
-  message: Load a saved symptom profile
+  message: Load a saved impairment configuration
 --- !u!1 &1591571678
 GameObject:
   m_ObjectHideFlags: 0
@@ -17666,7 +17678,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 60, y: 55}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &1791315061
 MonoBehaviour:
@@ -19128,7 +19140,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 60, y: 55}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1954417026
 MonoBehaviour:
@@ -19236,7 +19248,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1559a9ebc64d4da4d97daeccb6e81b4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
-  message: Save the current symptom profile
+  message: Save the current impairment configuration
 --- !u!1 &1995455314
 GameObject:
   m_ObjectHideFlags: 0
@@ -21159,7 +21171,7 @@ RectTransform:
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 480, y: 100}
+  m_SizeDelta: {x: 384, y: 100}
   m_Pivot: {x: 1, y: 1}
 --- !u!224 &600611270565557116
 RectTransform:
@@ -21221,7 +21233,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 600.16003, y: -50}
-  m_SizeDelta: {x: 220, y: 100}
+  m_SizeDelta: {x: 48, y: 100}
   m_Pivot: {x: 1, y: 0.5}
 --- !u!114 &625436501633891212
 MonoBehaviour:
@@ -24112,7 +24124,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 220, y: 0}
-  m_SizeDelta: {x: 60, y: 55}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &2969578281965552854
 MonoBehaviour:
@@ -26343,7 +26355,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 60, y: 55}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 1, y: 1}
 --- !u!1 &4814573332674622863
 GameObject:
@@ -27078,7 +27090,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 60, y: 55}
+  m_SizeDelta: {x: 48, y: 48}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &5565682907344979263
 MonoBehaviour:
@@ -28311,7 +28323,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1559a9ebc64d4da4d97daeccb6e81b4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
-  message: Exit VIP-Sim (Ctrl+Alt+Q always works)
+  message: Quit VIP-Sim (Ctrl+Alt+Q always works)
 --- !u!114 &6629565765499646903
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -29977,7 +29989,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1559a9ebc64d4da4d97daeccb6e81b4c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ToolbarTooltip
-  message: Exit VIP-Sim (Ctrl+Alt+Q always works)
+  message: Quit VIP-Sim (Ctrl+Alt+Q always works)
 --- !u!222 &8017454066300794841
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -30497,7 +30509,7 @@ RectTransform:
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 625, y: 1240}
+  m_SizeDelta: {x: 700, y: 1240}
   m_Pivot: {x: 1, y: 1}
 --- !u!224 &8437744387141113737
 RectTransform:
