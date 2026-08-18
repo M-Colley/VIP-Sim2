@@ -14,11 +14,15 @@
 
 ## The short version
 
-VIP-Sim runs on your computer and processes what it needs locally. It does not have
-accounts, it does not track usage, and it does not upload your screen or your camera
-images. Two features touch the network, and both are described below: an optional update
-check, and a research logging mode that is **off** unless someone deliberately switches it
-on and obtains consent.
+**The application** runs on your computer and processes what it needs locally. It has no
+accounts, does not track usage, and never uploads your screen or your camera images. Two
+of its features touch the network and both are described below: an optional update check,
+and a research logging mode that is **off** unless someone deliberately switches it on and
+obtains consent.
+
+**The website** is separate, and it is the only part that collects personal data: if you
+choose to, you can give us your email address for release announcements or to hear about
+the research study. Nothing about downloading or using VIP-Sim requires it.
 
 ---
 
@@ -76,23 +80,64 @@ information sheet, a consent record, and a retention period.
 
 ---
 
+## The mailing list (website only, opt-in)
+
+If you fill in the form on the website, we store your **email address**, optionally your
+**name**, and which of the two boxes you ticked.
+
+| | |
+|---|---|
+| **Lawful basis** | Your consent, given by ticking the box. |
+| **Processor** | Mailchimp (Intuit Inc.). The list is stored on their systems, **outside the EU/UK**, under their standard contractual clauses. |
+| **What we send** | Only what you ticked: release announcements, and/or the study invitation. Never anything else, and never advertising for anyone. |
+| **How long** | Until you unsubscribe or ask us to delete you. |
+| **Sharing** | Never sold, never passed to a third party beyond the processor above. |
+
+Every email carries an unsubscribe link, which works immediately. You can also ask us to
+delete your record outright, and we will confirm when it is done. You have the right to
+access, correct, export or erase your data, to withdraw consent at any time, and to
+complain to a supervisory authority.
+
+If you would rather not give us an address at all, the website lists three other ways to
+follow releases that involve us not at all.
+
+## The research study (separate from everything else)
+
+Ticking the study box tells us to send you the **participant information sheet**. That is
+all it does. **It is not consent to take part**, and it does not enrol you in anything.
+
+If you then decide to participate, that is a separate process with its own consent form
+and its own ethics approval, and the study data is held separately from the mailing list.
+Research participation data is covered by the study's own information sheet, which will
+tell you what is collected, how long it is kept, and how to withdraw &mdash; and you may
+withdraw at any point without giving a reason.
+
+_Before publication: name the ethics committee and approval reference, and the researcher
+acting as controller for the study data._
+
 ## What VIP-Sim never does
 
-- No account, sign-in, licence server or activation call.
+- No account, sign-in, licence server or activation call **in the application**. The
+  mailing list is on the website, is opt-in, and is described above.
 - No analytics, telemetry or crash upload (Unity Analytics is disabled in the project).
 - No advertising, profiling or automated decision-making.
-- No sale or sharing of personal data — there is none to sell.
+- No sale or sharing of personal data. The mailing list is never sold or passed on.
 - No transmission of screen content or camera images, in any mode.
 
 ---
 
 ## Your rights
 
-Because VIP-Sim holds no personal data on any server, there is normally nothing to request,
-correct or erase — the data is on your machine and under your control. Where research
-logging has been used with your consent, the study operator named on the consent form is
-the controller and handles access, rectification, erasure, restriction, portability,
-objection, and withdrawal of consent, as well as complaints to a supervisory authority.
+For the **application**, the data is on your machine and under your control, so there is
+normally nothing to request, correct or erase.
+
+For the **mailing list**, you have the full set of rights described above: access,
+rectification, erasure, restriction, portability, objection, and withdrawal of consent at
+any time, plus the right to complain to a supervisory authority. Use the unsubscribe link
+or the contact address below.
+
+Where **research logging** in the app has been used with your consent, the study operator
+named on your consent form is the controller for that data.
 
 ## Children
 

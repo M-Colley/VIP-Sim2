@@ -84,6 +84,40 @@
   .callout h3{margin:0 0 8px; font-size:16px}
   .callout p{margin:0; color:var(--muted); font-size:15px}
 
+  /* ---- forms ---- */
+  .form{display:flex; flex-direction:column; gap:16px; max-width:560px}
+  .field{display:flex; flex-direction:column; gap:6px}
+  .field label{font-size:14px; font-weight:600; color:var(--text)}
+  .field input[type=email], .field input[type=text]{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; color:var(--text); font:inherit; font-size:15px; width:100%}
+  .field input::placeholder{color:var(--faint)}
+  fieldset{border:1px solid var(--line); border-radius:var(--radius); padding:18px; margin:0}
+  legend{padding:0 8px; font-size:14px; font-weight:600; color:var(--text)}
+  .check{display:flex; gap:10px; align-items:flex-start; margin:10px 0; font-size:14.5px;
+         color:var(--muted); line-height:1.5}
+  .check input{margin-top:3px; width:18px; height:18px; accent-color:var(--accent); flex:none}
+  .check label{cursor:pointer}
+  .hp{position:absolute; left:-5000px}
+  button.btn{cursor:pointer; font-family:inherit}
+  .optional{font-weight:400; color:var(--faint)}
+  .todo{color:var(--accent)}
+
+  /* ---- symptom examples ---- */
+  .shots{display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  .shot{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+        overflow:hidden; display:flex; flex-direction:column}
+  .shot img{width:100%; height:auto; display:block; border-bottom:1px solid var(--line)}
+  .shot .cap{padding:16px 18px}
+  .shot h3{margin:0 0 6px; font-size:16px; letter-spacing:-.01em}
+  .shot p{margin:0; color:var(--muted); font-size:14.5px}
+  .shot .term{color:var(--faint); font-weight:400}
+
+  /* Visible keyboard focus everywhere. A page for an accessibility tool cannot be the
+     one that leaves keyboard users guessing where they are. */
+  a:focus-visible, button:focus-visible, input:focus-visible{
+    outline:3px solid var(--accent); outline-offset:3px; border-radius:4px}
+
   footer{padding:44px 0 64px; border-top:1px solid var(--line); color:var(--faint); font-size:14px}
   footer .wrap{display:flex; flex-wrap:wrap; gap:18px 28px; align-items:center}
   footer a{color:var(--muted)}
@@ -98,10 +132,12 @@
     <a class="brand" href="#top"><span class="dot"></span> VIP-Sim</a>
     <div class="links">
       <a href="#what">What it does</a>
+      <a href="#see">See it</a>
       <a href="#symptoms">Symptoms</a>
       <a href="#platforms">Platforms</a>
       <a href="#research">Research</a>
       <a href="#updates">Updates</a>
+      <a href="#study">Study</a>
       <a href="#support">Support</a>
     </div>
   </div>
@@ -174,6 +210,42 @@
   </div>
 </section>
 
+<section id="see">
+  <div class="wrap">
+    <h2>What it looks like</h2>
+    <p class="sub">
+      The same plain text document, captured live through VIP-Sim. Nothing here is a
+      mock-up or a photo filter &mdash; it is the running application.
+    </p>
+    <div class="shots">
+      <figure class="shot" style="margin:0">
+        <img src="img/symptom-none.png" width="1120" height="362"
+             alt="A plain text document about designing for low vision, shown normally:
+                  every line is crisp and readable.">
+        <figcaption class="cap">
+          <h3>No simulation</h3>
+          <p>The document as the designer sees it.</p>
+        </figcaption>
+      </figure>
+      <figure class="shot" style="margin:0">
+        <img src="img/symptom-central-vision-loss.png" width="1120" height="362"
+             alt="The same document with central vision loss simulated: a large blurred
+                  patch covers the middle of the text, leaving only fragments legible at
+                  the edges.">
+        <figcaption class="cap">
+          <h3>Vision Loss, Central <span class="term">central scotoma</span></h3>
+          <p>The patch follows your gaze, so the words you are trying to read are the ones
+             you cannot.</p>
+        </figcaption>
+      </figure>
+    </div>
+    <p class="note">
+      Severity is adjustable per symptom, and several can run at once. The values shipped
+      are plausible starting points, not clinically calibrated measurements.
+    </p>
+  </div>
+</section>
+
 <section id="symptoms">
   <div class="wrap">
     <h2>Eighteen symptoms, grouped by what they affect</h2>
@@ -206,7 +278,6 @@
 <section id="platforms">
   <div class="wrap">
     <h2>Platforms</h2>
-    <p class="sub">Honest status, so nobody downloads the wrong thing.</p>
     <div class="tablewrap">
       <table>
         <thead>
@@ -254,38 +325,151 @@
   <div class="wrap">
     <h2>Stay updated</h2>
     <p class="sub">
-      Three ways to hear about a new version. None of them asks for your email address,
-      and none of them is run by us &mdash; which is deliberate: see the note below.
+      Release announcements, and an invitation to the research study if you want one.
     </p>
+
+    <!-- =====================================================================
+         MAILCHIMP -- NOT YET CONFIGURED. Replace before publishing:
+           MAILCHIMP_SERVER  the usNN in your action URL (e.g. us21)
+           MAILCHIMP_U       the u= value
+           MAILCHIMP_ID      the id= value
+           MAILCHIMP_GROUP   numeric group id, used twice below
+         All four come from Mailchimp > Audience > Signup forms > Embedded forms.
+         The honeypot field name must be b_<MAILCHIMP_U>_<MAILCHIMP_ID>.
+         Until these are replaced the form posts nowhere.
+         ===================================================================== -->
+    <form class="form"
+          action="https://vipsim.MAILCHIMP_SERVER.list-manage.com/subscribe/post?u=MAILCHIMP_U&amp;id=MAILCHIMP_ID"
+          method="post" target="_blank" novalidate>
+
+      <div class="field">
+        <label for="mce-EMAIL">Email address</label>
+        <input type="email" name="EMAIL" id="mce-EMAIL" required
+               autocomplete="email" placeholder="you@example.org">
+      </div>
+
+      <div class="field">
+        <label for="mce-FNAME">Name <span class="optional">(optional)</span></label>
+        <input type="text" name="FNAME" id="mce-FNAME" autocomplete="name">
+      </div>
+
+      <fieldset>
+        <legend>What should we contact you about?</legend>
+
+        <div class="check">
+          <input type="checkbox" id="mce-group-updates" name="group[MAILCHIMP_GROUP][1]" value="1" checked>
+          <label for="mce-group-updates">
+            <b>Release announcements.</b> A short email when a new version is out, a few
+            times a year at most.
+          </label>
+        </div>
+
+        <div class="check">
+          <input type="checkbox" id="mce-group-study" name="group[MAILCHIMP_GROUP][2]" value="2">
+          <label for="mce-group-study">
+            <b>The research study.</b> We send you the participant information sheet and
+            what taking part involves. <a href="#study">Details below</a>.
+          </label>
+        </div>
+
+        <div class="check">
+          <input type="checkbox" id="mce-consent" name="gdpr[CONSENT]" value="Y" required>
+          <label for="mce-consent">
+            I agree to VIP-Sim storing my email address to send me what I ticked. I can
+            unsubscribe from any email, and ask for my details to be deleted, at any time.
+            See the
+            <a href="https://github.com/M-Colley/VIP-Sim2/blob/main/docs/PRIVACY.md">privacy policy</a>.
+          </label>
+        </div>
+      </fieldset>
+
+      <!-- Mailchimp's bot trap. Must stay empty and off-screen; do not remove. -->
+      <div class="hp" aria-hidden="true">
+        <input type="text" name="b_MAILCHIMP_U_MAILCHIMP_ID" tabindex="-1" value="">
+      </div>
+
+      <div>
+        <button class="btn btn-primary" type="submit" name="subscribe">Subscribe</button>
+      </div>
+
+      <p class="note" style="margin-top:0">
+        The list is held by Mailchimp (Intuit) on our behalf, so your address is stored
+        outside the EU. Nothing else is collected and it is never passed on.
+      </p>
+    </form>
+
+    <h3 style="margin:44px 0 10px; font-size:18px">Or without giving us your address</h3>
     <div class="grid">
       <div class="card">
         <h3>Watch releases on GitHub</h3>
-        <p>On the
-           <a href="https://github.com/M-Colley/VIP-Sim2">repository</a>, choose
-           <b>Watch &rarr; Custom &rarr; Releases</b>. GitHub emails you when a new version
-           is published. Unsubscribe there at any time.</p>
+        <p>On the <a href="https://github.com/M-Colley/VIP-Sim2">repository</a>, choose
+           <b>Watch &rarr; Custom &rarr; Releases</b>. GitHub sends the mail; we never see
+           the address.</p>
       </div>
       <div class="card">
         <h3>Subscribe to the feed</h3>
         <p>An Atom feed of every release:
            <a href="https://github.com/M-Colley/VIP-Sim2/releases.atom">releases.atom</a>.
-           Works in any feed reader, and tells nobody who you are.</p>
+           Works in any feed reader.</p>
       </div>
       <div class="card">
         <h3>Let the app tell you</h3>
-        <p>VIP-Sim checks for a newer version on start and shows a note in the
-           <b>F1</b> panel. It sends no identifier and downloads nothing, and it can be
-           switched off in that same panel.</p>
+        <p>VIP-Sim checks for a newer version on start and shows a note in the <b>F1</b>
+           panel. It sends no identifier, downloads nothing, and can be switched off.</p>
       </div>
     </div>
-    <p class="note" style="margin-top:22px">
-      <b>Why there is no mailing list.</b> Collecting email addresses would make us
-      responsible for personal data we currently hold none of &mdash; a lawful basis,
-      consent records, a processor agreement, deletion on request. The three routes above
-      give the same result with none of that. If a mailing list is ever added it will be
-      opt-in, announced in the
-      <a href="https://github.com/M-Colley/VIP-Sim2/blob/main/docs/PRIVACY.md">privacy policy</a>
-      first, and never a condition of downloading.
+  </div>
+</section>
+
+<section id="study">
+  <div class="wrap">
+    <h2>Take part in the research</h2>
+    <p class="sub">
+      We are studying what changes when designers use a vision-impairment simulation:
+      what they do differently, and what they come to believe.
+    </p>
+
+    <div class="callout">
+      <h3>The awkward question we are asking</h3>
+      <p>
+        There is real evidence that disability simulations can backfire &mdash; several
+        studies find that afterwards people rate disabled people as <em>less</em> capable
+        and feel less comfortable around them. VIP-Sim should be measured against that
+        rather than assumed to be exempt. This study is designed to find out whether it
+        helps, does nothing, or does harm, and we will publish the answer either way.
+      </p>
+    </div>
+
+    <div class="grid" style="margin-top:24px">
+      <div class="card">
+        <h3>Who we are looking for</h3>
+        <p>People who design or build software: designers, developers, researchers,
+           students. No accessibility experience needed &mdash; we are just as interested
+           in people who have never thought about it.</p>
+      </div>
+      <div class="card">
+        <h3>What taking part involves</h3>
+        <p>A short questionnaire, a design task using VIP-Sim, and a follow-up. Remote and
+           in your own time. We tell you the exact time commitment before you decide.</p>
+      </div>
+      <div class="card">
+        <h3>What we measure</h3>
+        <p>Which accessibility problems you find and fix, and your attitudes towards
+           disability before and after, using established scales.</p>
+      </div>
+      <div class="card">
+        <h3>Your data</h3>
+        <p>Handled under the study's ethics approval, kept separately from the mailing
+           list, and reported only in aggregate. You can withdraw at any point without
+           giving a reason.</p>
+      </div>
+    </div>
+
+    <p class="note" style="margin-top:24px">
+      <b>Registering interest is not consent.</b> Tick the study box above and we send you
+      the participant information sheet; you decide afterwards, and you are free to say no.
+      Approved by <span class="todo">[ETHICS COMMITTEE AND REFERENCE]</span>. Questions
+      before you decide: <span class="todo">[STUDY CONTACT EMAIL]</span>.
     </p>
   </div>
 </section>
@@ -293,7 +477,6 @@
 <section id="support">
   <div class="wrap">
     <h2>Support</h2>
-    <p class="sub">One place to report things, and one file to attach.</p>
     <div class="grid">
       <div class="card">
         <h3>Report a problem</h3>
