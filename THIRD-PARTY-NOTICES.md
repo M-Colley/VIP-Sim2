@@ -44,20 +44,19 @@ the resulting licence text here, or replace the component.
 Vendored at `windows/Assets/uWindowCapture`. Upstream:
 https://github.com/hecomi/uWindowCapture — MIT Licence, Copyright (c) hecomi.
 
-**ACTION — the licence text is not vendored with the copy in this repository.** MIT
-requires the copyright notice and permission notice to be included in all copies and
-substantial portions of the software, so the current release is technically out of
-compliance even as a free download. Copy `LICENSE` from the upstream repository at the
-revision in use into `windows/Assets/uWindowCapture/` and reference it here. This is the
-cheapest of the outstanding items and it applies today, independently of any commercial
-plan.
+Copyright (c) 2018 hecomi. The upstream licence file is vendored alongside the code at
+`windows/Assets/uWindowCapture/LICENSE.md`, and its full text is reproduced under
+[Full licence texts](#full-licence-texts) below — `.md` files under `Assets/` are not
+included in a player build, so the copy that reaches users is the one in this document.
 
 ---
 
 ## MediaPipe Unity Plugin
 
 Vendored at `packages/com.github.homuler.mediapipe`. MIT Licence, Copyright (c) 2021
-homuler. Full text: `packages/com.github.homuler.mediapipe/LICENSE.md`.
+homuler. The upstream file is at `packages/com.github.homuler.mediapipe/LICENSE.md`; it
+does not reach a player build either, so the text is reproduced under
+[Full licence texts](#full-licence-texts) below.
 
 The plugin embeds Google's MediaPipe (Apache Licence 2.0) and further components; their
 notices are reproduced in `packages/com.github.homuler.mediapipe/Third Party Notices.md`,
@@ -91,12 +90,76 @@ removing them from the release is simpler than carrying their notices.
 
 ---
 
+---
+
+## Full licence texts
+
+MIT requires that both the copyright notice **and** the permission notice travel with
+every copy of the software. This document is the copy that ships inside the release
+archives, so the texts are reproduced here in full rather than only referenced.
+
+### uWindowCapture
+
+```
+The MIT License (MIT)
+
+Copyright (c) 2018 hecomi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### MediaPipe Unity Plugin
+
+```
+MIT License
+
+Copyright (c) 2021 homuler
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### VIP-Sim
+
+See [LICENSE](LICENSE) in the repository, and the ownership question recorded above.
+
+---
+
 ## Summary of outstanding actions
 
 | # | Component | Action | Blocks a paid release? |
 |---|-----------|--------|------------------------|
 | 1 | UnitEye | Obtain a written licence, or replace | **Yes** |
-| 2 | uWindowCapture | Vendor the upstream MIT licence text | **Yes** (also applies to the free release) |
+| 2 | uWindowCapture | ~~Vendor the upstream MIT licence text~~ | **Done** |
 | 3 | VIP-Sim | Establish ownership in writing | **Yes** |
 | 3b | VIP-Sim | Resolve the MIT vs CC BY 4.0 contradiction | **Yes** |
 | 4 | Unity | Confirm plan eligibility; decide on the splash | Yes, if over the Personal threshold |
