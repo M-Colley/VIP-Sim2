@@ -82,14 +82,14 @@ information sheet, a consent record, and a retention period.
 
 ## The mailing list (website only, opt-in)
 
-If you fill in the form on the website, we store your **email address**, optionally your
-**name**, and which of the two boxes you ticked.
+If you fill in the form on the website, we store your **email address** and nothing else
+&mdash; no name, and no record of anything you have read or clicked.
 
 | | |
 |---|---|
 | **Lawful basis** | Your consent, given by ticking the box. |
 | **Processor** | Mailchimp (Intuit Inc.). The list is stored on their systems, **outside the EU/UK**, under their standard contractual clauses. |
-| **What we send** | Only what you ticked: release announcements, and/or the study invitation. Never anything else, and never advertising for anyone. |
+| **What we send** | Release announcements only, a few times a year. Never anything else, and never advertising for anyone. |
 | **How long** | Until you unsubscribe or ask us to delete you. |
 | **Sharing** | Never sold, never passed to a third party beyond the processor above. |
 
@@ -103,8 +103,10 @@ follow releases that involve us not at all.
 
 ## The research study (separate from everything else)
 
-Ticking the study box tells us to send you the **participant information sheet**. That is
-all it does. **It is not consent to take part**, and it does not enrol you in anything.
+Interest in the study is handled **by email to m.colley@ucl.ac.uk**, deliberately not through the
+signup form: interest in a research study should not pass through a marketing processor.
+Writing to us gets you the **participant information sheet**. That is all it does. **It is
+not consent to take part**, and it does not enrol you in anything.
 
 If you then decide to participate, that is a separate process with its own consent form
 and its own ethics approval, and the study data is held separately from the mailing list.
@@ -112,8 +114,8 @@ Research participation data is covered by the study's own information sheet, whi
 tell you what is collected, how long it is kept, and how to withdraw &mdash; and you may
 withdraw at any point without giving a reason.
 
-_Before publication: name the ethics committee and approval reference, and the researcher
-acting as controller for the study data._
+The study is approved by the **UCL Research Ethics Committee, project 1165**. The researcher acting as controller for the
+study data is reachable at m.colley@ucl.ac.uk.
 
 ## What VIP-Sim never does
 

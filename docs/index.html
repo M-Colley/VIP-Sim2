@@ -325,21 +325,10 @@
   <div class="wrap">
     <h2>Stay updated</h2>
     <p class="sub">
-      Release announcements, and an invitation to the research study if you want one.
+      One short email when a new version is out. Nothing else.
     </p>
 
-    <!-- =====================================================================
-         MAILCHIMP -- NOT YET CONFIGURED. Replace before publishing:
-           MAILCHIMP_SERVER  the usNN in your action URL (e.g. us21)
-           MAILCHIMP_U       the u= value
-           MAILCHIMP_ID      the id= value
-           MAILCHIMP_GROUP   numeric group id, used twice below
-         All four come from Mailchimp > Audience > Signup forms > Embedded forms.
-         The honeypot field name must be b_<MAILCHIMP_U>_<MAILCHIMP_ID>.
-         Until these are replaced the form posts nowhere.
-         ===================================================================== -->
-    <form class="form"
-          action="https://vipsim.MAILCHIMP_SERVER.list-manage.com/subscribe/post?u=MAILCHIMP_U&amp;id=MAILCHIMP_ID"
+    <form class="form" action="https://yahoo.us21.list-manage.com/subscribe/post?u=52b86b0ffd27ccddcbf9f4115&amp;id=9f7b086e2b&amp;f_id=005fa1e6f0"
           method="post" target="_blank" novalidate>
 
       <div class="field">
@@ -348,44 +337,19 @@
                autocomplete="email" placeholder="you@example.org">
       </div>
 
-      <div class="field">
-        <label for="mce-FNAME">Name <span class="optional">(optional)</span></label>
-        <input type="text" name="FNAME" id="mce-FNAME" autocomplete="name">
+      <div class="check">
+        <input type="checkbox" id="mce-consent" name="gdpr[CONSENT]" value="Y" required>
+        <label for="mce-consent">
+          I agree to VIP-Sim storing my email address to send me release announcements. I
+          can unsubscribe from any email, and ask for my details to be deleted, at any
+          time. See the
+          <a href="https://github.com/M-Colley/VIP-Sim2/blob/main/docs/PRIVACY.md">privacy policy</a>.
+        </label>
       </div>
-
-      <fieldset>
-        <legend>What should we contact you about?</legend>
-
-        <div class="check">
-          <input type="checkbox" id="mce-group-updates" name="group[MAILCHIMP_GROUP][1]" value="1" checked>
-          <label for="mce-group-updates">
-            <b>Release announcements.</b> A short email when a new version is out, a few
-            times a year at most.
-          </label>
-        </div>
-
-        <div class="check">
-          <input type="checkbox" id="mce-group-study" name="group[MAILCHIMP_GROUP][2]" value="2">
-          <label for="mce-group-study">
-            <b>The research study.</b> We send you the participant information sheet and
-            what taking part involves. <a href="#study">Details below</a>.
-          </label>
-        </div>
-
-        <div class="check">
-          <input type="checkbox" id="mce-consent" name="gdpr[CONSENT]" value="Y" required>
-          <label for="mce-consent">
-            I agree to VIP-Sim storing my email address to send me what I ticked. I can
-            unsubscribe from any email, and ask for my details to be deleted, at any time.
-            See the
-            <a href="https://github.com/M-Colley/VIP-Sim2/blob/main/docs/PRIVACY.md">privacy policy</a>.
-          </label>
-        </div>
-      </fieldset>
 
       <!-- Mailchimp's bot trap. Must stay empty and off-screen; do not remove. -->
       <div class="hp" aria-hidden="true">
-        <input type="text" name="b_MAILCHIMP_U_MAILCHIMP_ID" tabindex="-1" value="">
+        <input type="text" name="b_52b86b0ffd27ccddcbf9f4115_9f7b086e2b" tabindex="-1" value="">
       </div>
 
       <div>
@@ -393,8 +357,9 @@
       </div>
 
       <p class="note" style="margin-top:0">
-        The list is held by Mailchimp (Intuit) on our behalf, so your address is stored
-        outside the EU. Nothing else is collected and it is never passed on.
+        Release announcements only, a few times a year. Your address is nothing but an
+        address to us: no name, no tracking, no profile. The list is held by Mailchimp
+        (Intuit) on our behalf, so it is stored outside the EU. It is never passed on.
       </p>
     </form>
 
@@ -466,10 +431,14 @@
     </div>
 
     <p class="note" style="margin-top:24px">
-      <b>Registering interest is not consent.</b> Tick the study box above and we send you
-      the participant information sheet; you decide afterwards, and you are free to say no.
-      Approved by <span class="todo">[ETHICS COMMITTEE AND REFERENCE]</span>. Questions
-      before you decide: <span class="todo">[STUDY CONTACT EMAIL]</span>.
+      <b>Interested?</b> Email
+      <a href="mailto:m.colley@ucl.ac.uk?subject=VIP-Sim%20study%20%E2%80%94%20expression%20of%20interest">m.colley@ucl.ac.uk</a>
+      and we will send you the participant information sheet. That is not consent to take
+      part: you read it, then you decide, and you are free to say no.
+    </p>
+    <p class="note">
+      Deliberately by email rather than through the signup form above, so that interest in
+      a study never touches a marketing mailing list. Approved by the UCL Research Ethics Committee, project 1165.
     </p>
   </div>
 </section>
