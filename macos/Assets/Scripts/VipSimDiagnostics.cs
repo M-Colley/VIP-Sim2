@@ -73,6 +73,41 @@ public class VipSimDiagnostics : MonoBehaviour
     public KeyCode displayKey = KeyCode.F3;
 
     /// <summary>
+    /// Whether the developer hotkeys are live.
+    ///
+    /// F6/F7/F8/F10/F11 are instrumentation, not features: they were written to debug this
+    /// codebase and they log volumes of detail, capture files to disk and can force UI
+    /// states that a user cannot undo. Shipping them bound by default in a paid build is
+    /// how a customer ends up in a state nobody can talk them out of over email.
+    ///
+    /// Resolved once. The Editor always qualifies; a release build needs -vipsim-dev on
+    /// the command line, which is documented in RELEASE.md and costs a support reply.
+    /// </summary>
+    public static bool DeveloperMode
+    {
+        get
+        {
+            if (_devMode.HasValue) return _devMode.Value;
+            bool dev = Application.isEditor;
+            if (!dev)
+            {
+                foreach (var arg in System.Environment.GetCommandLineArgs())
+                {
+                    if (string.Equals(arg, "-vipsim-dev", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        dev = true;
+                        break;
+                    }
+                }
+            }
+            _devMode = dev;
+            return dev;
+        }
+    }
+
+    private static bool? _devMode;
+
+    /// <summary>
     /// While true, the parts of the UI that are normally gated behind "a window has been
     /// selected and the effect is switched on" are shown anyway.
     ///
@@ -177,28 +212,36 @@ public class VipSimDiagnostics : MonoBehaviour
             Debug.Log("[VipSimDiagnostics] Quit hotkey pressed.");
             Application.Quit();
         }
-        if (Input.GetKeyDown(toggleKey)) showOverlay = !showOverlay;
-        if (Input.GetKeyDown(benchmarkKey) && !_benchmarkRunning) StartCoroutine(RunEffectBenchmark());
-
-        if (Input.GetKeyDown(screenshotKey))
-        {
-            var path = System.IO.Path.Combine(Application.persistentDataPath, "vipsim-shot.png");
-            ScreenCapture.CaptureScreenshot(path);
-            Debug.Log($"[VipSimDiagnostics] SHOT {path}");
-        }
-
-        if (Input.GetKeyDown(alphaProbeKey) && !_alphaProbeRunning)
-        {
-            LogCursorAlignment();
-            StartCoroutine(ProbeBackbufferAlpha());
-        }
-
+        // Shipping feature, never gated: moving the overlay to another monitor.
         if (Input.GetKeyDown(displayKey)) DisplaySwitcher.MoveToNext();
 
-        if (Input.GetKeyDown(revealMenuKey))
+        // Everything below is a developer aid. In a release build a user who fat-fingers
+        // F8 should not get an alpha histogram in their log, and F7 must not be able to
+        // strand the UI in a forced-visible state. Enable with -vipsim-dev on the command
+        // line; the Editor always has them.
+        if (DeveloperMode)
         {
-            ForceMenusVisible = !ForceMenusVisible;
-            Debug.Log($"[VipSimDiagnostics] REVEAL force-menus={ForceMenusVisible}");
+            if (Input.GetKeyDown(toggleKey)) showOverlay = !showOverlay;
+            if (Input.GetKeyDown(benchmarkKey) && !_benchmarkRunning) StartCoroutine(RunEffectBenchmark());
+
+            if (Input.GetKeyDown(screenshotKey))
+            {
+                var path = System.IO.Path.Combine(Application.persistentDataPath, "vipsim-shot.png");
+                ScreenCapture.CaptureScreenshot(path);
+                Debug.Log($"[VipSimDiagnostics] SHOT {path}");
+            }
+
+            if (Input.GetKeyDown(alphaProbeKey) && !_alphaProbeRunning)
+            {
+                LogCursorAlignment();
+                StartCoroutine(ProbeBackbufferAlpha());
+            }
+
+            if (Input.GetKeyDown(revealMenuKey))
+            {
+                ForceMenusVisible = !ForceMenusVisible;
+                Debug.Log($"[VipSimDiagnostics] REVEAL force-menus={ForceMenusVisible}");
+            }
         }
 
         _frameMs[_frameIdx] = Time.unscaledDeltaTime * 1000f;
