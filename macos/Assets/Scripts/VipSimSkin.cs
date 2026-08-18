@@ -22,17 +22,68 @@ using UnityEngine;
 public static class VipSimSkin
 {
     /// <summary>VIP-Sim's accent, matching the toolbar and the effect list.</summary>
-    public static readonly Color Accent = new Color(1f, 0.62f, 0.16f);
+    public static Color Accent { get; private set; } = new Color(1f, 0.62f, 0.16f);
 
-    private static readonly Color PanelFill = new Color(0.086f, 0.090f, 0.106f, 0.98f);
-    private static readonly Color PanelEdge = new Color(1f, 1f, 1f, 0.10f);
-    private static readonly Color CardFill = new Color(1f, 1f, 1f, 0.045f);
-    private static readonly Color ButtonFill = new Color(1f, 1f, 1f, 0.08f);
-    private static readonly Color ButtonHover = new Color(1f, 1f, 1f, 0.15f);
-    private static readonly Color TextBright = new Color(0.96f, 0.96f, 0.97f);
-    private static readonly Color TextMuted = new Color(0.96f, 0.96f, 0.97f, 0.55f);
+    /// <summary>Keyboard focus indicator. Deliberately the loudest colour in the palette.</summary>
+    public static Color Focus { get; private set; } = new Color(0.30f, 0.80f, 1f);
+
+    /// <summary>
+    /// Palette colours as rich-text hex, for the inline &lt;color&gt; tags in labels.
+    ///
+    /// These exist because hardcoding those tags silently defeats high-contrast mode: the
+    /// eyebrow stayed orange and the clinical terms stayed 40% grey on pure black, which
+    /// measures 3.66:1 and fails the 4.5:1 minimum for body text. A tag has no idea which
+    /// palette is active unless it is told.
+    /// </summary>
+    public static string AccentHex { get; private set; } = "FF9E29";
+
+    /// <summary>Secondary text as rich-text hex, including its alpha.</summary>
+    public static string MutedHex { get; private set; } = "FFFFFF66";
+
+    private static Color PanelFill = new Color(0.086f, 0.090f, 0.106f, 0.98f);
+    private static Color PanelEdge = new Color(1f, 1f, 1f, 0.10f);
+    private static Color CardFill = new Color(1f, 1f, 1f, 0.045f);
+    private static Color ButtonFill = new Color(1f, 1f, 1f, 0.08f);
+    private static Color ButtonHover = new Color(1f, 1f, 1f, 0.15f);
+    private static Color TextBright = new Color(0.96f, 0.96f, 0.97f);
+    private static Color TextMuted = new Color(0.96f, 0.96f, 0.97f, 0.55f);
+
+    private const string ScalePref = "vipsim.a11y.textscale";
+    private const string ContrastPref = "vipsim.a11y.highcontrast";
 
     private static float _builtFor = -1f;
+    private static bool _builtHighContrast;
+
+    /// <summary>
+    /// User text-size multiplier, 1.0 = default. Persisted.
+    ///
+    /// Unity exposes no reliable per-platform "OS text scale" value, and a vision tool that
+    /// cannot make its own text bigger is indefensible -- so the size is put in the user's
+    /// hands directly rather than inferred.
+    /// </summary>
+    public static float UserScale
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetFloat(ScalePref, 1f), 0.8f, 2.5f);
+        set
+        {
+            PlayerPrefs.SetFloat(ScalePref, Mathf.Clamp(value, 0.8f, 2.5f));
+            PlayerPrefs.Save();
+        }
+    }
+
+    /// <summary>
+    /// High-contrast palette: pure black ground, pure white text, yellow accent. Persisted.
+    /// Every foreground pair exceeds 7:1, i.e. WCAG AAA rather than AA.
+    /// </summary>
+    public static bool HighContrast
+    {
+        get => PlayerPrefs.GetInt(ContrastPref, 0) == 1;
+        set
+        {
+            PlayerPrefs.SetInt(ContrastPref, value ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+    }
 
     public static GUIStyle Panel { get; private set; }
     public static GUIStyle Card { get; private set; }
@@ -44,8 +95,8 @@ public static class VipSimSkin
     public static GUIStyle Primary { get; private set; }
     public static GUIStyle Secondary { get; private set; }
 
-    /// <summary>Display scale. 1.0 at 1080p, 2.0 at 4K.</summary>
-    public static float Scale => Mathf.Max(1f, Screen.height / 1080f);
+    /// <summary>Display scale (1.0 at 1080p, 2.0 at 4K) times the user's text-size setting.</summary>
+    public static float Scale => Mathf.Max(1f, Screen.height / 1080f) * UserScale;
 
     /// <summary>Standard control height, display-scaled.</summary>
     public static float ControlHeight => Mathf.Round(44f * Scale);
@@ -56,8 +107,11 @@ public static class VipSimSkin
     /// </summary>
     public static void Ensure()
     {
-        if (Panel != null && Mathf.Approximately(_builtFor, Scale)) return;
+        bool hc = HighContrast;
+        if (Panel != null && Mathf.Approximately(_builtFor, Scale) && _builtHighContrast == hc) return;
         _builtFor = Scale;
+        _builtHighContrast = hc;
+        ApplyPalette(hc);
         float s = Scale;
 
         int Px(float v) => Mathf.Max(1, Mathf.RoundToInt(v * s));
@@ -146,6 +200,61 @@ public static class VipSimSkin
             hover = { background = RoundedRect(ButtonHover, new Color(1f, 1f, 1f, 0.22f), 1f), textColor = Color.white },
             active = { background = RoundedRect(ButtonHover, Accent, 1.5f), textColor = Color.white },
         };
+    }
+
+    /// <summary>
+    /// Swap the palette. The high-contrast set is not a darker version of the default: it
+    /// drops translucency entirely, because a semi-transparent surface has no defined
+    /// contrast ratio against an arbitrary desktop, and moves the accent to yellow, which
+    /// stays distinguishable under every common form of colour vision deficiency.
+    /// </summary>
+    private static void ApplyPalette(bool highContrast)
+    {
+        if (highContrast)
+        {
+            PanelFill   = new Color(0f, 0f, 0f, 1f);
+            PanelEdge   = new Color(1f, 1f, 1f, 1f);
+            CardFill    = new Color(1f, 1f, 1f, 0.12f);
+            ButtonFill  = new Color(0f, 0f, 0f, 1f);
+            ButtonHover = new Color(1f, 1f, 1f, 0.25f);
+            TextBright  = Color.white;
+            TextMuted   = Color.white;
+            Accent      = new Color(1f, 0.92f, 0.20f);
+            Focus       = new Color(0.30f, 0.90f, 1f);
+            AccentHex   = "FFEB33";
+            MutedHex    = "FFFFFF";   // fully opaque: 40% white on black is only 3.66:1
+        }
+        else
+        {
+            PanelFill   = new Color(0.086f, 0.090f, 0.106f, 0.98f);
+            PanelEdge   = new Color(1f, 1f, 1f, 0.10f);
+            CardFill    = new Color(1f, 1f, 1f, 0.045f);
+            ButtonFill  = new Color(1f, 1f, 1f, 0.08f);
+            ButtonHover = new Color(1f, 1f, 1f, 0.15f);
+            TextBright  = new Color(0.96f, 0.96f, 0.97f);
+            TextMuted   = new Color(0.96f, 0.96f, 0.97f, 0.55f);
+            Accent      = new Color(1f, 0.62f, 0.16f);
+            Focus       = new Color(0.30f, 0.80f, 1f);
+            AccentHex   = "FF9E29";
+            MutedHex    = "FFFFFF66";
+        }
+    }
+
+    /// <summary>Draw a focus ring around a screen rect, in IMGUI coordinates.</summary>
+    public static void FocusRing(Rect r, float thickness)
+    {
+        float t = Mathf.Max(2f, thickness);
+        // Dark backing first, so the ring stays visible on a light UI as well as a dark one.
+        var dark = new Color(0f, 0f, 0f, 0.85f);
+        Fill(new Rect(r.x - t * 2, r.y - t * 2, r.width + t * 4, t), dark);
+        Fill(new Rect(r.x - t * 2, r.yMax + t, r.width + t * 4, t), dark);
+        Fill(new Rect(r.x - t * 2, r.y - t * 2, t, r.height + t * 4), dark);
+        Fill(new Rect(r.xMax + t, r.y - t * 2, t, r.height + t * 4), dark);
+
+        Fill(new Rect(r.x - t, r.y - t, r.width + t * 2, t), Focus);
+        Fill(new Rect(r.x - t, r.yMax, r.width + t * 2, t), Focus);
+        Fill(new Rect(r.x - t, r.y - t, t, r.height + t * 2), Focus);
+        Fill(new Rect(r.xMax, r.y - t, t, r.height + t * 2), Focus);
     }
 
     /// <summary>Fill a rect with a flat colour, for dimmed backdrops and hairlines.</summary>

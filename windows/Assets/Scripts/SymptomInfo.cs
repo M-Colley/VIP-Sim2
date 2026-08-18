@@ -76,6 +76,7 @@ public class SymptomInfo : MonoBehaviour
             gameObject.AddComponent<FirstRunTutorial>();
 
         UpdateChecker.Install(gameObject);
+        VipSimAccessibility.Install(gameObject);
     }
 
     private System.Collections.IEnumerator RestoreDisplayWhenSettled()
@@ -117,7 +118,7 @@ public class SymptomInfo : MonoBehaviour
         GUILayout.BeginArea(new Rect(panel.x + 34 * s, panel.y + 30 * s,
                                      panel.width - 68 * s, panel.height - 60 * s));
 
-        GUILayout.Label("<color=#FF9E29>REFERENCE</color>", VipSimSkin.Body);
+        GUILayout.Label($"<color=#{VipSimSkin.AccentHex}>REFERENCE</color>", VipSimSkin.Body);
         GUILayout.Space(4 * s);
         GUILayout.Label("Vision symptoms", VipSimSkin.Title);
         GUILayout.Space(8 * s);
@@ -137,7 +138,7 @@ public class SymptomInfo : MonoBehaviour
                 GUILayout.Label(entry.label.ToUpperInvariant(), VipSimSkin.Heading);
                 continue;
             }
-            GUILayout.Label($"{entry.label}   <color=#FFFFFF66>{entry.term}</color>", VipSimSkin.Term);
+            GUILayout.Label($"{entry.label}   <color=#{VipSimSkin.MutedHex}>{entry.term}</color>", VipSimSkin.Term);
             GUILayout.Label(entry.description, VipSimSkin.Body);
             GUILayout.Space(10 * s);
         }
@@ -194,6 +195,7 @@ public class SymptomInfo : MonoBehaviour
         if (GUILayout.Button("Close  (Esc)", VipSimSkin.Primary, GUILayout.Height(bh))) SetOpen(false);
         GUILayout.EndHorizontal();
 
+        DrawAccessibilityRow(s, bh);
         DrawSupportRow(s, bh);
 
         GUILayout.EndArea();
@@ -234,6 +236,60 @@ public class SymptomInfo : MonoBehaviour
         GUILayout.BeginHorizontal();
         GUILayout.Label(UpdateChecker.Status, VipSimSkin.Muted);
         GUILayout.EndHorizontal();
+    }
+
+
+    /// <summary>
+    /// Accessibility controls.
+    ///
+    /// Deliberately in the panel rather than behind a preferences dialog nobody opens: a
+    /// user who needs larger text needs it before they can comfortably read their way to a
+    /// settings screen. Both settings persist.
+    /// </summary>
+    private void DrawAccessibilityRow(float s, float bh)
+    {
+        GUILayout.Space(12 * s);
+        VipSimSkin.Separator(0f);
+        GUILayout.Space(12 * s);
+
+        // Two rows, and no fixed widths on the controls.
+        //
+        // The first version put all four controls on one line with fixed pixel widths, and
+        // it overflowed the panel at 120% text -- clipping the last button off the right
+        // edge. A control row that breaks when the text is enlarged is precisely the defect
+        // this feature exists to prevent, so the layout has to survive its own setting at
+        // every step up to the 250% maximum.
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"Text size  {Mathf.RoundToInt(VipSimSkin.UserScale * 100f)}%", VipSimSkin.Term);
+        GUILayout.FlexibleSpace();
+        if (GUILayout.Button("A -", VipSimSkin.Secondary, GUILayout.Height(bh), GUILayout.MinWidth(90 * s)))
+            VipSimSkin.UserScale = VipSimSkin.UserScale - 0.1f;
+        if (GUILayout.Button("A +", VipSimSkin.Secondary, GUILayout.Height(bh), GUILayout.MinWidth(90 * s)))
+            VipSimSkin.UserScale = VipSimSkin.UserScale + 0.1f;
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(8 * s);
+
+        GUILayout.BeginHorizontal();
+
+        // Labelled with its state in words, not by colour alone.
+        bool hc = VipSimSkin.HighContrast;
+        if (GUILayout.Button(hc ? "High contrast: ON" : "High contrast: OFF",
+                             hc ? VipSimSkin.Primary : VipSimSkin.Secondary, GUILayout.Height(bh)))
+        {
+            VipSimSkin.HighContrast = !hc;
+        }
+
+        if (GUILayout.Button("Keyboard focus", VipSimSkin.Secondary, GUILayout.Height(bh)))
+            VipSimAccessibility.FocusFirst();
+
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(6 * s);
+        GUILayout.Label("Tab and Shift+Tab move between controls; arrow keys move within them; " +
+                        "Enter activates. VIP-Sim must have keyboard focus first -- click its " +
+                        "panel once. Screen readers are not yet supported; see ACCESSIBILITY.md.",
+                        VipSimSkin.Body);
     }
 
     private struct Entry

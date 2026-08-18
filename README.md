@@ -193,6 +193,7 @@ If you use VIP-Sim in academic work, please cite:
 | Install notes | [docs/INSTALL.md](docs/INSTALL.md), [docs/MACOS_README.md](docs/MACOS_README.md) |
 | What each symptom is | [docs/EFFECTS.md](docs/EFFECTS.md), or press **F1** in the app |
 | Privacy | [docs/PRIVACY.md](docs/PRIVACY.md) |
+| Accessibility | [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md) -- what works, and what does not |
 | Changes | [CHANGELOG.md](CHANGELOG.md) |
 | Linux status | [docs/LINUX_PORT.md](docs/LINUX_PORT.md) |
 

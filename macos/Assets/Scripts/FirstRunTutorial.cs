@@ -106,7 +106,8 @@ public class FirstRunTutorial : MonoBehaviour
 
         // Eyebrow line: tells the user what this is, so the first page is not just a
         // title floating on a dark rectangle.
-        GUILayout.Label($"<color=#FF9E29>GETTING STARTED</color>   <color=#FFFFFF66>{_page + 1} of {Pages.Length}</color>",
+        GUILayout.Label($"<color=#{VipSimSkin.AccentHex}>GETTING STARTED</color>   " +
+                        $"<color=#{VipSimSkin.MutedHex}>{_page + 1} of {Pages.Length}</color>",
                         VipSimSkin.Body);
         GUILayout.Space(6 * s);
         GUILayout.Label(Pages[_page].title, VipSimSkin.Title);

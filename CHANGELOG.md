@@ -37,6 +37,10 @@ that can be handed to someone who was not in the room when it was written.
 - **Signing and release tooling** — `tools/sign-macos.sh`, `tools/sign-windows.ps1`,
   entitlements, and `docs/RELEASE.md`.
 - **Legal documentation** — `THIRD-PARTY-NOTICES.md`, `docs/PRIVACY.md`, `docs/EULA.md`.
+- **Accessibility of VIP-Sim's own interface.** Keyboard operation (Tab/Shift+Tab in
+  reading order, arrows, Enter), a high-contrast focus outline, a text-size control from
+  80% to 250%, and a high-contrast palette — all in the F1 panel, all persisted.
+  Documented, including what does not work, in `docs/ACCESSIBILITY.md`.
 
 ### Changed
 
@@ -78,6 +82,11 @@ that can be handed to someone who was not in the room when it was written.
 - Footer buttons rendering as unreadable slivers on 4K displays and on laptops.
 
 ### Known limitations
+
+- **Screen readers cannot read VIP-Sim.** Unity publishes no UI Automation or
+  NSAccessibility tree on desktop, so NVDA, JAWS and VoiceOver see one unlabelled window.
+  Supporting them needs a native plugin per platform. VIP-Sim is currently usable with low
+  vision and not usable non-visually; see `docs/ACCESSIBILITY.md`.
 
 - **Windows capture only.** macOS capture works; Linux has no capture or transparency yet.
 - **Severities are not clinically validated.** They are plausible starting points, and the
