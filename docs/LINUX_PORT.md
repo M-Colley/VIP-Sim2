@@ -6,10 +6,13 @@ and the player has now **run on Linux** — under WSLg on the development machin
 without a crash, OpenGL 4.5 via Mesa, and the platform seam reporting real environment
 values (`wayland-0`, XWayland `:0`). Two expected gaps showed as designed: capture inert
 (uWindowCapture cannot load its Win32 native library — see the section on those three log
-lines below) and no transparency. This document pins the architecture. The two native
-components are specified here and deliberately **not** written yet: they can only be
-compiled and verified on a real Linux machine, and this project's history shows exactly
-what shipping unverifiable code produces.
+lines below) and no transparency.
+
+**The overlay design is now proven, not just specified.** The Phase 1 presenter spike in
+`linux/presenter/` binds `zwlr_layer_shell_v1`, takes a full-output layer surface and gets
+per-pixel alpha composited correctly -- verified in a nested Sway session under WSLg, with
+the capture committed alongside it. The capture component (portal + PipeWire) is still
+specification only.
 
 ## The landscape this design is built for (verified August 2026)
 
@@ -113,6 +116,10 @@ lives on borrowed time), or declare the overlay unsupported on GNOME while captu
 
 ## Local development loop (WSLg on the build machine, probed August 2026)
 
+**This loop is now proven, not theoretical.** Nested Sway under WSLg runs the presenter
+and layer-shell works inside it, so the whole edit-compile-run cycle happens on the
+Windows build machine. Installing sway plus grim was the entire setup.
+
 WSL2/WSLg on the Windows build machine runs the player (verified: 30s, OpenGL 4.5,
 seam reporting `wayland-0` / XWayland `:0`) and now carries gcc 15 plus
 `libwayland-dev`/`wayland-protocols`. **WSLg's own compositor exposes no layer-shell**
@@ -124,9 +131,13 @@ cycle no longer does.
 
 ## Phases, each gated on verification on a real Linux machine
 
-1. **Alpha spike** (days): presenter skeleton alone — layer surface, ARGB test pattern,
-   empty input region. Proves compositing + click-through on KWin and one wlroots
-   compositor before anything is invested in transport.
+1. ~~**Alpha spike**~~ — **DONE, and it passed.** See `linux/presenter/`. Verified
+   2026-08-18 in a nested Sway 1.11 session: `zwlr_layer_shell_v1` v4 bound, the layer
+   surface configured at full output size, and per-pixel alpha demonstrably composited —
+   five bands at 100/75/50/25/0% alpha show the compositor's background through
+   progressively more. That was the result the whole design hinged on, and it is no longer
+   an assumption. Still to confirm on a real distro against KWin, and against GNOME, where
+   the presenter is expected to report the missing protocol and exit.
 2. Capture plugin v1 (portal + PipeWire, CPU frames).
 3. Transport v1 (shm) wiring Unity → presenter; effects visible end-to-end.
 4. dmabuf v2 for both directions; performance pass with the F11 benchmark.

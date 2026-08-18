@@ -36,6 +36,12 @@ public class VipSimAccessibility : MonoBehaviour
     private readonly List<Selectable> _order = new List<Selectable>();
     private float _nextRebuild;
 
+    // Base CanvasScaler values, captured once so repeated scaling compounds from the
+    // authored layout rather than from the last scaled result.
+    private readonly Dictionary<CanvasScaler, Vector2> _baseReference = new Dictionary<CanvasScaler, Vector2>();
+    private readonly Dictionary<CanvasScaler, float> _baseFactor = new Dictionary<CanvasScaler, float>();
+    private float _appliedScale = -1f;
+
     /// <summary>True once the user has begun navigating by keyboard.</summary>
     public static bool KeyboardMode { get; private set; }
 
@@ -50,8 +56,14 @@ public class VipSimAccessibility : MonoBehaviour
 
     private void Awake() => _instance = this;
 
+    private void Start() => ApplyUiScale();
+
     private void Update()
     {
+        // The text-size setting is changed from IMGUI buttons, which have no change event,
+        // so the scale is polled. Cheap: a float compare, and the work only runs on change.
+        if (!Mathf.Approximately(_appliedScale, VipSimSkin.UserScale)) ApplyUiScale();
+
         if (Input.GetKeyDown(settingsKey))
         {
             SettingsOpen = !SettingsOpen;
@@ -88,6 +100,47 @@ public class VipSimAccessibility : MonoBehaviour
         // sit on screen confusing a mouse user.
         if (KeyboardMode && (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)))
             KeyboardMode = false;
+    }
+
+
+    /// <summary>
+    /// Apply the user's text size to the scene UI -- the toolbar, window list and effect
+    /// list -- not only to the IMGUI panels.
+    ///
+    /// Those are uGUI on scaled canvases, so the lever is the CanvasScaler rather than a
+    /// font size. For a canvas that scales with screen size, a SMALLER reference resolution
+    /// means each authored pixel covers more of the screen, so the reference is divided by
+    /// the user's scale; for a constant-pixel canvas the scale factor is multiplied. Both
+    /// are computed from the authored base values, captured on the first pass, so stepping
+    /// the size up and down repeatedly always lands back on the original layout rather than
+    /// drifting.
+    /// </summary>
+    public void ApplyUiScale()
+    {
+        float scale = VipSimSkin.UserScale;
+        _appliedScale = scale;
+
+        int touched = 0;
+        foreach (var cs in FindObjectsByType<CanvasScaler>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (cs == null) continue;
+
+            if (cs.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize)
+            {
+                if (!_baseReference.ContainsKey(cs)) _baseReference[cs] = cs.referenceResolution;
+                cs.referenceResolution = _baseReference[cs] / scale;
+                touched++;
+            }
+            else if (cs.uiScaleMode == CanvasScaler.ScaleMode.ConstantPixelSize)
+            {
+                if (!_baseFactor.ContainsKey(cs)) _baseFactor[cs] = cs.scaleFactor;
+                cs.scaleFactor = _baseFactor[cs] * scale;
+                touched++;
+            }
+        }
+
+        if (touched > 0)
+            Debug.Log($"[Accessibility] UI scale {scale:0.00} applied to {touched} canvas(es).");
     }
 
     private static GameObject CurrentGo() =>

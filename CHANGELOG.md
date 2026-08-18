@@ -34,6 +34,9 @@ that can be handed to someone who was not in the room when it was written.
 - **Linux build foundation.** The project now compiles and runs for Linux; the
   Wayland-native overlay design is documented in `docs/LINUX_PORT.md`. Window capture and
   transparency are not yet implemented there.
+- **Linux presenter spike** (`linux/presenter/`). A standalone Wayland client proving the
+  overlay design: layer surface on the overlay layer, per-pixel alpha composited by the
+  compositor, empty input region for click-through. Verified in a nested Sway session.
 - **Signing and release tooling** — `tools/sign-macos.sh`, `tools/sign-windows.ps1`,
   entitlements, and `docs/RELEASE.md`.
 - **Legal documentation** — `THIRD-PARTY-NOTICES.md`, `docs/PRIVACY.md`, `docs/EULA.md`.

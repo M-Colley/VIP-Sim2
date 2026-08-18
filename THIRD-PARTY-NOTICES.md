@@ -81,6 +81,19 @@ included in that package's third-party notices.
 
 ---
 
+## wlr-layer-shell protocol definition
+
+Vendored at `linux/presenter/protocols/wlr-layer-shell-unstable-v1.xml`, from
+https://github.com/swaywm/wlr-protocols. Copyright © 2017 Drew DeVault, under an HPND-style
+permission notice that requires the copyright notice to appear in all copies — the notice
+is inside the XML file itself and is reproduced under
+[Full licence texts](#full-licence-texts) below.
+
+Used only to generate client stubs for the Linux presenter spike; it is not part of the
+Windows or macOS builds, and no generated code is committed.
+
+---
+
 ## Unity Engine and TextMesh Pro
 
 Built with Unity 6000.5.8f1. The Unity Runtime is redistributed under the Unity Companion
@@ -158,6 +171,33 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### wlr-layer-shell protocol definition
+
+```
+Copyright © 2017 Drew DeVault
+
+Permission to use, copy, modify, distribute, and sell this
+software and its documentation for any purpose is hereby granted
+without fee, provided that the above copyright notice appear in
+all copies and that both that copyright notice and this permission
+notice appear in supporting documentation, and that the name of
+the copyright holders not be used in advertising or publicity
+pertaining to distribution of the software without specific,
+written prior permission.  The copyright holders make no
+representations about the suitability of this software for any
+purpose.  It is provided "as is" without express or implied
+warranty.
+
+THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS
+SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS, IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
+SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
+AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
 ```
 
 ### VIP-Sim
