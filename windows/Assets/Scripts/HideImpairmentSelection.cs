@@ -26,7 +26,13 @@ public class HideImpairmentSelection : MonoBehaviour
 
     void Update()
     {
+#if UNITY_STANDALONE_LINUX && !UNITY_EDITOR
+        // See HideMenu: reading UwcWindowList instantiates the Win32 capture manager,
+        // which throws on every P/Invoke here. No capture on Linux yet, so no window.
+        bool hasActiveWindow = false;
+#else
         bool hasActiveWindow = UwcWindowList.thereIsActiveWindow;
+#endif
 
         // The F7 diagnostic override has to bypass the enable toggle as well as the
         // window-selected gate, or the effect list still stays hidden behind the second

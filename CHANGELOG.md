@@ -76,7 +76,6 @@ that can be handed to someone who was not in the room when it was written.
 - The effect list being deadlocked by its own visibility gate.
 - Calibration and info toolbar buttons that had borders and no hover feedback.
 - Footer buttons rendering as unreadable slivers on 4K displays and on laptops.
-- Linux: `DllNotFoundException` spam from the Windows-only capture plugin.
 
 ### Known limitations
 
@@ -86,6 +85,11 @@ that can be handed to someone who was not in the room when it was written.
 - **Not signed or notarised.** Until certificates exist, Gatekeeper and SmartScreen will
   warn on first launch; see `docs/MACOS_README.md`.
 - **Multi-monitor switching has not been exercised on multi-monitor hardware.**
+- **Linux logs three `DllNotFoundException` lines per session.** The Windows-only capture
+  plugin has a manager component in the scene, and Unity runs its `Awake` at scene load,
+  before any guard can intervene. VIP-Sim's own code no longer touches that plugin on
+  Linux, which removed the on-demand path that could have repeated it, but the three
+  scene-driven lines remain until the Linux capture backend replaces the component.
 
 ---
 

@@ -5,8 +5,8 @@ Status: **foundation, runtime-verified**. The Unity side builds for `StandaloneL
 and the player has now **run on Linux** — under WSLg on the development machine: 30s
 without a crash, OpenGL 4.5 via Mesa, and the platform seam reporting real environment
 values (`wayland-0`, XWayland `:0`). Two expected gaps showed as designed: capture inert
-(uWindowCapture's DllNotFoundException — worth gating to a single log line later) and no
-transparency. This document pins the architecture. The two native
+(uWindowCapture cannot load its Win32 native library — see the section on those three log
+lines below) and no transparency. This document pins the architecture. The two native
 components are specified here and deliberately **not** written yet: they can only be
 compiled and verified on a real Linux machine, and this project's history shows exactly
 what shipping unverifiable code produces.
@@ -133,6 +133,28 @@ cycle no longer does.
 5. Packaging: tarball/AppImage, `.desktop` file, `setup.sh` equivalent (the execute bit
    dies in transit exactly as it does for macOS); flip CI's Linux entry from
    experimental once the licence secrets exist.
+
+## The DllNotFoundException lines, and why they are still there
+
+A Linux run logs exactly three `DllNotFoundException`s from uWindowCapture -- at `Awake`,
+`OnDisable` and `OnApplicationQuit` of its manager. Worth writing down, because the
+obvious fix does not work and was tried:
+
+- **Disabling the manager at runtime does not help.** uWindowCapture's static accessors
+  (`UwcWindowList.thereIsActiveWindow` and friends) route through `UwcManager.instance`,
+  which `AddComponent`s a manager on demand. Disable the one that exists and the next
+  read simply creates another -- the disable actively guarantees it, since
+  `FindObjectOfType` skips inactive objects.
+- **Not touching the plugin is necessary but not sufficient.** VIP-Sim's own callers
+  (`HideMenu`, `HideImpairmentSelection`) are now compiled out on Linux, which removes the
+  on-demand creation path. But a `UwcManager` also exists in the scene, and Unity calls a
+  scene component's `Awake` during scene load -- before any `RuntimeInitializeOnLoadMethod`
+  guard can reach it.
+
+Three lines per session, not per frame, and nothing downstream depends on them. The real
+fix is Component 1 below: when the portal/PipeWire backend exists, the Linux build stops
+carrying a Win32 capture component at all. A build-time step that deactivates the object
+for the Linux target would also work, at the cost of build complexity for cosmetics.
 
 ## What exists in-repo today
 
