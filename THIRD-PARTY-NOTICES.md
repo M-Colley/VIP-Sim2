@@ -4,9 +4,9 @@ VIP-Sim is distributed with the components below. Several of their licences requ
 their copyright notice travels with any copy of the software — including this one — so
 this file must ship inside the release archive, not only live in the repository.
 
-> **Several items need action before VIP-Sim can be sold.** They are marked **ACTION**
-> below and listed again at the bottom. None is a code change: they are permissions to
-> obtain and decisions to record.
+> **Some items still need action before VIP-Sim can be sold.** They are marked **ACTION**
+> below and listed again at the bottom. None is a code change: what remains are decisions
+> to record, not permissions to chase.
 
 ---
 
@@ -32,10 +32,16 @@ so a published MIT repository cannot be the basis for exclusivity.
 
 Vendored at `packages/uniteye`.
 
-**ACTION — no licence file is present.** Absent a licence grant, the default position in
-copyright law is that redistribution is not permitted, commercially or otherwise. This is
-the eye-tracking core of the product. Obtain written permission from the authors, and add
-the resulting licence text here, or replace the component.
+Authored by the VIP-Sim maintainer, who has confirmed that its use and redistribution
+within VIP-Sim is permitted. Since the rights-holder for the component and for the product
+are the same party, there is no third-party permission left to obtain and this no longer
+blocks a release.
+
+**ACTION — still no licence file in `packages/uniteye`.** The permission is real but
+undocumented: nothing in the repository records it, so a collaborator, a purchaser, or a
+future maintainer reading the tree sees the same all-rights-reserved default I did. Add a
+licence file stating the grant. Which text goes in it is the same decision as the MIT
+versus CC BY question above — settle that once and it covers both.
 
 ---
 
@@ -87,8 +93,6 @@ Font assets under `Assets/TextMesh Pro/Examples & Extras/` are Unity's TMP examp
 carry their own upstream licences — Roboto under Apache 2.0, Bangers under the SIL Open
 Font Licence. They are example content: if they are not actually used by the shipping UI,
 removing them from the release is simpler than carrying their notices.
-
----
 
 ---
 
@@ -158,7 +162,7 @@ See [LICENSE](LICENSE) in the repository, and the ownership question recorded ab
 
 | # | Component | Action | Blocks a paid release? |
 |---|-----------|--------|------------------------|
-| 1 | UnitEye | Obtain a written licence, or replace | **Yes** |
+| 1 | UnitEye | ~~Obtain a licence, or replace~~ — authored in-house, confirmed | Record it in a licence file |
 | 2 | uWindowCapture | ~~Vendor the upstream MIT licence text~~ | **Done** |
 | 3 | VIP-Sim | Establish ownership in writing | **Yes** |
 | 3b | VIP-Sim | Resolve the MIT vs CC BY 4.0 contradiction | **Yes** |
