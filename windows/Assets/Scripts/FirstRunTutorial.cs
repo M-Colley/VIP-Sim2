@@ -11,7 +11,8 @@ using UnityEngine;
 /// geometry on a panel where layout changes have repeatedly broken shipping UI, and
 /// it paints over the whole screen, which a modal walkthrough wants. It is added AT
 /// RUNTIME by SymptomInfo rather than serialized into the scenes -- a component that
-/// exists only in code cannot drift between the two platform projects.
+/// exists only in code cannot drift between the two platform projects. Its look comes
+/// from VipSimSkin, shared with the symptom reference.
 ///
 /// While open it sets TransparentWindow's tutorialState, without which its own
 /// buttons would be unreachable: the overlay is click-through, and clicks on a
@@ -25,7 +26,6 @@ public class FirstRunTutorial : MonoBehaviour
 
     private bool _open;
     private int _page;
-    private GUIStyle _title, _body, _progress, _button;
 
     /// <summary>Reopen from the symptom panel's footer, whether or not it ran before.</summary>
     public static void Open()
@@ -88,56 +88,67 @@ public class FirstRunTutorial : MonoBehaviour
     private void OnGUI()
     {
         if (!_open) return;
-        EnsureStyles();
+        VipSimSkin.Ensure();
 
-        float w = Mathf.Min(Screen.width * 0.46f, 1000f);
-        float h = Mathf.Min(Screen.height * 0.52f, 760f);
-        var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
+        float s = VipSimSkin.Scale;
+        float w = Mathf.Min(Screen.width * 0.46f, 1100f * s);
+        float h = Mathf.Min(Screen.height * 0.56f, 820f * s);
+        var panel = new Rect(Mathf.Round((Screen.width - w) * 0.5f),
+                             Mathf.Round((Screen.height - h) * 0.5f), w, h);
 
-        GUI.color = new Color(0f, 0f, 0f, 0.72f);
-        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        // Dim everything behind the walkthrough. The desktop underneath is arbitrary and
+        // usually busy; without this the panel competes with whatever is on screen.
+        VipSimSkin.Fill(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.76f));
 
-        GUI.Box(panel, GUIContent.none);
-        GUILayout.BeginArea(new Rect(panel.x + 28, panel.y + 24, panel.width - 56, panel.height - 48));
+        GUI.Box(panel, GUIContent.none, VipSimSkin.Panel);
+        GUILayout.BeginArea(new Rect(panel.x + 34 * s, panel.y + 30 * s,
+                                     panel.width - 68 * s, panel.height - 60 * s));
 
-        GUILayout.Label(Pages[_page].title, _title);
-        GUILayout.Space(8);
-        GUILayout.Label(Pages[_page].body, _body);
+        // Eyebrow line: tells the user what this is, so the first page is not just a
+        // title floating on a dark rectangle.
+        GUILayout.Label($"<color=#FF9E29>GETTING STARTED</color>   <color=#FFFFFF66>{_page + 1} of {Pages.Length}</color>",
+                        VipSimSkin.Body);
+        GUILayout.Space(6 * s);
+        GUILayout.Label(Pages[_page].title, VipSimSkin.Title);
+        GUILayout.Space(10 * s);
+        VipSimSkin.Separator(0f);
+        GUILayout.Space(16 * s);
+        GUILayout.Label(Pages[_page].body, VipSimSkin.Body);
 
         GUILayout.FlexibleSpace();
-        GUILayout.Label($"{_page + 1} / {Pages.Length}", _progress);
-        GUILayout.Space(6);
 
-        // Button height and font both scale with the display; IMGUI's defaults are
-        // authored for 1080p and shrink to slivers at 4K.
-        float bh = 40f * Mathf.Max(1f, Screen.height / 1080f);
+        // Progress dots, drawn rather than written: at a glance they say "four short
+        // pages, you are on the second" without the reader parsing a fraction.
+        DrawDots(s);
+        GUILayout.Space(14 * s);
+
+        float bh = VipSimSkin.ControlHeight;
         GUILayout.BeginHorizontal();
-        if (_page > 0 && GUILayout.Button("Back", _button, GUILayout.Height(bh))) _page--;
+        if (_page > 0 && GUILayout.Button("Back", VipSimSkin.Secondary, GUILayout.Height(bh))) _page--;
         if (_page < Pages.Length - 1)
         {
-            if (GUILayout.Button("Next", _button, GUILayout.Height(bh))) _page++;
-            if (GUILayout.Button("Skip", _button, GUILayout.Height(bh))) Finish();
+            if (GUILayout.Button("Skip", VipSimSkin.Secondary, GUILayout.Height(bh))) Finish();
+            if (GUILayout.Button("Next", VipSimSkin.Primary, GUILayout.Height(bh))) _page++;
         }
-        else if (GUILayout.Button("Get started", _button, GUILayout.Height(bh))) Finish();
+        else if (GUILayout.Button("Get started", VipSimSkin.Primary, GUILayout.Height(bh))) Finish();
         GUILayout.EndHorizontal();
 
         GUILayout.EndArea();
     }
 
-    private void EnsureStyles()
+    private void DrawDots(float s)
     {
-        if (_title != null) return;
-        float s = Mathf.Max(1f, Screen.height / 1080f);
-        _title = new GUIStyle(GUI.skin.label)
-        { fontSize = Mathf.RoundToInt(28 * s), fontStyle = FontStyle.Bold, wordWrap = true };
-        _body = new GUIStyle(GUI.skin.label)
-        { fontSize = Mathf.RoundToInt(18 * s), wordWrap = true, richText = true };
-        _progress = new GUIStyle(GUI.skin.label)
-        { fontSize = Mathf.RoundToInt(15 * s), alignment = TextAnchor.MiddleCenter };
-        _progress.normal.textColor = new Color(1f, 1f, 1f, 0.55f);
-        _button = new GUIStyle(GUI.skin.button)
-        { fontSize = Mathf.RoundToInt(18 * s) };
+        float d = 8f * s, gap = 8f * s;
+        var row = GUILayoutUtility.GetRect(1f, d, GUILayout.ExpandWidth(true));
+        float total = Pages.Length * d + (Pages.Length - 1) * gap;
+        float x = row.x + (row.width - total) * 0.5f;
+
+        for (int i = 0; i < Pages.Length; i++)
+        {
+            var c = i == _page ? VipSimSkin.Accent : new Color(1f, 1f, 1f, 0.22f);
+            VipSimSkin.Fill(new Rect(x, row.y, d, d), c);
+            x += d + gap;
+        }
     }
 
     private struct Page { public string title, body; }

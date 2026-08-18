@@ -28,7 +28,6 @@ public class SymptomInfo : MonoBehaviour
 
     private bool _open;
     private Vector2 _scroll;
-    private GUIStyle _title, _term, _body, _group, _button;
 
     /// <summary>Wired to the toolbar button. Public so the Button onClick can find it.</summary>
     public void Toggle() => SetOpen(!_open);
@@ -75,6 +74,8 @@ public class SymptomInfo : MonoBehaviour
         // platform projects, and scene surgery is what has repeatedly broken this UI.
         if (GetComponent<FirstRunTutorial>() == null)
             gameObject.AddComponent<FirstRunTutorial>();
+
+        UpdateChecker.Install(gameObject);
     }
 
     private System.Collections.IEnumerator RestoreDisplayWhenSettled()
@@ -95,7 +96,8 @@ public class SymptomInfo : MonoBehaviour
     {
         if (!_open) return;
 
-        EnsureStyles();
+        VipSimSkin.Ensure();
+        float s = VipSimSkin.Scale;
 
         // Sized as a share of the screen rather than in pixels: VIP-Sim runs full-screen on
         // whatever the display is, and this is read on 4K panels as often as 1080p ones.
@@ -109,43 +111,47 @@ public class SymptomInfo : MonoBehaviour
         // Dim the rest of the screen. Without this the text sits on top of the simulation
         // it is describing, which is unreadable by construction -- the whole point of the
         // effects is to degrade whatever is behind them.
-        GUI.color = new Color(0f, 0f, 0f, 0.72f);
-        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
-        GUI.color = Color.white;
+        VipSimSkin.Fill(new Rect(0, 0, Screen.width, Screen.height), new Color(0f, 0f, 0f, 0.76f));
 
-        GUI.Box(panel, GUIContent.none);
-        GUILayout.BeginArea(new Rect(panel.x + 24, panel.y + 20, panel.width - 48, panel.height - 40));
+        GUI.Box(panel, GUIContent.none, VipSimSkin.Panel);
+        GUILayout.BeginArea(new Rect(panel.x + 34 * s, panel.y + 30 * s,
+                                     panel.width - 68 * s, panel.height - 60 * s));
 
-        GUILayout.Label("Vision symptoms", _title);
-        GUILayout.Label("Each effect approximates ONE symptom, not a whole diagnosis. Real " +
+        GUILayout.Label("<color=#FF9E29>REFERENCE</color>", VipSimSkin.Body);
+        GUILayout.Space(4 * s);
+        GUILayout.Label("Vision symptoms", VipSimSkin.Title);
+        GUILayout.Space(8 * s);
+        GUILayout.Label("Each effect approximates <b>one symptom</b>, not a whole diagnosis. Real " +
                         "conditions combine several, vary enormously between individuals, and " +
-                        "change over time.", _body);
-        GUILayout.Space(10);
+                        "change over time.", VipSimSkin.Body);
+        GUILayout.Space(14 * s);
+        VipSimSkin.Separator(0f);
+        GUILayout.Space(10 * s);
 
         _scroll = GUILayout.BeginScrollView(_scroll);
         foreach (var entry in Entries)
         {
             if (entry.isGroup)
             {
-                GUILayout.Space(12);
-                GUILayout.Label(entry.label, _group);
+                GUILayout.Space(14 * s);
+                GUILayout.Label(entry.label.ToUpperInvariant(), VipSimSkin.Heading);
                 continue;
             }
-            GUILayout.Label($"{entry.label}   ({entry.term})", _term);
-            GUILayout.Label(entry.description, _body);
-            GUILayout.Space(6);
+            GUILayout.Label($"{entry.label}   <color=#FFFFFF66>{entry.term}</color>", VipSimSkin.Term);
+            GUILayout.Label(entry.description, VipSimSkin.Body);
+            GUILayout.Space(10 * s);
         }
-            GUILayout.Space(14);
-            GUILayout.Label("Further reading", _group);
+            GUILayout.Space(18 * s);
+            GUILayout.Label("FURTHER READING", VipSimSkin.Heading);
             GUILayout.Label("VIP-Sim is described in the UIST'25 paper. The paper covers how " +
                             "the symptoms were chosen, how the simulation was built with and " +
                             "for people with visual impairments, and what it was evaluated on.",
-                            _body);
-            GUILayout.Space(4);
+                            VipSimSkin.Body);
+            GUILayout.Space(8 * s);
 
             // A link, not just a printed DOI: nobody types a DOI by hand. Rendered as a
             // button so it is obviously clickable, since IMGUI has no anchor element.
-            var linkStyle = new GUIStyle(_body) { normal = { textColor = new Color(0.45f, 0.72f, 1f) } };
+            var linkStyle = new GUIStyle(VipSimSkin.Body) { normal = { textColor = new Color(0.45f, 0.72f, 1f) } };
             if (GUILayout.Button(PaperUrl, linkStyle))
             {
                 // Opens in the user's browser. Works while the overlay is topmost because
@@ -155,10 +161,13 @@ public class SymptomInfo : MonoBehaviour
 
         GUILayout.EndScrollView();
 
-        GUILayout.Space(8);
-        float bh = ButtonHeight;
+        GUILayout.Space(14 * s);
+        VipSimSkin.Separator(0f);
+        GUILayout.Space(14 * s);
+        float bh = VipSimSkin.ControlHeight;
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Open the paper", _button, GUILayout.Height(bh))) Application.OpenURL(PaperUrl);
+        if (GUILayout.Button("Open the paper", VipSimSkin.Secondary, GUILayout.Height(bh)))
+            Application.OpenURL(PaperUrl);
 
         // Lives here as well as on F3 because this panel forces the overlay interactive
         // (infoState), so this button ALWAYS works -- F3, like every hotkey on a
@@ -171,51 +180,61 @@ public class SymptomInfo : MonoBehaviour
         if (displays > 1)
         {
             string where = DisplaySwitcher.Summary;
-            if (GUILayout.Button($"Move to next display  ({where})", _button, GUILayout.Height(bh)))
+            if (GUILayout.Button($"Move to next display  ({where})", VipSimSkin.Secondary, GUILayout.Height(bh)))
                 DisplaySwitcher.MoveToNext();
         }
 
         // Close this panel first: both are modal IMGUI surfaces and would stack.
-        if (GUILayout.Button("Show tutorial", _button, GUILayout.Height(bh)))
+        if (GUILayout.Button("Show tutorial", VipSimSkin.Secondary, GUILayout.Height(bh)))
         {
             SetOpen(false);
             FirstRunTutorial.Open();
         }
 
-        if (GUILayout.Button("Close  (Esc)", _button, GUILayout.Height(bh))) SetOpen(false);
+        if (GUILayout.Button("Close  (Esc)", VipSimSkin.Primary, GUILayout.Height(bh))) SetOpen(false);
         GUILayout.EndHorizontal();
+
+        DrawSupportRow(s, bh);
 
         GUILayout.EndArea();
     }
 
-    private void EnsureStyles()
+
+    /// <summary>
+    /// Support and update row.
+    ///
+    /// A paid tool needs an answer to "something is wrong, now what" that is not "email
+    /// the author and hope". These three give it: where to report, the diagnostics file
+    /// to attach, and whether the build is current -- which is the first question any
+    /// support reply would have asked anyway.
+    /// </summary>
+    private void DrawSupportRow(float s, float bh)
     {
-        if (_title != null) return;
+        GUILayout.Space(10 * s);
+        GUILayout.BeginHorizontal();
 
-        // Scaled from a 1080p baseline. Fixed-point IMGUI text is unreadable at 4K, which is
-        // the same mistake UnitEye's debug overlay made before it was corrected.
-        float s = Mathf.Max(1f, Screen.height / 1080f);
+        if (GUILayout.Button("Report a problem", VipSimSkin.Secondary, GUILayout.Height(bh)))
+            Application.OpenURL(UpdateChecker.SupportUrl);
 
-        _title = new GUIStyle(GUI.skin.label)
-        { fontSize = Mathf.RoundToInt(30 * s), fontStyle = FontStyle.Bold, wordWrap = true };
-        _group = new GUIStyle(GUI.skin.label)
-        { fontSize = Mathf.RoundToInt(21 * s), fontStyle = FontStyle.Bold, wordWrap = true };
-        _term = new GUIStyle(GUI.skin.label)
-        { fontSize = Mathf.RoundToInt(18 * s), fontStyle = FontStyle.Bold, wordWrap = true };
-        _body = new GUIStyle(GUI.skin.label)
-        { fontSize = Mathf.RoundToInt(17 * s), wordWrap = true };
-        _group.normal.textColor = new Color(1f, 0.62f, 0.16f);
+        // Copies rather than opens: the folder differs per platform, and a path on the
+        // clipboard is what a user can paste into a bug report.
+        if (GUILayout.Button("Copy diagnostics path", VipSimSkin.Secondary, GUILayout.Height(bh)))
+        {
+            GUIUtility.systemCopyBuffer = Application.persistentDataPath;
+            Debug.Log($"[SymptomInfo] Diagnostics path copied: {Application.persistentDataPath}");
+        }
 
-        // Buttons must scale with the display like everything else. IMGUI's defaults
-        // are authored for 1080p; left unscaled, the footer buttons rendered as thin
-        // slivers with unreadable labels -- confirmed on both a 4K Windows display and
-        // a MacBook.
-        _button = new GUIStyle(GUI.skin.button)
-        { fontSize = Mathf.RoundToInt(18 * s) };
+        if (UpdateChecker.UpdateAvailable &&
+            GUILayout.Button("Get the update", VipSimSkin.Primary, GUILayout.Height(bh)))
+            Application.OpenURL(UpdateChecker.ReleasesUrl);
+
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(8 * s);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(UpdateChecker.Status, VipSimSkin.Muted);
+        GUILayout.EndHorizontal();
     }
-
-    // Shared footer-button height, display-scaled for the same reason as the fonts.
-    private static float ButtonHeight => 44f * Mathf.Max(1f, Screen.height / 1080f);
 
     private struct Entry
     {
