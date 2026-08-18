@@ -5,7 +5,7 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ---
 
-## [2.0.0] — unreleased
+## [2.0.0] — 2026-08-18
 
 The modernisation release. VIP-Sim moves from a working research prototype to something
 that can be handed to someone who was not in the room when it was written.
