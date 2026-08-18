@@ -12,7 +12,7 @@ this file must ship inside the release archive, not only live in the repository.
 
 ## VIP-Sim itself
 
-MIT Licence, Copyright (c) 2025 Max Rädler. See [LICENSE](LICENSE).
+MIT Licence, Copyright (c) 2025 Mark Colley and Max Rädler. See [LICENSE](LICENSE).
 
 **ACTION — the project states two different licences.** `LICENSE` contains the MIT
 Licence; `README.md` has said the project is licensed under CC BY 4.0. These are different
@@ -20,11 +20,14 @@ grants with different obligations, and a user cannot tell which one they have be
 CC BY is in any case not intended for software. Decide which applies, make the two agree,
 and record the decision — an ambiguous licence is a poor position from which to sell.
 
-**ACTION — confirm who owns this.** The copyright line names an individual. Before any
-money changes hands, establish in writing who holds the rights: the named author, the
-current maintainer, or the employing institution, whose IP policy may claim work produced
-by staff or students. Note also that MIT permits anyone to redistribute or sell this code,
-so a published MIT repository cannot be the basis for exclusivity.
+Owned jointly by Mark Colley and Max Rädler, as stated by the rights-holders and now
+reflected in the copyright line, which previously named only one of them.
+
+Two consequences worth keeping in view rather than rediscovering later. Joint ownership
+means decisions about licensing, sale or relicensing need both owners' agreement, so the
+outstanding licence question below is a decision for both. And MIT permits anyone to
+redistribute or sell this code, so a published MIT repository cannot itself be the basis
+for exclusivity — what is sold is convenience, support and signed builds.
 
 ---
 
@@ -164,7 +167,7 @@ See [LICENSE](LICENSE) in the repository, and the ownership question recorded ab
 |---|-----------|--------|------------------------|
 | 1 | UnitEye | ~~Obtain a licence, or replace~~ — authored in-house, confirmed | Record it in a licence file |
 | 2 | uWindowCapture | ~~Vendor the upstream MIT licence text~~ | **Done** |
-| 3 | VIP-Sim | Establish ownership in writing | **Yes** |
+| 3 | VIP-Sim | ~~Establish ownership~~ — Mark Colley and Max Rädler | **Done** |
 | 3b | VIP-Sim | Resolve the MIT vs CC BY 4.0 contradiction | **Yes** |
 | 4 | Unity | Confirm plan eligibility; decide on the splash | Yes, if over the Personal threshold |
 
