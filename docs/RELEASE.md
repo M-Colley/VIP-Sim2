@@ -92,3 +92,17 @@ expires.
   reached.
 - **macOS has been run once**, informally. It has not been run since the per-eye refactor
   removed a camera.
+
+## Release asset names must stay stable
+
+Attach the archives as exactly `VIP-Sim-Windows-x64.zip` and
+`VIP-Sim-macOS-universal.zip` -- no version number in the file name.
+
+The download buttons on the website use
+`https://github.com/M-Colley/VIP-Sim2/releases/latest/download/<name>`, which GitHub
+resolves only for an exact asset name. Putting the version in the name would break both
+buttons on every release, silently, and the person who notices is a user who cannot
+download the software.
+
+The version still travels with the download: it is the release tag, it is in the
+`CHANGELOG.md` inside each archive, and the app reports it in the F1 panel.
