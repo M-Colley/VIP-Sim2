@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VIP-Sim — experience your design through impaired vision</title>
+<meta name="description" content="VIP-Sim overlays a live simulation of vision impairments on any application on your desktop, so designers and researchers can experience their own work the way someone with a visual impairment might.">
+<style>
+  :root{
+    --bg:#0b0c10; --surface:#131519; --surface-2:#191c22; --line:rgba(255,255,255,.10);
+    --text:#f4f4f6; --muted:rgba(244,244,246,.62); --faint:rgba(244,244,246,.40);
+    --accent:#ff9e29; --accent-dim:rgba(255,158,41,.14);
+    --radius:16px; --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* ---- nav ---- */
+  nav{position:sticky; top:0; z-index:10; backdrop-filter:blur(12px);
+      background:rgba(11,12,16,.82); border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex; align-items:center; gap:24px; height:62px}
+  .brand{display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:-.01em; color:var(--text)}
+  .brand:hover{text-decoration:none}
+  .dot{width:20px;height:20px;border-radius:50%;
+       background:radial-gradient(circle at 50% 50%, var(--accent) 0 34%, transparent 36%),
+                  conic-gradient(from 0deg, var(--accent), rgba(255,158,41,.25));}
+  nav .links{margin-left:auto; display:flex; gap:22px; font-size:14.5px}
+  nav .links a{color:var(--muted)}
+  nav .links a:hover{color:var(--text); text-decoration:none}
+
+  /* ---- hero ---- */
+  header{padding:96px 0 72px; position:relative; overflow:hidden}
+  header::before{content:""; position:absolute; inset:-40% 0 auto 50%; width:900px; height:600px;
+    transform:translateX(-50%); pointer-events:none;
+    background:radial-gradient(closest-side, rgba(255,158,41,.16), transparent 70%)}
+  .eyebrow{color:var(--accent); font-size:13px; font-weight:700; letter-spacing:.14em; text-transform:uppercase}
+  h1{font-size:clamp(34px,5.6vw,60px); line-height:1.06; letter-spacing:-.03em; margin:14px 0 18px; font-weight:800}
+  .lede{font-size:clamp(17px,2.1vw,21px); color:var(--muted); max-width:62ch; margin:0 0 32px}
+  .cta{display:flex; flex-wrap:wrap; gap:12px; align-items:center}
+  .btn{display:inline-block; padding:13px 22px; border-radius:12px; font-weight:650; font-size:15.5px;
+       border:1px solid transparent; transition:transform .12s ease, background .18s ease}
+  .btn:hover{text-decoration:none; transform:translateY(-1px)}
+  .btn-primary{background:var(--accent); color:#141414}
+  .btn-primary:hover{background:#ffb254}
+  .btn-ghost{background:transparent; color:var(--text); border-color:var(--line)}
+  .btn-ghost:hover{background:var(--surface-2)}
+  .note{font-size:13.5px; color:var(--faint); margin-top:14px}
+
+  /* ---- sections ---- */
+  section{padding:64px 0; border-top:1px solid var(--line)}
+  h2{font-size:clamp(24px,3.2vw,32px); letter-spacing:-.02em; margin:0 0 10px; font-weight:750}
+  .sub{color:var(--muted); max-width:64ch; margin:0 0 30px}
+  .grid{display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:22px}
+  .card h3{margin:0 0 8px; font-size:17px; letter-spacing:-.01em}
+  .card p{margin:0; color:var(--muted); font-size:15px}
+
+  /* ---- symptom chips ---- */
+  .chips{display:flex; flex-wrap:wrap; gap:9px}
+  .chip{background:var(--surface-2); border:1px solid var(--line); border-radius:999px;
+        padding:7px 14px; font-size:14px; color:var(--muted)}
+  .chip b{color:var(--text); font-weight:600}
+  .chip span{color:var(--faint); font-size:12.5px}
+
+  /* ---- platform table ---- */
+  .tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius)}
+  table{border-collapse:collapse; width:100%; min-width:520px; font-size:15px}
+  th,td{text-align:left; padding:14px 18px; border-bottom:1px solid var(--line)}
+  th{font-size:12.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:650}
+  tr:last-child td{border-bottom:none}
+  .yes{color:var(--accent); font-weight:650}
+  .no{color:var(--faint)}
+
+  .callout{background:var(--accent-dim); border:1px solid rgba(255,158,41,.30);
+           border-radius:var(--radius); padding:20px 22px}
+  .callout h3{margin:0 0 8px; font-size:16px}
+  .callout p{margin:0; color:var(--muted); font-size:15px}
+
+  footer{padding:44px 0 64px; border-top:1px solid var(--line); color:var(--faint); font-size:14px}
+  footer .wrap{display:flex; flex-wrap:wrap; gap:18px 28px; align-items:center}
+  footer a{color:var(--muted)}
+  code{background:var(--surface-2); border:1px solid var(--line); border-radius:6px;
+       padding:2px 7px; font-size:13.5px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="dot"></span> VIP-Sim</a>
+    <div class="links">
+      <a href="#what">What it does</a>
+      <a href="#symptoms">Symptoms</a>
+      <a href="#platforms">Platforms</a>
+      <a href="#research">Research</a>
+      <a href="#support">Support</a>
+    </div>
+  </div>
+</nav>
+
+<header id="top">
+  <div class="wrap">
+    <div class="eyebrow">Accessibility simulation</div>
+    <h1>Experience your design<br>through impaired vision.</h1>
+    <p class="lede">
+      VIP-Sim overlays a live simulation of vision impairments on any application already
+      running on your desktop. You keep using that application normally — clicking,
+      scrolling, typing — while the simulation runs on top of it.
+    </p>
+    <div class="cta">
+      <a class="btn btn-primary" href="https://github.com/M-Colley/VIP-Sim2/releases">Download</a>
+      <a class="btn btn-ghost" href="https://doi.org/10.1145/3746059.3747704">Read the paper</a>
+    </div>
+    <p class="note">Windows and macOS. Free and open source. Not a medical device.</p>
+  </div>
+</header>
+
+<section id="what">
+  <div class="wrap">
+    <h2>Built to be used on real software</h2>
+    <p class="sub">
+      Most simulators show you a photograph. VIP-Sim shows you <em>your own work</em>,
+      live, while you use it.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <h3>Click-through overlay</h3>
+        <p>The simulation sits on top of the desktop without intercepting your input. The
+           application underneath behaves exactly as it always does.</p>
+      </div>
+      <div class="card">
+        <h3>Follows your gaze</h3>
+        <p>Effects that depend on where you are looking track the mouse by default, or
+           your actual gaze via the webcam after a short calibration.</p>
+      </div>
+      <div class="card">
+        <h3>One symptom at a time</h3>
+        <p>Eighteen effects, each approximating a single symptom, combinable and
+           adjustable — so you can tell which one your interface fails.</p>
+      </div>
+      <div class="card">
+        <h3>Explains itself</h3>
+        <p>Every symptom is described in plain language beside its clinical term, in the
+           app. Press F1.</p>
+      </div>
+      <div class="card">
+        <h3>Multi-monitor</h3>
+        <p>Move the overlay to whichever display the work is on. It remembers.</p>
+      </div>
+      <div class="card">
+        <h3>Private by construction</h3>
+        <p>Screen and camera images are processed on your machine and never leave it. No
+           accounts, no analytics.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="symptoms">
+  <div class="wrap">
+    <h2>Eighteen symptoms, grouped by what they affect</h2>
+    <p class="sub">
+      Each effect approximates one symptom, not a whole diagnosis. Real conditions combine
+      several, vary enormously between individuals, and change over time.
+    </p>
+    <div class="chips">
+      <span class="chip"><b>Vision Loss, Central</b> <span>central scotoma</span></span>
+      <span class="chip"><b>Central Dark Spot</b> <span>foveal darkness</span></span>
+      <span class="chip"><b>Detail Loss</b> <span>reduced acuity</span></span>
+      <span class="chip"><b>Vision Loss, Peripheral</b> <span>peripheral scotoma</span></span>
+      <span class="chip"><b>In-Filling</b> <span>perceptual filling-in</span></span>
+      <span class="chip"><b>Wavy Distortion</b> <span>metamorphopsia</span></span>
+      <span class="chip"><b>Distortion</b> <span>geometric distortion</span></span>
+      <span class="chip"><b>Farsightedness</b> <span>hyperopia</span></span>
+      <span class="chip"><b>Cataract</b> <span>cataract</span></span>
+      <span class="chip"><b>Color Vision Deficiency</b> <span>dyschromatopsia</span></span>
+      <span class="chip"><b>Contrast Sensitivity</b> <span>reduced contrast sensitivity</span></span>
+      <span class="chip"><b>Glare Vision</b> <span>photophobia</span></span>
+      <span class="chip"><b>Eye Tremor</b> <span>nystagmus</span></span>
+      <span class="chip"><b>Double Vision</b> <span>diplopia</span></span>
+      <span class="chip"><b>Retinopathy / Floaters</b> <span>vitreous floaters</span></span>
+      <span class="chip"><b>Flickering Specks</b> <span>photopsia</span></span>
+      <span class="chip"><b>Visual Aura</b> <span>teichopsia</span></span>
+    </div>
+  </div>
+</section>
+
+<section id="platforms">
+  <div class="wrap">
+    <h2>Platforms</h2>
+    <p class="sub">Honest status, so nobody downloads the wrong thing.</p>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Platform</th><th>Overlay</th><th>Window capture</th><th>Eye tracking</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Windows 10 / 11</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+          <tr><td>macOS 12+</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+          <tr><td>Linux (Wayland)</td><td class="no">In development</td><td class="no">In development</td><td class="no">Not yet</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      macOS asks for Screen Recording permission on first launch, and Camera only if you
+      enable eye tracking. Builds are not yet code-signed, so the first launch needs an
+      extra confirmation — the steps are in the README that ships with the download.
+    </p>
+  </div>
+</section>
+
+<section id="research">
+  <div class="wrap">
+    <h2>From research, and honest about its limits</h2>
+    <p class="sub">
+      VIP-Sim was built and evaluated with and for people with visual impairments, and
+      published at UIST&nbsp;'25.
+    </p>
+    <div class="callout">
+      <h3>What VIP-Sim is not</h3>
+      <p>
+        It is a design and awareness tool, not a medical device. It does not diagnose,
+        screen for or monitor any condition. Severity values are uncalibrated starting
+        points rather than clinically validated measurements, so VIP-Sim should never be
+        presented as showing “what condition X looks like”, and it is not evidence of
+        accessibility compliance.
+      </p>
+    </div>
+    <p style="margin-top:22px">
+      Paper: <a href="https://doi.org/10.1145/3746059.3747704">doi.org/10.1145/3746059.3747704</a>
+    </p>
+  </div>
+</section>
+
+<section id="support">
+  <div class="wrap">
+    <h2>Support</h2>
+    <p class="sub">One place to report things, and one file to attach.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>Report a problem</h3>
+        <p>Open an issue at
+           <a href="https://github.com/M-Colley/VIP-Sim2/issues">github.com/M-Colley/VIP-Sim2/issues</a>.
+           There is a button for it in the app, under <code>F1</code>.</p>
+      </div>
+      <div class="card">
+        <h3>Attach diagnostics</h3>
+        <p>Press <code>F1</code> and choose <b>Copy diagnostics path</b>. Attach
+           <code>Player.log</code> and <code>vipsim-errors.log</code> from that folder.</p>
+      </div>
+      <div class="card">
+        <h3>Emergency exit</h3>
+        <p><code>Ctrl</code>+<code>Alt</code>+<code>Q</code> always quits, even if the
+           overlay has covered everything.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>VIP-Sim 2.0.0</span>
+    <a href="https://github.com/M-Colley/VIP-Sim2">Source</a>
+    <a href="https://github.com/M-Colley/VIP-Sim2/blob/main/docs/PRIVACY.md">Privacy</a>
+    <a href="https://github.com/M-Colley/VIP-Sim2/blob/main/THIRD-PARTY-NOTICES.md">Third-party notices</a>
+    <a href="https://github.com/M-Colley/VIP-Sim2/blob/main/CHANGELOG.md">Changelog</a>
+  </div>
+</footer>
+
+</body>
+</html>

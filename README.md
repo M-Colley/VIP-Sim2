@@ -183,8 +183,30 @@ If you use VIP-Sim in academic work, please cite:
 }
 ```
 
+# 🛟 Support and documentation
+
+| | |
+|---|---|
+| Report a problem | https://github.com/M-Colley/VIP-Sim2/issues -- also a button in the app under **F1** |
+| Diagnostics to attach | **F1 → Copy diagnostics path**, then attach `Player.log` and `vipsim-errors.log` |
+| Emergency exit | **Ctrl+Alt+Q** always quits |
+| Install notes | [docs/INSTALL.md](docs/INSTALL.md), [docs/MACOS_README.md](docs/MACOS_README.md) |
+| What each symptom is | [docs/EFFECTS.md](docs/EFFECTS.md), or press **F1** in the app |
+| Privacy | [docs/PRIVACY.md](docs/PRIVACY.md) |
+| Changes | [CHANGELOG.md](CHANGELOG.md) |
+| Linux status | [docs/LINUX_PORT.md](docs/LINUX_PORT.md) |
+
+Developer hotkeys (F6/F7/F8/F10/F11) are disabled in release builds. Launch with
+`-vipsim-dev` to enable them.
+
 # 📄 License
-This project is licensed under CC BY 4.0
+
+> **Unresolved:** this line has said CC BY 4.0, while the repository's `LICENSE` file
+> contains the MIT Licence (Copyright (c) 2025 Max Rädler). Those are different grants
+> and only one of them can be the licence. Settle this before the project is distributed
+> commercially -- see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+
+The `LICENSE` file currently governs: MIT.
 
 # 📬 Contact
 Max Rädler – max.raedler@uni-ulm.de
