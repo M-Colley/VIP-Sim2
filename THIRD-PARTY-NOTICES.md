@@ -87,10 +87,15 @@ Built with Unity 6000.5.8f1. The Unity Runtime is redistributed under the Unity 
 Licence / the Unity Terms of Service accepted by the licence holder. TextMesh Pro ships as
 part of the engine under the same terms.
 
-**Check your Unity plan before selling.** The project currently builds with the Unity
-splash screen enabled (`m_ShowUnitySplashScreen: 1`), which is mandatory on Unity Personal.
-Unity Personal is limited by a revenue threshold; exceeding it, or wanting the splash
-removed, requires a paid plan.
+**Decision: VIP-Sim stays on Unity Personal for now.** The build therefore keeps the
+Unity splash screen (`m_ShowUnitySplashScreen: 1`), which is mandatory on that plan and
+cannot be switched off without upgrading. Unity Personal permits commercial distribution
+only while revenue and funding stay under Unity's threshold for the plan.
+
+Two triggers to revisit, so this is not rediscovered at an awkward moment: crossing that
+threshold obliges an upgrade, and wanting the splash gone for a paid product requires one
+regardless of revenue. Neither is a code change — upgrading the plan and clearing the
+checkbox is the whole of it.
 
 Font assets under `Assets/TextMesh Pro/Examples & Extras/` are Unity's TMP examples and
 carry their own upstream licences — Roboto under Apache 2.0, Bangers under the SIL Open
@@ -169,7 +174,7 @@ See [LICENSE](LICENSE) in the repository, and the ownership question recorded ab
 | 2 | uWindowCapture | ~~Vendor the upstream MIT licence text~~ | **Done** |
 | 3 | VIP-Sim | ~~Establish ownership~~ — Mark Colley and Max Rädler | **Done** |
 | 3b | VIP-Sim | Resolve the MIT vs CC BY 4.0 contradiction | **Yes** |
-| 4 | Unity | Confirm plan eligibility; decide on the splash | Yes, if over the Personal threshold |
+| 4 | Unity | ~~Confirm plan; decide on the splash~~ — staying on Personal, splash kept | Revisit if revenue crosses the threshold |
 
 This file records what is in the repository and what the upstream licences say. It is not
 legal advice; have a qualified person review the position before selling.
