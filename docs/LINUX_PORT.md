@@ -250,11 +250,56 @@ wrong twice.
   visible in the same run by photographing it before the player started. So under
   XWayland on wlroots this buys click-through and not invisibility.
 
-The remaining routes are therefore: interpose `dlsym` itself to catch the `wl_surface` as
-SDL creates it and then clear its opaque region and input region; or decouple rendering
-from the window, which is a genuinely large piece of work -- VIP-Sim's entire interface is
-two ScreenSpaceOverlay canvases and five IMGUI surfaces, and `OnGUI` cannot render into a
-RenderTexture at all.
+### What actually fixed it, and what is left
+
+Neither of those was needed for the main defect. Two things were hiding the desktop, and
+both were outside the compositing code:
+
+- **A fullscreen surface tells the compositor to stop painting what is behind it**, so a
+  perfectly transparent fullscreen window still composites over black. That is policy, not
+  a bug, and it is what made every earlier experiment look like broken alpha. The overlay
+  is now a window the size of the display that is simply not marked fullscreen.
+- **SDL declares the whole window opaque unless told otherwise.**
+  `SDL_VIDEO_EGL_ALLOW_TRANSPARENCY=1` suppresses that, and it has to be set before the
+  player starts, so the build writes a launcher beside the player that sets it.
+
+With those two the desktop shows through. What remains is that the player's window is still
+*there*: the interface is drawn twice, once by the transparent window and once by the
+overlay above it, offset because the window is 1276x693 under a server-side title bar while
+the overlay is the size of the output.
+
+**The crux of finishing it is input, not visibility.** The layer surface is click-through by
+design, `vipsim_present_set_panel` is the only channel that changes that, and the shared
+segment carries no events. Every click that reaches VIP-Sim today reaches it through the
+player's own toplevel. Any mechanism that hides that toplevel -- unmapping it, an empty
+input region, an alpha multiplier of zero -- takes the mouse away from the tool at the same
+moment, and a simulator whose severity sliders cannot be dragged is not a product. Three
+approaches were designed and judged against each other, and all three verdicts landed on
+this same objection from different directions.
+
+The order of work that follows:
+
+1. **Server-side decorations and exact sizing.** One defect wearing three hats: the title
+   bar is visible residue, it makes the window 1276x693 against a 1280x720 output, and that
+   offset is what would put any input rectangle in the wrong place. Unity's `-popupwindow`
+   is not honoured here -- measured, sway still reports `deco normal` -- so this needs
+   `zxdg_decoration_manager_v1`, which means reaching the surface.
+2. **An input path from the overlay back to the player**, so the panel stays operable once
+   the player's window no longer catches clicks. `vipsim_shm.h` is one-directional today.
+3. **Only then, hiding the player's window.** `wp_alpha_modifier_v1.set_multiplier(0)` makes
+   a surface invisible while frame callbacks keep flowing, which minimising and unmapping do
+   not: sway ignores `set_minimized` outright, and Mutter and KWin stop frame callbacks for
+   minimised windows, which would freeze the overlay. Whatever does the hiding must be gated
+   on the presenter actually presenting -- GNOME has no layer-shell, so the overlay cannot
+   exist there, but Mutter 49.2 *does* implement alpha-modifier, so a mechanism that armed
+   on its own preconditions would make VIP-Sim vanish completely on GNOME with nothing to
+   replace it and no error anywhere.
+
+One measured constraint for step 3: the render loop must not block on the compositor. With
+`eglSwapInterval(1)` a hidden window blocked inside a single `eglSwapBuffers` for 40
+seconds; at interval 0 it kept swapping at ~1,900/s. The player logs `Default vsync count 1`
+at startup, so vSync 0 is a load-bearing invariant on Linux and should be asserted rather
+than assumed.
 5. **dmabuf** — probed, not implemented, and the probe is why. Nested Sway on a software
    renderer does not advertise `zwp_linux_dmabuf_v1` at all, and the container has neither
    `/dev/dri` nor a `udmabuf` module, so a dmabuf cannot be created by any route here. The

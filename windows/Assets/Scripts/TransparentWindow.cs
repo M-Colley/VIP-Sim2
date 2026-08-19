@@ -229,11 +229,13 @@ public class TransparentWindow : MonoBehaviour {
     public void enableInfoState()
     {
         infoState = true;
+        SyncOverlayInputRegion();
     }
 
     public void disableInfoState()
     {
         infoState = false;
+        SyncOverlayInputRegion();
     }
 
     // And once more for the first-run tutorial. Its own flag, per the pattern above: the
@@ -244,11 +246,32 @@ public class TransparentWindow : MonoBehaviour {
     public void enableTutorialState()
     {
         tutorialState = true;
+        SyncOverlayInputRegion();
     }
 
     public void disableTutorialState()
     {
         tutorialState = false;
+        SyncOverlayInputRegion();
+    }
+
+    /// <summary>
+    /// Tell the Wayland overlay whether anything modal is open.
+    ///
+    /// On Windows and macOS these flags are read by this component itself. On Linux the
+    /// overlay is a separate process holding the layer surface, and the only way it knows
+    /// which part of the screen should catch the mouse is the rectangle we publish to it.
+    /// LinuxPresenter read a flag that nothing ever wrote, so the published region stayed
+    /// empty for the whole session: the overlay was permanently click-through and VIP-Sim's
+    /// panels were reachable only because the player's own window happened to be underneath
+    /// catching the clicks. That stops being true the moment that window is dealt with, so
+    /// the flag is set here, at the one place where modal state actually changes.
+    /// </summary>
+    private void SyncOverlayInputRegion()
+    {
+#if UNITY_STANDALONE_LINUX && !UNITY_EDITOR
+        LinuxPresenter.SymptomInfoOpenHint = infoState || tutorialState;
+#endif
     }
 
     private static TransparentWindow _instance;
