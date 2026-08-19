@@ -48,11 +48,11 @@ echo "built: build/libvipsim_present.so"
 # 2. The presenter, which owns the layer surface.
 gcc -O2 $WARN -I build -I . \
     -o build/vipsim-presenter \
-    presenter.c \
+    presenter.c host.c \
     build/wlr-layer-shell-unstable-v1-protocol.c \
     build/xdg-shell-protocol.c \
     build/linux-dmabuf-v1-protocol.c \
-    $(pkg-config --cflags --libs wayland-client) -lrt
+    $(pkg-config --cflags --libs wayland-client wayland-server) -lrt
 echo "built: build/vipsim-presenter"
 
 # 3. Screen capture: xdg-desktop-portal for consent, PipeWire for the frames.

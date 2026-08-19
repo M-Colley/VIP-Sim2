@@ -20,6 +20,10 @@
 #include <poll.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include "host.h"
+
+#include <errno.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -266,6 +270,10 @@ static void on_configure(void *data, struct zwlr_layer_surface_v1 *s,
     g_width = (int)w; g_height = (int)h;
     printf("[presenter] configured: %dx%d\n", g_width, g_height);
 
+    // The player's world is exactly the size the real compositor gave us, so the two can
+    // never disagree about it.
+    vipsim_host_set_output_size(g_width, g_height);
+
     if (g_width <= 0 || g_height <= 0) {
         fprintf(stderr, "[presenter] compositor gave a zero size; cannot draw.\n");
         g_running = false;
@@ -364,8 +372,11 @@ int main(int argc, char **argv)
     // exit. The one case where these lines matter is the one where they never arrive.
     setvbuf(stdout, NULL, _IOLBF, 0);
 
-    for (int i = 1; i < argc; i++)
+    bool host_mode = false;
+    for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--test")) g_force_test_pattern = true;
+        if (!strcmp(argv[i], "--host")) host_mode = true;
+    }
 
     struct wl_display *display = wl_display_connect(NULL);
     if (!display) {
@@ -414,11 +425,50 @@ int main(int argc, char **argv)
     zwlr_layer_surface_v1_set_keyboard_interactivity(g_layer_surface, 0);
     wl_surface_commit(g_surface);
 
+    if (host_mode && !vipsim_host_start())
+        return 1;
+
     printf("[presenter] waiting for configure...\n");
-    while (g_running && wl_display_dispatch(display) != -1) {
+
+    // Two Wayland connections in one thread: a client connection to the real compositor
+    // and, in host mode, a server socket for the player. wl_display_dispatch blocks, which
+    // would starve whichever of the two was quiet, so both are polled instead.
+    //
+    // The prepare_read / read_events dance is not optional even single-threaded: a plain
+    // dispatch would consume events that arrived while the other display was being
+    // serviced, and the cancel_read path is what keeps the queue consistent when poll
+    // wakes for the other fd.
+    while (g_running) {
+        while (wl_display_prepare_read(display) != 0)
+            wl_display_dispatch_pending(display);
+        wl_display_flush(display);
+        vipsim_host_flush();
+
+        struct pollfd fds[2];
+        int n = 0;
+        fds[n].fd = wl_display_get_fd(display); fds[n].events = POLLIN; fds[n].revents = 0; n++;
+        int hfd = vipsim_host_fd();
+        if (hfd >= 0) { fds[n].fd = hfd; fds[n].events = POLLIN; fds[n].revents = 0; n++; }
+
+        // A timeout rather than an indefinite wait, so a producer that starts later is
+        // still noticed on a screen where nothing else is happening.
+        int rc = poll(fds, (nfds_t)n, 100);
+        if (rc < 0 && errno != EINTR) { wl_display_cancel_read(display); break; }
+
+        if (fds[0].revents & POLLIN) {
+            if (wl_display_read_events(display) != 0) break;
+        } else {
+            wl_display_cancel_read(display);
+        }
+        if (wl_display_dispatch_pending(display) < 0) break;
+
+        if (n > 1 && (fds[1].revents & POLLIN)) vipsim_host_dispatch();
+
         // If VIP-Sim starts after the presenter, pick it up without a restart.
         if (!g_prod && !g_force_test_pattern && open_producer()) g_last_seq = 0xFFFFFFFFu;
     }
+
+    vipsim_host_stop();
 
     if (g_prod_map) munmap(g_prod_map, g_prod_size);
     wl_display_disconnect(display);
