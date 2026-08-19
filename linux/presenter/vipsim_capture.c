@@ -34,6 +34,11 @@
 
 #define EXPORT __attribute__((visibility("default")))
 
+// org.freedesktop.portal.ScreenCast source types.
+#define PORTAL_SOURCE_MONITOR 1u
+#define PORTAL_SOURCE_WINDOW  2u
+#define PORTAL_SOURCE_VIRTUAL 4u
+
 // ---------------------------------------------------------------- state
 
 enum vipsim_state {
@@ -59,6 +64,8 @@ static struct {
     struct pw_context     *pw_context;
     struct pw_core        *pw_core;
     struct pw_stream      *pw_stream;
+
+    uint32_t         source_types;     // what the portal says this desktop can share
 
     pthread_mutex_t  lock;
     uint8_t         *frame;            // BGRA, width*height*4
@@ -425,7 +432,39 @@ EXPORT int vipsim_capture_init(void)
     }
     g_variant_unref(v);
 
-    set_state(VIPSIM_IDLE, "portal available");
+    // Which kinds of source this desktop can actually offer.
+    //
+    // Asking for MONITOR|WINDOW and letting the portal choose looks accommodating and is
+    // not: xdg-desktop-portal-wlr advertises WINDOW only when the compositor implements
+    // ext_foreign_toplevel_image_capture_source_manager_v1, and where it does not it
+    // quietly downgrades the request to a whole output. Nothing in the reply says it did.
+    // That matters here more than for a recorder, because VIP-Sim draws its simulation
+    // back over the same screen: capturing the whole output means capturing the overlay,
+    // and the picture feeds into itself. Reading this first is what lets us ask for one
+    // type and tell the user plainly when only the degraded one exists.
+    C.source_types = 0;
+    v = g_dbus_connection_call_sync(
+        C.bus, "org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+        "org.freedesktop.DBus.Properties", "Get",
+        g_variant_new("(ss)", "org.freedesktop.portal.ScreenCast", "AvailableSourceTypes"),
+        NULL, G_DBUS_CALL_FLAGS_NONE, 2000, NULL, NULL);
+    if (v) {
+        GVariant *inner = NULL;
+        g_variant_get(v, "(v)", &inner);
+        if (inner) { C.source_types = g_variant_get_uint32(inner); g_variant_unref(inner); }
+        g_variant_unref(v);
+    }
+
+    if (C.source_types & PORTAL_SOURCE_WINDOW) {
+        set_state(VIPSIM_IDLE, "portal available; can share a single window");
+    } else {
+        set_state(VIPSIM_IDLE,
+                  "portal available, but this desktop offers whole-screen capture only. "
+                  "VIP-Sim's overlay is drawn on that screen, so it will be captured back "
+                  "into itself. Remedies: a second monitor (simulate one, work on the "
+                  "other), or a desktop whose portal can share one window -- GNOME, KDE "
+                  "and Hyprland can. See docs/LINUX_PORT.md.");
+    }
     return 0;
 }
 
@@ -448,11 +487,20 @@ EXPORT int vipsim_capture_start(void)
     g_variant_lookup(res, "session_handle", "s", &C.session_handle);
     g_variant_unref(res); g_variant_unref(resp);
 
-    // 2. SelectSources -- monitors and windows, one at a time.
+    // 2. SelectSources -- one kind, chosen from what this desktop actually has.
+    //
+    // A single window where that exists, which is the same thing VIP-Sim does on Windows:
+    // the user picks one application and sees it as someone with the impairment would.
+    // Whole screen only where it does not, and init has already said what that costs.
+    uint32_t want = (C.source_types & PORTAL_SOURCE_WINDOW) ? PORTAL_SOURCE_WINDOW
+                                                            : PORTAL_SOURCE_MONITOR;
+    fprintf(stderr, "[vipsim_capture] asking for %s (portal offers 0x%x)\n",
+            want == PORTAL_SOURCE_WINDOW ? "a window" : "a whole screen", C.source_types);
+
     g_autofree char *st2 = next_token("vipsim");
     g_variant_builder_init(&o, G_VARIANT_TYPE_VARDICT);
     g_variant_builder_add(&o, "{sv}", "handle_token", g_variant_new_string(st2));
-    g_variant_builder_add(&o, "{sv}", "types", g_variant_new_uint32(1u | 2u));
+    g_variant_builder_add(&o, "{sv}", "types", g_variant_new_uint32(want));
     g_variant_builder_add(&o, "{sv}", "multiple", g_variant_new_boolean(FALSE));
     g_variant_builder_add(&o, "{sv}", "cursor_mode", g_variant_new_uint32(2u)); // embedded
     resp = portal_call_sync("SelectSources",
