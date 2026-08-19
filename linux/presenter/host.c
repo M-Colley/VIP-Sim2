@@ -97,3 +97,83 @@ void vipsim_host_stop(void)
     H.display = NULL;
     H.loop = NULL;
 }
+
+// ------------------------------------------------------------------ self-test
+
+// Prove the socket is usable before the player is launched.
+//
+// Mesa's EGL fails identically -- eglInitialize returning EGL_NOT_INITIALIZED, with nothing
+// in the message naming shm or formats -- whether wl_shm is absent entirely or present but
+// silent about its formats. Unity then reports only "Failed to create valid graphics
+// context", which is the least informative sentence in the whole failure. Connecting to our
+// own socket first and checking turns both into a named error at the point where it can
+// still be acted on.
+
+#include <poll.h>
+#include <wayland-client.h>
+
+static struct {
+    struct wl_shm *shm;
+    int            formats;
+} P;
+
+static void probe_format(void *d, struct wl_shm *shm, uint32_t format)
+{
+    (void)d; (void)shm; (void)format;
+    P.formats++;
+}
+static const struct wl_shm_listener probe_shm_listener = { probe_format };
+
+static void probe_global(void *d, struct wl_registry *reg, uint32_t name,
+                         const char *iface, uint32_t version)
+{
+    (void)d; (void)version;
+    if (!strcmp(iface, "wl_shm") && !P.shm) {
+        P.shm = wl_registry_bind(reg, name, &wl_shm_interface, 1);
+        wl_shm_add_listener(P.shm, &probe_shm_listener, NULL);
+    }
+}
+static void probe_global_remove(void *d, struct wl_registry *r, uint32_t name)
+{ (void)d; (void)r; (void)name; }
+
+static const struct wl_registry_listener probe_registry_listener = {
+    probe_global, probe_global_remove
+};
+
+bool vipsim_host_selftest(void)
+{
+    if (!H.display) return false;
+
+    struct wl_display *c = wl_display_connect(H.socket);
+    if (!c) {
+        fprintf(stderr, "[host] self-test: cannot connect to my own socket '%s'.\n", H.socket);
+        return false;
+    }
+
+    struct wl_registry *reg = wl_display_get_registry(c);
+    wl_registry_add_listener(reg, &probe_registry_listener, NULL);
+
+    // Pumped by hand rather than with wl_display_roundtrip, which would deadlock: the server
+    // that has to answer this client is this process, and it is not running yet.
+    for (int i = 0; i < 50 && !(P.shm && P.formats); i++) {
+        wl_display_flush(c);
+        vipsim_host_dispatch();
+        struct pollfd pfd = { wl_display_get_fd(c), POLLIN, 0 };
+        if (poll(&pfd, 1, 20) > 0 && (pfd.revents & POLLIN))
+            wl_display_dispatch(c);
+        else
+            wl_display_dispatch_pending(c);
+    }
+
+    bool ok = P.shm && P.formats;
+    if (ok)
+        printf("[host] self-test: wl_shm present, %d pixel formats offered.\n", P.formats);
+    else
+        fprintf(stderr, "[host] self-test FAILED: wl_shm %s, %d formats. The player's EGL "
+                        "would fail with EGL_NOT_INITIALIZED and say nothing about why.\n",
+                P.shm ? "present" : "MISSING", P.formats);
+
+    wl_registry_destroy(reg);
+    wl_display_disconnect(c);
+    return ok;
+}

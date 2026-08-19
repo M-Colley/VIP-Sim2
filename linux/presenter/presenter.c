@@ -425,8 +425,10 @@ int main(int argc, char **argv)
     zwlr_layer_surface_v1_set_keyboard_interactivity(g_layer_surface, 0);
     wl_surface_commit(g_surface);
 
-    if (host_mode && !vipsim_host_start())
-        return 1;
+    if (host_mode) {
+        if (!vipsim_host_start()) return 1;
+        if (!vipsim_host_selftest()) return 1;
+    }
 
     printf("[presenter] waiting for configure...\n");
 
@@ -462,7 +464,9 @@ int main(int argc, char **argv)
         }
         if (wl_display_dispatch_pending(display) < 0) break;
 
-        if (n > 1 && (fds[1].revents & POLLIN)) vipsim_host_dispatch();
+        // Unconditionally, not only when the fd is readable: an event loop also carries
+        // timers and idle sources, and those fire from dispatch rather than from the fd.
+        vipsim_host_dispatch();
 
         // If VIP-Sim starts after the presenter, pick it up without a restart.
         if (!g_prod && !g_force_test_pattern && open_producer()) g_last_seq = 0xFFFFFFFFu;

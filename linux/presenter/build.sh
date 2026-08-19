@@ -33,6 +33,7 @@ mkdir -p build
 wayland-scanner client-header "$XML" build/wlr-layer-shell-unstable-v1-client-protocol.h
 wayland-scanner private-code  "$XML" build/wlr-layer-shell-unstable-v1-protocol.c
 wayland-scanner client-header "$XDG" build/xdg-shell-client-protocol.h
+wayland-scanner server-header "$XDG" build/xdg-shell-server-protocol.h
 wayland-scanner private-code  "$XDG" build/xdg-shell-protocol.c
 wayland-scanner client-header "$DMABUF" build/linux-dmabuf-v1-client-protocol.h
 wayland-scanner private-code  "$DMABUF" build/linux-dmabuf-v1-protocol.c

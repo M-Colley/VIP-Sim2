@@ -48,6 +48,10 @@ void vipsim_host_set_output_size(int32_t width, int32_t height);
 /// True once a client has connected.
 bool vipsim_host_has_client(void);
 
+/// Connect to our own socket and check the player will find what it needs. Returns false
+/// with a named reason rather than letting Mesa fail namelessly later.
+bool vipsim_host_selftest(void);
+
 void vipsim_host_stop(void);
 
 #endif
