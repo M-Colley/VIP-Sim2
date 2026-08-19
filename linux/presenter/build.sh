@@ -22,6 +22,7 @@ pkg-config --exists wayland-client || {
 # Taken from the system wayland-protocols package rather than vendored: it is a stable
 # upstream protocol, and a second copy would only drift.
 XDG="$(pkg-config --variable=pkgdatadir wayland-protocols)/stable/xdg-shell/xdg-shell.xml"
+DECO="$(pkg-config --variable=pkgdatadir wayland-protocols)/unstable/xdg-decoration/xdg-decoration-unstable-v1.xml"
 [ -f "$XDG" ] || { echo "missing xdg-shell.xml -- install wayland-protocols"; exit 1; }
 
 # linux-dmabuf: the zero-copy path. Only its capability probe is used today -- README.md
@@ -34,6 +35,8 @@ wayland-scanner client-header "$XML" build/wlr-layer-shell-unstable-v1-client-pr
 wayland-scanner private-code  "$XML" build/wlr-layer-shell-unstable-v1-protocol.c
 wayland-scanner client-header "$XDG" build/xdg-shell-client-protocol.h
 wayland-scanner server-header "$XDG" build/xdg-shell-server-protocol.h
+wayland-scanner server-header "$DECO" build/xdg-decoration-server-protocol.h
+wayland-scanner private-code  "$DECO" build/xdg-decoration-protocol.c
 wayland-scanner private-code  "$XDG" build/xdg-shell-protocol.c
 wayland-scanner client-header "$DMABUF" build/linux-dmabuf-v1-client-protocol.h
 wayland-scanner private-code  "$DMABUF" build/linux-dmabuf-v1-protocol.c
@@ -53,6 +56,7 @@ gcc -O2 $WARN -I build -I . \
     build/wlr-layer-shell-unstable-v1-protocol.c \
     build/xdg-shell-protocol.c \
     build/linux-dmabuf-v1-protocol.c \
+    build/xdg-decoration-protocol.c \
     $(pkg-config --cflags --libs wayland-client wayland-server) -lrt
 echo "built: build/vipsim-presenter"
 

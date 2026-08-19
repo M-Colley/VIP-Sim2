@@ -3,8 +3,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <wayland-server-core.h>
+
+#include "xdg-shell-server-protocol.h"
+#include "xdg-decoration-server-protocol.h"
+
+// Versions the player actually needs. Each is a measured floor, not a guess.
+//
+//   wl_compositor 4  SDL binds min(3, version) and calls set_buffer_scale, a v3 request.
+//                    libdecor, if it ever loads, calls damage_buffer, which is v4. Higher
+//                    would oblige us to implement wl_surface.offset.
+//   wl_output     2  SDL binds this at a hard-coded 2 with no clamp, and builds its whole
+//                    display list from the v2-only done event. Advertise 1 and the player
+//                    dies with "invalid version for global wl_output".
+//   wl_seat       5  SDL binds min(5, version). The global must exist even with no
+//                    capabilities: without it the player segfaults inside SDL_Init, before
+//                    it has printed anything at all.
+//   xdg_wm_base   3  SDL binds min(3, version). Its Wayland backend has no wl_shell
+//                    fallback, so this is the only way a window gets a role.
+#define HOST_COMPOSITOR_VERSION 4
+#define HOST_OUTPUT_VERSION     2
+#define HOST_SEAT_VERSION       5
+#define HOST_XDG_VERSION        3
 
 static struct {
     struct wl_display    *display;
@@ -12,7 +34,417 @@ static struct {
     const char           *socket;
     int32_t               out_w, out_h;
     int                   clients;
+
+    // The player's window, once it has made one. There is only ever one.
+    struct wl_resource *surface;
+    struct wl_resource *xdg_surface;
+    struct wl_resource *xdg_toplevel;
+    struct wl_resource *pending_buffer;   // attached, not yet committed
+    struct wl_resource *frame_callback;   // owed a done event at the next commit
+    unsigned            commits;
 } H;
+
+static uint32_t now_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
+
+// ------------------------------------------------------------------ wl_surface
+
+static void surface_destroy(struct wl_client *c, struct wl_resource *r)
+{ (void)c; wl_resource_destroy(r); }
+
+static void surface_attach(struct wl_client *c, struct wl_resource *r,
+                           struct wl_resource *buffer, int32_t x, int32_t y)
+{
+    (void)c; (void)r; (void)x; (void)y;
+    H.pending_buffer = buffer;   // double-buffered state: nothing happens until commit
+}
+
+static void surface_damage(struct wl_client *c, struct wl_resource *r,
+                           int32_t x, int32_t y, int32_t w, int32_t h)
+{ (void)c; (void)r; (void)x; (void)y; (void)w; (void)h; }
+
+static void surface_frame(struct wl_client *c, struct wl_resource *r, uint32_t id)
+{
+    (void)r;
+    // The player throttles on this. A callback that is never answered halves its frame
+    // rate, and with a non-zero EGL swap interval would stop it dead.
+    struct wl_resource *cb = wl_resource_create(c, &wl_callback_interface, 1, id);
+    if (!cb) { wl_client_post_no_memory(c); return; }
+    H.frame_callback = cb;
+}
+
+static void surface_set_opaque_region(struct wl_client *c, struct wl_resource *r,
+                                      struct wl_resource *region)
+{ (void)c; (void)r; (void)region; }
+
+static void surface_set_input_region(struct wl_client *c, struct wl_resource *r,
+                                     struct wl_resource *region)
+{ (void)c; (void)r; (void)region; }
+
+static void surface_commit(struct wl_client *c, struct wl_resource *r)
+{
+    (void)c; (void)r;
+    H.commits++;
+
+    if (H.pending_buffer) {
+        struct wl_shm_buffer *shm = wl_shm_buffer_get(H.pending_buffer);
+        if (shm) {
+            static bool said;
+            if (!said) {
+                said = true;
+                printf("[host] first frame from the player: %dx%d, stride %d, format 0x%x\n",
+                       wl_shm_buffer_get_width(shm), wl_shm_buffer_get_height(shm),
+                       wl_shm_buffer_get_stride(shm), wl_shm_buffer_get_format(shm));
+            }
+        } else {
+            static bool warned;
+            if (!warned) {
+                warned = true;
+                fprintf(stderr, "[host] the player attached a buffer that is not wl_shm. "
+                                "Only shared memory is handled today.\n");
+            }
+        }
+
+        // Released at once because nothing is kept yet; copying onto the layer surface is
+        // the next stage. Holding a buffer without releasing it stalls the client on its own
+        // pool, which presents as a frame-rate collapse with no cause attached.
+        wl_buffer_send_release(H.pending_buffer);
+        H.pending_buffer = NULL;
+    }
+
+    if (H.frame_callback) {
+        wl_callback_send_done(H.frame_callback, now_ms());
+        wl_resource_destroy(H.frame_callback);
+        H.frame_callback = NULL;
+    }
+}
+
+static void surface_set_buffer_transform(struct wl_client *c, struct wl_resource *r, int32_t t)
+{ (void)c; (void)r; (void)t; }
+
+static void surface_set_buffer_scale(struct wl_client *c, struct wl_resource *r, int32_t s)
+{ (void)c; (void)r; (void)s; }
+
+static void surface_damage_buffer(struct wl_client *c, struct wl_resource *r,
+                                  int32_t x, int32_t y, int32_t w, int32_t h)
+{ (void)c; (void)r; (void)x; (void)y; (void)w; (void)h; }
+
+static const struct wl_surface_interface surface_impl = {
+    .destroy              = surface_destroy,
+    .attach               = surface_attach,
+    .damage               = surface_damage,
+    .frame                = surface_frame,
+    .set_opaque_region    = surface_set_opaque_region,
+    .set_input_region     = surface_set_input_region,
+    .commit               = surface_commit,
+    .set_buffer_transform = surface_set_buffer_transform,
+    .set_buffer_scale     = surface_set_buffer_scale,
+    .damage_buffer        = surface_damage_buffer,
+};
+
+// ------------------------------------------------------------------ wl_region
+
+static void region_destroy(struct wl_client *c, struct wl_resource *r)
+{ (void)c; wl_resource_destroy(r); }
+static void region_add(struct wl_client *c, struct wl_resource *r,
+                       int32_t x, int32_t y, int32_t w, int32_t h)
+{ (void)c; (void)r; (void)x; (void)y; (void)w; (void)h; }
+static void region_subtract(struct wl_client *c, struct wl_resource *r,
+                            int32_t x, int32_t y, int32_t w, int32_t h)
+{ (void)c; (void)r; (void)x; (void)y; (void)w; (void)h; }
+
+static const struct wl_region_interface region_impl = {
+    region_destroy, region_add, region_subtract
+};
+
+// ------------------------------------------------------------------ wl_compositor
+
+static void compositor_create_surface(struct wl_client *c, struct wl_resource *r, uint32_t id)
+{
+    struct wl_resource *s = wl_resource_create(c, &wl_surface_interface,
+                                               wl_resource_get_version(r), id);
+    if (!s) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(s, &surface_impl, NULL, NULL);
+    if (!H.surface) H.surface = s;
+}
+
+static void compositor_create_region(struct wl_client *c, struct wl_resource *r, uint32_t id)
+{
+    (void)r;
+    struct wl_resource *reg = wl_resource_create(c, &wl_region_interface, 1, id);
+    if (!reg) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(reg, &region_impl, NULL, NULL);
+}
+
+static const struct wl_compositor_interface compositor_impl = {
+    compositor_create_surface, compositor_create_region
+};
+
+static void bind_compositor(struct wl_client *c, void *data, uint32_t version, uint32_t id)
+{
+    (void)data;
+    struct wl_resource *r = wl_resource_create(c, &wl_compositor_interface, (int)version, id);
+    if (!r) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(r, &compositor_impl, NULL, NULL);
+}
+
+// ------------------------------------------------------------------ wl_output
+
+static void bind_output(struct wl_client *c, void *data, uint32_t version, uint32_t id)
+{
+    (void)data;
+    struct wl_resource *r = wl_resource_create(c, &wl_output_interface, (int)version, id);
+    if (!r) { wl_client_post_no_memory(c); return; }
+
+    int32_t w = H.out_w > 0 ? H.out_w : 1920;
+    int32_t h = H.out_h > 0 ? H.out_h : 1080;
+
+    // Sent from inside bind, not deferred. SDL performs exactly two roundtrips during video
+    // init and takes its display list from whatever has arrived by the end of the second; a
+    // done event even slightly late produces "The video driver did not add any displays" and
+    // a player that reports its desktop as 0 x 0.
+    wl_output_send_geometry(r, 0, 0, w, h, WL_OUTPUT_SUBPIXEL_UNKNOWN,
+                            "VIP-Sim", "overlay", WL_OUTPUT_TRANSFORM_NORMAL);
+    wl_output_send_mode(r, WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED, w, h, 60000);
+    if (version >= 2) {
+        // Scale 1, deliberately: SDL divides the reported size by this, so a 2 here hands
+        // the player a half-size desktop and therefore a half-size overlay.
+        wl_output_send_scale(r, 1);
+        wl_output_send_done(r);
+    }
+}
+
+// ------------------------------------------------------------------ wl_seat
+
+static void seat_get_pointer(struct wl_client *c, struct wl_resource *r, uint32_t id)
+{
+    struct wl_resource *p = wl_resource_create(c, &wl_pointer_interface,
+                                               wl_resource_get_version(r), id);
+    if (p) wl_resource_set_implementation(p, NULL, NULL, NULL);
+}
+static void seat_get_keyboard(struct wl_client *c, struct wl_resource *r, uint32_t id)
+{
+    struct wl_resource *k = wl_resource_create(c, &wl_keyboard_interface,
+                                               wl_resource_get_version(r), id);
+    if (k) wl_resource_set_implementation(k, NULL, NULL, NULL);
+}
+static void seat_get_touch(struct wl_client *c, struct wl_resource *r, uint32_t id)
+{
+    struct wl_resource *t = wl_resource_create(c, &wl_touch_interface,
+                                               wl_resource_get_version(r), id);
+    if (t) wl_resource_set_implementation(t, NULL, NULL, NULL);
+}
+static void seat_release(struct wl_client *c, struct wl_resource *r)
+{ (void)c; wl_resource_destroy(r); }
+
+static const struct wl_seat_interface seat_impl = {
+    seat_get_pointer, seat_get_keyboard, seat_get_touch, seat_release
+};
+
+static void bind_seat(struct wl_client *c, void *data, uint32_t version, uint32_t id)
+{
+    (void)data;
+    struct wl_resource *r = wl_resource_create(c, &wl_seat_interface, (int)version, id);
+    if (!r) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(r, &seat_impl, NULL, NULL);
+
+    // No capabilities yet. The seat exists so SDL does not dereference a null input device;
+    // forwarding real pointer and keyboard events from the overlay is the next stage. An
+    // empty capability set is legal and the player copes with it.
+    wl_seat_send_capabilities(r, 0);
+    if (version >= 2) wl_seat_send_name(r, "vipsim");
+}
+
+// ------------------------------------------------------------------ xdg_shell
+
+static void toplevel_destroy(struct wl_client *c, struct wl_resource *r)
+{ (void)c; wl_resource_destroy(r); }
+static void toplevel_set_parent(struct wl_client *c, struct wl_resource *r, struct wl_resource *p)
+{ (void)c; (void)r; (void)p; }
+static void toplevel_set_title(struct wl_client *c, struct wl_resource *r, const char *t)
+{ (void)c; (void)r; (void)t; }
+static void toplevel_set_app_id(struct wl_client *c, struct wl_resource *r, const char *a)
+{ (void)c; (void)r; (void)a; }
+static void toplevel_show_window_menu(struct wl_client *c, struct wl_resource *r,
+                                      struct wl_resource *seat, uint32_t serial,
+                                      int32_t x, int32_t y)
+{ (void)c; (void)r; (void)seat; (void)serial; (void)x; (void)y; }
+static void toplevel_move(struct wl_client *c, struct wl_resource *r,
+                          struct wl_resource *seat, uint32_t serial)
+{ (void)c; (void)r; (void)seat; (void)serial; }
+static void toplevel_resize(struct wl_client *c, struct wl_resource *r,
+                            struct wl_resource *seat, uint32_t serial, uint32_t edges)
+{ (void)c; (void)r; (void)seat; (void)serial; (void)edges; }
+static void toplevel_set_max_size(struct wl_client *c, struct wl_resource *r, int32_t w, int32_t h)
+{ (void)c; (void)r; (void)w; (void)h; }
+static void toplevel_set_min_size(struct wl_client *c, struct wl_resource *r, int32_t w, int32_t h)
+{ (void)c; (void)r; (void)w; (void)h; }
+static void toplevel_set_maximized(struct wl_client *c, struct wl_resource *r)
+{ (void)c; (void)r; }
+static void toplevel_unset_maximized(struct wl_client *c, struct wl_resource *r)
+{ (void)c; (void)r; }
+static void toplevel_set_fullscreen(struct wl_client *c, struct wl_resource *r,
+                                    struct wl_resource *output)
+{ (void)c; (void)r; (void)output; }
+static void toplevel_unset_fullscreen(struct wl_client *c, struct wl_resource *r)
+{ (void)c; (void)r; }
+static void toplevel_set_minimized(struct wl_client *c, struct wl_resource *r)
+{ (void)c; (void)r; }
+
+static const struct xdg_toplevel_interface toplevel_impl = {
+    toplevel_destroy, toplevel_set_parent, toplevel_set_title, toplevel_set_app_id,
+    toplevel_show_window_menu, toplevel_move, toplevel_resize, toplevel_set_max_size,
+    toplevel_set_min_size, toplevel_set_maximized, toplevel_unset_maximized,
+    toplevel_set_fullscreen, toplevel_unset_fullscreen, toplevel_set_minimized,
+};
+
+static void xdg_surface_destroy(struct wl_client *c, struct wl_resource *r)
+{ (void)c; wl_resource_destroy(r); }
+
+static void xdg_surface_get_toplevel(struct wl_client *c, struct wl_resource *r, uint32_t id)
+{
+    struct wl_resource *t = wl_resource_create(c, &xdg_toplevel_interface,
+                                               wl_resource_get_version(r), id);
+    if (!t) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(t, &toplevel_impl, NULL, NULL);
+    H.xdg_toplevel = t;
+
+    int32_t w = H.out_w > 0 ? H.out_w : 1920;
+    int32_t h = H.out_h > 0 ? H.out_h : 1080;
+
+    // The first configure goes out now, before the client has committed anything. SDL waits
+    // for it in an untimed loop, so a host that waits for a buffer and a client that waits
+    // for a configure simply stop, with no error printed on either side.
+    //
+    // ACTIVATED and nothing else -- not FULLSCREEN, however tempting as a way to keep
+    // decorations away. TransparentWindow.RestoreOverlayGeometry forces windowed mode on
+    // Linux, and the two would argue about it for the life of the process.
+    struct wl_array states;
+    wl_array_init(&states);
+    uint32_t *st = wl_array_add(&states, sizeof *st);
+    if (st) *st = XDG_TOPLEVEL_STATE_ACTIVATED;
+    xdg_toplevel_send_configure(t, w, h, &states);
+    wl_array_release(&states);
+
+    xdg_surface_send_configure(r, wl_display_next_serial(H.display));
+    printf("[host] the player asked for a toplevel; configured %dx%d.\n", w, h);
+}
+
+static void xdg_surface_get_popup(struct wl_client *c, struct wl_resource *r, uint32_t id,
+                                  struct wl_resource *parent, struct wl_resource *positioner)
+{
+    (void)r; (void)parent; (void)positioner;
+    struct wl_resource *p = wl_resource_create(c, &xdg_popup_interface, 1, id);
+    if (p) wl_resource_set_implementation(p, NULL, NULL, NULL);
+}
+
+static void xdg_surface_set_window_geometry(struct wl_client *c, struct wl_resource *r,
+                                            int32_t x, int32_t y, int32_t w, int32_t h)
+{
+    (void)c; (void)r;
+    static bool said;
+    if (!said) {
+        said = true;
+        // Worth one line: a non-zero origin here is the fingerprint of client-side
+        // decorations, which advertising the decoration manager is meant to prevent.
+        printf("[host] window geometry %d,%d %dx%d%s\n", x, y, w, h,
+               (x || y) ? "  <-- offset, so something is drawing decorations" : "");
+    }
+}
+
+static void xdg_surface_ack_configure(struct wl_client *c, struct wl_resource *r, uint32_t serial)
+{ (void)c; (void)r; (void)serial; }
+
+static const struct xdg_surface_interface xdg_surface_impl = {
+    xdg_surface_destroy, xdg_surface_get_toplevel, xdg_surface_get_popup,
+    xdg_surface_set_window_geometry, xdg_surface_ack_configure,
+};
+
+static void wm_base_destroy(struct wl_client *c, struct wl_resource *r)
+{ (void)c; wl_resource_destroy(r); }
+
+static void wm_base_create_positioner(struct wl_client *c, struct wl_resource *r, uint32_t id)
+{
+    (void)r;
+    struct wl_resource *p = wl_resource_create(c, &xdg_positioner_interface, 1, id);
+    if (p) wl_resource_set_implementation(p, NULL, NULL, NULL);
+}
+
+static void wm_base_get_xdg_surface(struct wl_client *c, struct wl_resource *r, uint32_t id,
+                                    struct wl_resource *surface)
+{
+    (void)surface;
+    struct wl_resource *x = wl_resource_create(c, &xdg_surface_interface,
+                                               wl_resource_get_version(r), id);
+    if (!x) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(x, &xdg_surface_impl, NULL, NULL);
+    H.xdg_surface = x;
+}
+
+static void wm_base_pong(struct wl_client *c, struct wl_resource *r, uint32_t serial)
+{ (void)c; (void)r; (void)serial; }
+
+static const struct xdg_wm_base_interface wm_base_impl = {
+    wm_base_destroy, wm_base_create_positioner, wm_base_get_xdg_surface, wm_base_pong
+};
+
+static void bind_wm_base(struct wl_client *c, void *data, uint32_t version, uint32_t id)
+{
+    (void)data;
+    struct wl_resource *r = wl_resource_create(c, &xdg_wm_base_interface, (int)version, id);
+    if (!r) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(r, &wm_base_impl, NULL, NULL);
+}
+
+// ------------------------------------------------------------------ decorations
+
+static void decoration_destroy(struct wl_client *c, struct wl_resource *r)
+{ (void)c; wl_resource_destroy(r); }
+static void decoration_set_mode(struct wl_client *c, struct wl_resource *r, uint32_t mode)
+{ (void)c; (void)r; (void)mode; }
+static void decoration_unset_mode(struct wl_client *c, struct wl_resource *r)
+{ (void)c; (void)r; }
+
+static const struct zxdg_toplevel_decoration_v1_interface decoration_impl = {
+    decoration_destroy, decoration_set_mode, decoration_unset_mode
+};
+
+static void deco_manager_destroy(struct wl_client *c, struct wl_resource *r)
+{ (void)c; wl_resource_destroy(r); }
+
+static void deco_manager_get_decoration(struct wl_client *c, struct wl_resource *r, uint32_t id,
+                                        struct wl_resource *toplevel)
+{
+    (void)r; (void)toplevel;
+    struct wl_resource *d = wl_resource_create(c, &zxdg_toplevel_decoration_v1_interface, 1, id);
+    if (!d) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(d, &decoration_impl, NULL, NULL);
+
+    // Server-side, meaning the client draws no decorations -- and neither do we, because
+    // this window is never shown to anybody. That is the whole reason for advertising this
+    // global: its mere presence stops SDL loading libdecor, which would otherwise wrap the
+    // player in a client-drawn titlebar and two extra subsurfaces.
+    zxdg_toplevel_decoration_v1_send_configure(d, ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+}
+
+static const struct zxdg_decoration_manager_v1_interface deco_manager_impl = {
+    deco_manager_destroy, deco_manager_get_decoration
+};
+
+static void bind_deco_manager(struct wl_client *c, void *data, uint32_t version, uint32_t id)
+{
+    (void)data;
+    struct wl_resource *r = wl_resource_create(c, &zxdg_decoration_manager_v1_interface,
+                                               (int)version, id);
+    if (!r) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(r, &deco_manager_impl, NULL, NULL);
+}
+
+// ------------------------------------------------------------------ lifecycle
 
 static void on_client_created(struct wl_listener *l, void *data)
 {
@@ -49,10 +481,20 @@ const char *vipsim_host_start(void)
     }
     H.socket = name;
 
-    // libwayland-server implements wl_shm for us: the global, the pool, the buffers and the
-    // mmap. We only have to say which formats we accept. ARGB8888 and XRGB8888 are always
-    // implied and must not be added explicitly.
+    // libwayland-server implements wl_shm for us: the global, the pool, the buffers, the
+    // mmap, and the SIGBUS handling for a client that truncates a pool underneath us. It
+    // also emits ARGB8888 and XRGB8888 on bind, which is exactly the pair Mesa wants before
+    // it will initialise EGL. Hand-rolling it would be a mistake -- wl_shm_buffer_get only
+    // recognises buffers made by this implementation.
     wl_display_init_shm(H.display);
+
+    wl_global_create(H.display, &wl_compositor_interface, HOST_COMPOSITOR_VERSION,
+                     NULL, bind_compositor);
+    wl_global_create(H.display, &wl_output_interface, HOST_OUTPUT_VERSION, NULL, bind_output);
+    wl_global_create(H.display, &wl_seat_interface, HOST_SEAT_VERSION, NULL, bind_seat);
+    wl_global_create(H.display, &xdg_wm_base_interface, HOST_XDG_VERSION, NULL, bind_wm_base);
+    wl_global_create(H.display, &zxdg_decoration_manager_v1_interface, 1, NULL,
+                     bind_deco_manager);
 
     wl_display_add_client_created_listener(H.display, &g_client_listener);
 
@@ -89,6 +531,11 @@ bool vipsim_host_has_client(void)
     return H.clients > 0;
 }
 
+unsigned vipsim_host_commits(void)
+{
+    return H.commits;
+}
+
 void vipsim_host_stop(void)
 {
     if (!H.display) return;
@@ -97,7 +544,6 @@ void vipsim_host_stop(void)
     H.display = NULL;
     H.loop = NULL;
 }
-
 // ------------------------------------------------------------------ self-test
 
 // Prove the socket is usable before the player is launched.

@@ -45,6 +45,10 @@ void vipsim_host_flush(void);
 /// mismatch structurally impossible rather than merely fixed.
 void vipsim_host_set_output_size(int32_t width, int32_t height);
 
+/// How many times the player has committed a frame. The plainest evidence that the two
+/// halves are talking: it climbs, or the player is not rendering into our world.
+unsigned vipsim_host_commits(void);
+
 /// True once a client has connected.
 bool vipsim_host_has_client(void);
 
