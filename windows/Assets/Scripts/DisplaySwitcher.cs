@@ -149,7 +149,14 @@ public static class DisplaySwitcher
 
             // 3. Back to borderless full screen, at the TARGET display's resolution --
             //    the displays need not be the same size.
+            // Not FullScreenWindow on Wayland: a fullscreen surface makes the compositor
+            // stop painting what is behind it, and the overlay then sits on black instead
+            // of on the desktop. See TransparentWindow.RestoreOverlayGeometry.
+#if UNITY_STANDALONE_LINUX
+            Screen.SetResolution(target.width, target.height, FullScreenMode.Windowed);
+#else
             Screen.SetResolution(target.width, target.height, FullScreenMode.FullScreenWindow);
+#endif
             yield return null;
 
             _indexHint = index;

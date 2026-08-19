@@ -50,6 +50,38 @@ namespace VipSim.EditorTools
         public static void BuildLinux() => Build(BuildTarget.StandaloneLinux64, "VIP-Sim");
 
         /// <summary>
+        /// Write the launcher that Linux needs, beside the player.
+        ///
+        /// SDL decides whether the window can be transparent when it creates it, which is
+        /// before a single line of VIP-Sim's own code runs, so this cannot be set from C#.
+        /// Without the hint SDL marks the whole window opaque and the compositor ignores
+        /// the alpha VIP-Sim renders: the overlay is a black rectangle over the desktop.
+        /// </summary>
+        private static void WriteLinuxLauncher(string playerPath)
+        {
+            string dir = Path.GetDirectoryName(playerPath);
+            string exe = Path.GetFileName(playerPath);
+            if (string.IsNullOrEmpty(dir)) return;
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("#!/bin/sh\n");
+            sb.Append("# Start VIP-Sim.\n");
+            sb.Append("#\n");
+            sb.Append("# The hint below has to be set before the player starts. SDL reads it when it creates\n");
+            sb.Append("# the window, which happens before VIP-Sim's own code runs, and it is what stops SDL\n");
+            sb.Append("# declaring the whole window opaque. Without it the compositor ignores the transparency\n");
+            sb.Append("# VIP-Sim renders and the overlay is a black rectangle over your desktop. Run this\n");
+            sb.Append("# script rather than the binary directly.\n");
+            sb.Append("export SDL_VIDEO_EGL_ALLOW_TRANSPARENCY=1\n");
+            sb.Append("cd \"$(dirname \"$0\")\" || exit 1\n");
+            sb.Append("exec ./").Append(exe).Append(" \"$@\"\n");
+
+            string path = Path.Combine(dir, exe + ".sh");
+            File.WriteAllText(path, sb.ToString());
+            Debug.Log($"[VipSimBuild] wrote {path} (needs the execute bit; packaging sets it).");
+        }
+
+        /// <summary>
         /// Add a shader to Always Included Shaders if it is not already there.
         /// </summary>
         private static void EnsureAlwaysIncludedShader(string name)
@@ -153,6 +185,9 @@ namespace VipSim.EditorTools
 
             Debug.Log($"[VipSimBuild] result={s.result} size={s.totalSize / (1024 * 1024)}MB " +
                       $"errors={s.totalErrors} warnings={s.totalWarnings} time={s.totalTime}");
+
+            if (s.result == BuildResult.Succeeded && target == BuildTarget.StandaloneLinux64)
+                WriteLinuxLauncher(options.locationPathName);
 
             if (s.result != BuildResult.Succeeded)
                 throw new BuildFailedException($"Build {s.result} with {s.totalErrors} error(s)");

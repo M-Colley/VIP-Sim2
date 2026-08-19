@@ -474,12 +474,25 @@ public class TransparentWindow : MonoBehaviour {
         int h = Display.main.systemHeight;
         if (w <= 0 || h <= 0) return;
 
-        if (Screen.width != w || Screen.height != h ||
-            Screen.fullScreenMode != FullScreenMode.FullScreenWindow)
+        // Borderless full screen everywhere except Wayland, where it is actively harmful.
+        //
+        // A fullscreen surface tells the compositor that nothing behind it can be seen, so
+        // it stops painting the desktop underneath -- and a transparent fullscreen window
+        // then composites over black rather than over the user's screen. That is
+        // compositor policy, not a bug, and it defeats the entire overlay. A window the
+        // size of the display, not marked fullscreen, gets the same geometry and keeps the
+        // desktop behind it.
+#if UNITY_STANDALONE_LINUX
+        const FullScreenMode wanted = FullScreenMode.Windowed;
+#else
+        const FullScreenMode wanted = FullScreenMode.FullScreenWindow;
+#endif
+
+        if (Screen.width != w || Screen.height != h || Screen.fullScreenMode != wanted)
         {
             Debug.Log($"TransparentWindow: overlay geometry was {Screen.width}x{Screen.height} " +
-                      $"({Screen.fullScreenMode}); restoring {w}x{h} FullScreenWindow.");
-            Screen.SetResolution(w, h, FullScreenMode.FullScreenWindow);
+                      $"({Screen.fullScreenMode}); restoring {w}x{h} {wanted}.");
+            Screen.SetResolution(w, h, wanted);
         }
 #endif
     }
