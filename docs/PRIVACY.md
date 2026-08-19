@@ -1,14 +1,20 @@
 # Privacy policy — VIP-Sim
 
 > **DRAFT — not legal advice.** This describes what the software actually does, verified
-> against the source. It is written so a lawyer can turn it into a published policy
-> quickly, and so a reviewer can check every claim against the code. Before publishing:
-> fill in the controller identity, confirm the lawful basis, and have it reviewed. In
-> Germany a published policy is also accompanied by an Impressum.
+> against the source, so that a lawyer can finish it quickly and a reviewer can check
+> every claim against the code. Have it reviewed before publishing.
 
-**Applies to:** VIP-Sim 2.0.0 (Windows, macOS)
-**Last updated:** _fill in on publication_
-**Controller:** _name, address, email — required under GDPR Art. 13_
+**Applies to:** VIP-Sim 2.0.0 (Windows, macOS) and the VIP-Sim website
+**Last updated:** 19 August 2026
+
+**Controller**
+Mark Colley
+66–72 Gower Street, London WC1E 6EA, United Kingdom
+m.colley@ucl.ac.uk
+
+Because the controller is established in the United Kingdom, **UK GDPR** applies and the
+supervisory authority is the Information Commissioner's Office (ICO), ico.org.uk. If you
+are in the EU or EEA you may also complain to your own national authority.
 
 ---
 
@@ -88,7 +94,7 @@ If you fill in the form on the website, we store your **email address** and noth
 | | |
 |---|---|
 | **Lawful basis** | Your consent, given by ticking the box. |
-| **Processor** | Mailchimp (Intuit Inc.). The list is stored on their systems, **outside the EU/UK**, under their standard contractual clauses. |
+| **Processor** | Mailchimp (Intuit Inc.). The list is stored on their systems in the **United States**, i.e. outside the UK and EEA, under their standard contractual clauses and the UK International Data Transfer Addendum. |
 | **What we send** | Release announcements only, a few times a year. Never anything else, and never advertising for anyone. |
 | **How long** | Until you unsubscribe or ask us to delete you. |
 | **Sharing** | Never sold, never passed to a third party beyond the processor above. |
@@ -152,5 +158,8 @@ updated.
 
 ## Contact
 
-_Controller name and contact address — required before publication._
-Bug reports: https://github.com/M-Colley/VIP-Sim2/issues
+Mark Colley, 66–72 Gower Street, London WC1E 6EA, United Kingdom — m.colley@ucl.ac.uk
+
+Use that address for anything about your data: unsubscribing, correction, erasure, or a
+copy of what we hold. Bug reports go to
+https://github.com/M-Colley/VIP-Sim2/issues instead.

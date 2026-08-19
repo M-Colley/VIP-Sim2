@@ -13,8 +13,14 @@
 > rights-holder's agreement — and it cannot retract what has already been published.
 
 **Product:** VIP-Sim 2.0.0
-**Licensor:** _name and address_
-**Effective:** _date_
+**Licensor:** Mark Colley and Max Rädler
+66–72 Gower Street, London WC1E 6EA, United Kingdom — m.colley@ucl.ac.uk
+
+> Both owners are named because VIP-Sim is jointly owned, so a licence granted by
+> only one of them would not be a licence to the whole work. Note this differs from
+> the privacy policy, where a single controller for the mailing list is correct.
+
+**Effective:** _set when you first sell or distribute under this licence_
 
 ---
 
@@ -68,18 +74,20 @@ Personal data is handled as described in [PRIVACY.md](PRIVACY.md).
 
 ## 7. Warranty
 
-_Consumer law limits what can be disclaimed. In the EU, statutory rights on digital
-content — conformity, remedies, and the 14-day right of withdrawal — cannot be excluded,
-and a blanket "as is" clause copied from a US template is unenforceable and may itself be
-unlawful. Have this section drafted for the jurisdictions you sell into._
+_Consumer law limits what can be disclaimed. Statutory rights on digital content —
+conformity, remedies, and a cancellation right — cannot be excluded under UK consumer law
+or in the EU, and a blanket "as is" clause copied from a US template is unenforceable and
+may itself be unlawful. Have this drafted for the jurisdictions you sell into._
 
 Except as required by law, the Software is provided as is, and the Licensor does not
 warrant that it will be uninterrupted or error-free.
 
 ## 8. Liability
 
-_Also jurisdiction-specific. Liability for death, personal injury, gross negligence and
-intent cannot be excluded under German law. Have this drafted._
+_Also jurisdiction-specific, and now in two directions: the owners are established in the
+UK and in Germany. Liability for death and personal injury cannot be excluded under either
+UK or German law, and German law additionally protects against exclusion for gross
+negligence and intent. Have this drafted for both._
 
 ## 9. Term
 
@@ -98,4 +106,4 @@ between you and the Licensor concerning the Software.
 
 ---
 
-**Contact:** _address for legal notices_
+**Contact for legal notices:** Mark Colley, 66–72 Gower Street, London WC1E 6EA, United Kingdom — m.colley@ucl.ac.uk
