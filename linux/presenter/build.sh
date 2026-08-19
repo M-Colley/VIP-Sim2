@@ -47,8 +47,23 @@ gcc -O2 $WARN -I build -I . \
     $(pkg-config --cflags --libs wayland-client) -lrt
 echo "built: build/vipsim-presenter"
 
+# 3. Screen capture: xdg-desktop-portal for consent, PipeWire for the frames.
+#    Optional -- a machine without the development packages can still build the overlay.
+if pkg-config --exists gio-2.0 libpipewire-0.3; then
+    gcc -O2 $WARN -fPIC -fvisibility=hidden -shared         -o build/libvipsim_capture.so         vipsim_capture.c         $(pkg-config --cflags --libs gio-2.0 libpipewire-0.3) -lpthread
+    echo "built: build/libvipsim_capture.so"
+else
+    echo "skipped libvipsim_capture.so (needs libglib2.0-dev and libpipewire-0.3-dev)"
+fi
+
 # 3. A stand-in for Unity, linked against the real library.
 gcc -O2 $WARN -I . \
     -o build/testproducer \
     testproducer.c -L build -lvipsim_present -Wl,-rpath,'$ORIGIN' -lm
 echo "built: build/testproducer"
+
+# A stand-in for Unity on the capture side. Built only when the plugin was.
+if [ -f build/libvipsim_capture.so ]; then
+    gcc -O2 $WARN -I . -o build/testcapture         testcapture.c -L build -lvipsim_capture -Wl,-rpath,'$ORIGIN'
+    echo "built: build/testcapture"
+fi

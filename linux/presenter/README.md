@@ -130,10 +130,38 @@ Verified 2026-08-19 in nested Sway, background `#104020`:
 `testproducer` stands in for Unity against the same library, so what was tested is the
 real path rather than a mock of it.
 
+## Phase 2: capture — built, partially verified
+
+`libvipsim_capture.so` takes the place of VIP-Sim's window list. On Wayland there is
+nothing to enumerate: a client cannot see, list or read another client's surface, which is
+the security model working rather than a gap to route around. Instead the portal shows the
+compositor's own picker, the user hands over one source, and a PipeWire node carries the
+frames. `LinuxCapture.cs` is the Unity end, uploading BGRA straight into a `Texture2D`.
+
+Unlike the overlay, **this works on GNOME**, since the portal is supported everywhere and
+layer-shell is not.
+
+What is verified here: it compiles and links against real GLib and PipeWire headers, all
+seven ABI symbols are exported, and on a machine with no portal it reports exactly that,
+in two seconds, and returns — rather than hanging on a DBus call that will never be
+answered. That last behaviour is the one a user with an unusual setup actually meets:
+
+```
+[vipsim_capture] xdg-desktop-portal with a ScreenCast backend is not available
+                 (...ServiceUnknown: The name org.freedesktop.portal.Desktop was not
+                 provided by any .service files). Screen capture needs one.
+```
+
+What is **not** verified: the streaming path. WSL has no desktop portal, so the picker,
+the format negotiation and the frame loop have never run. That needs a real desktop
+session, and until someone runs `./build/testcapture` there and sees a frame count, this
+half of capture is code review rather than evidence.
+
 ## Next
 
-1. **Capture** — `xdg-desktop-portal` + PipeWire. Separate component, and the one that
-   also works on GNOME, where the overlay cannot.
-2. **dmabuf** — `zwp_linux_dmabuf_v1` to drop the CPU copies, needed for 4K at rate.
-3. **The global cursor** — Wayland does not let a client read the pointer. Still open;
-   webcam gaze may simply be the default on this platform.
+1. **Run `testcapture` on a real desktop** — the cheapest way to turn the paragraph above
+   from unverified into verified.
+2. **dmabuf** — `zwp_linux_dmabuf_v1` on both sides, to drop the CPU copies. Needed for
+   4K at rate; the current path copies twice per frame each way.
+3. **The global cursor** — Wayland does not let a client read the pointer, deliberately.
+   Still open; webcam gaze may simply be the default on this platform.

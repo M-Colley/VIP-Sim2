@@ -143,8 +143,11 @@ cycle no longer does.
    presenter hot-attaches to a producer that starts later, and the input region switches
    between click-through and an interactive panel rect. `LinuxPresenter.cs` is the Unity
    end, using `AsyncGPUReadback` so the render thread is not stalled.
-3. Capture plugin v1 (portal + PipeWire, CPU frames) — the remaining big piece, and the
-   one that works on GNOME even where the overlay does not.
+3. ~~**Capture plugin v1**~~ — **BUILT**, and verified as far as this machine allows:
+   compiles against real GLib and PipeWire, exports the full ABI, and degrades honestly
+   where no portal exists. The streaming path itself is unverified because WSL has no
+   desktop portal; `linux/presenter/testcapture` will settle it on a real session in
+   about a minute.
 4. dmabuf v2 for both directions; performance pass with the F11 benchmark.
 5. Packaging: tarball/AppImage, `.desktop` file, `setup.sh` equivalent (the execute bit
    dies in transit exactly as it does for macOS); flip CI's Linux entry from
