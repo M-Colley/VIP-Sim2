@@ -42,6 +42,14 @@ static struct {
     struct wl_resource *pending_buffer;   // attached, not yet committed
     struct wl_resource *frame_callback;   // owed a done event at the next commit
     unsigned            commits;
+
+    // The latest frame, copied out of the player's buffer so the buffer can go straight
+    // back. Keeping the client's buffer instead would stall it on its own pool.
+    uint8_t  *frame;
+    size_t    frame_cap;
+    int32_t   fw, fh;
+    uint32_t  fstride;
+    unsigned  fseq;
 } H;
 
 static uint32_t now_ms(void)
@@ -93,12 +101,58 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r)
     if (H.pending_buffer) {
         struct wl_shm_buffer *shm = wl_shm_buffer_get(H.pending_buffer);
         if (shm) {
+            int32_t  w      = wl_shm_buffer_get_width(shm);
+            int32_t  h      = wl_shm_buffer_get_height(shm);
+            int32_t  stride = wl_shm_buffer_get_stride(shm);
+            uint32_t fmt    = wl_shm_buffer_get_format(shm);
+
             static bool said;
             if (!said) {
                 said = true;
                 printf("[host] first frame from the player: %dx%d, stride %d, format 0x%x\n",
-                       wl_shm_buffer_get_width(shm), wl_shm_buffer_get_height(shm),
-                       wl_shm_buffer_get_stride(shm), wl_shm_buffer_get_format(shm));
+                       w, h, stride, fmt);
+            }
+
+            size_t need = (size_t)stride * (size_t)h;
+            if (H.frame_cap < need) {
+                uint8_t *grown = realloc(H.frame, need);
+                if (grown) { H.frame = grown; H.frame_cap = need; }
+            }
+            if (H.frame && H.frame_cap >= need) {
+                // begin_access installs the SIGBUS handler that protects us from a client
+                // which truncates its pool while we are reading it.
+                wl_shm_buffer_begin_access(shm);
+                const uint8_t *src = wl_shm_buffer_get_data(shm);
+
+                if (fmt == WL_SHM_FORMAT_ARGB8888) {
+                    // Premultiply on the way past.
+                    //
+                    // Wayland defines ARGB8888 as premultiplied, and the player does not
+                    // premultiply: its camera clears to alpha 0 and its interface is drawn
+                    // with ordinary alpha blending, so what lands here is straight alpha.
+                    // Copied verbatim, every partly transparent pixel of the overlay comes
+                    // out too bright -- the washed-out edge that is easy to see and easy to
+                    // mistake for a compositing bug somewhere else.
+                    for (int32_t y = 0; y < h; y++) {
+                        const uint8_t *s8 = src + (size_t)y * stride;
+                        uint8_t       *d8 = H.frame + (size_t)y * stride;
+                        for (int32_t x = 0; x < w; x++) {
+                            unsigned a = s8[3];
+                            d8[0] = (uint8_t)(s8[0] * a / 255);
+                            d8[1] = (uint8_t)(s8[1] * a / 255);
+                            d8[2] = (uint8_t)(s8[2] * a / 255);
+                            d8[3] = (uint8_t)a;
+                            s8 += 4; d8 += 4;
+                        }
+                    }
+                } else {
+                    // XRGB8888 and anything else: opaque, nothing to premultiply.
+                    memcpy(H.frame, src, need);
+                }
+                wl_shm_buffer_end_access(shm);
+
+                H.fw = w; H.fh = h; H.fstride = (uint32_t)stride;
+                H.fseq++;
             }
         } else {
             static bool warned;
@@ -109,9 +163,8 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r)
             }
         }
 
-        // Released at once because nothing is kept yet; copying onto the layer surface is
-        // the next stage. Holding a buffer without releasing it stalls the client on its own
-        // pool, which presents as a frame-rate collapse with no cause attached.
+        // Released as soon as it has been copied. Holding a client's buffer stalls it on
+        // its own pool, which presents as a frame-rate collapse with no cause attached.
         wl_buffer_send_release(H.pending_buffer);
         H.pending_buffer = NULL;
     }
@@ -536,6 +589,16 @@ unsigned vipsim_host_commits(void)
     return H.commits;
 }
 
+unsigned vipsim_host_frame(const void **data, int32_t *w, int32_t *h, uint32_t *stride)
+{
+    if (!H.frame || H.fseq == 0) return 0;
+    if (data)   *data   = H.frame;
+    if (w)      *w      = H.fw;
+    if (h)      *h      = H.fh;
+    if (stride) *stride = H.fstride;
+    return H.fseq;
+}
+
 void vipsim_host_stop(void)
 {
     if (!H.display) return;
@@ -543,6 +606,9 @@ void vipsim_host_stop(void)
     wl_display_destroy(H.display);
     H.display = NULL;
     H.loop = NULL;
+    free(H.frame);
+    H.frame = NULL;
+    H.frame_cap = 0;
 }
 // ------------------------------------------------------------------ self-test
 

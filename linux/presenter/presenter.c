@@ -52,6 +52,7 @@ static bool g_force_test_pattern;
 
 // Producer segment, mapped read-only for as long as it exists.
 static struct vipsim_shm_header *g_prod;
+static unsigned g_last_host_seq;
 static void                     *g_prod_map;
 static size_t                    g_prod_size;
 static uint32_t                  g_last_seq = 0xFFFFFFFFu;
@@ -162,6 +163,29 @@ static void copy_producer(uint32_t *dst, int dw, int dh)
                src + (size_t)y * stride, (size_t)cw * 4);
 }
 
+/// Copy the frame the player committed to our own compositor, letterboxed to the output.
+///
+/// Same shape as copy_producer, and it will replace it: when the player renders into a
+/// compositor we own, its buffer already is the frame, so the shared-memory transport, the
+/// GPU readback and the vertical flip on the Unity side all become unnecessary work.
+static void copy_host(uint32_t *dst, int dw, int dh)
+{
+    const void *src = NULL;
+    int32_t sw = 0, sh = 0;
+    uint32_t stride = 0;
+
+    memset(dst, 0, (size_t)dw * (size_t)dh * 4);
+    if (!vipsim_host_frame(&src, &sw, &sh, &stride) || sw <= 0 || sh <= 0) return;
+
+    uint32_t cw = (uint32_t)sw < (uint32_t)dw ? (uint32_t)sw : (uint32_t)dw;
+    uint32_t ch = (uint32_t)sh < (uint32_t)dh ? (uint32_t)sh : (uint32_t)dh;
+    int ox = (dw - (int)cw) / 2, oy = (dh - (int)ch) / 2;
+
+    for (uint32_t y = 0; y < ch; y++)
+        memcpy(dst + (size_t)(oy + (int)y) * (size_t)dw + ox,
+               (const char *)src + (size_t)y * stride, (size_t)cw * 4);
+}
+
 /// Everything outside the producer's panel rectangle stays click-through. An empty region
 /// means the compositor never routes input here at all -- no per-event filtering and no
 /// focus races, which is what makes this cleaner than the Windows implementation.
@@ -184,7 +208,12 @@ static void present(void)
     struct buffer *b = free_buffer();
     if (!b) return;
 
-    if (g_prod && !g_force_test_pattern) {
+    // The player's own commit, when it is running inside our compositor, in preference to
+    // the shared-memory transport. Both paths exist while the host is being brought up; the
+    // transport goes once the host is the only way frames arrive.
+    if (vipsim_host_frame(NULL, NULL, NULL, NULL)) {
+        copy_host((uint32_t *)b->data, g_width, g_height);
+    } else if (g_prod && !g_force_test_pattern) {
         copy_producer((uint32_t *)b->data, g_width, g_height);
 
         int32_t p[4] = { g_prod->panel_x, g_prod->panel_y, g_prod->panel_w, g_prod->panel_h };
@@ -221,7 +250,18 @@ static void frame_done(void *data, struct wl_callback *cb, uint32_t time)
 
     // Only redraw when there is something new; otherwise ask for the next callback so the
     // loop keeps pace with the compositor rather than spinning.
-    if (!g_prod || g_force_test_pattern || g_prod->seq != g_last_seq) {
+    unsigned host_seq = vipsim_host_frame(NULL, NULL, NULL, NULL);
+    if (host_seq) {
+        // The player is rendering into our compositor: repaint when its picture changes.
+        if (host_seq != g_last_host_seq) {
+            g_last_host_seq = host_seq;
+            present();
+        } else {
+            struct wl_callback *next = wl_surface_frame(g_surface);
+            wl_callback_add_listener(next, &frame_listener, NULL);
+            wl_surface_commit(g_surface);
+        }
+    } else if (!g_prod || g_force_test_pattern || g_prod->seq != g_last_seq) {
         if (g_prod) g_last_seq = g_prod->seq;
         present();
     } else {

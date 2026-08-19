@@ -49,6 +49,12 @@ void vipsim_host_set_output_size(int32_t width, int32_t height);
 /// halves are talking: it climbs, or the player is not rendering into our world.
 unsigned vipsim_host_commits(void);
 
+/// The latest frame the player committed, already premultiplied and ready to put on the
+/// layer surface. Returns a sequence number that changes when the picture does, or 0 if
+/// nothing has been committed yet. The memory belongs to the host and is valid until the
+/// next dispatch.
+unsigned vipsim_host_frame(const void **data, int32_t *w, int32_t *h, uint32_t *stride);
+
 /// True once a client has connected.
 bool vipsim_host_has_client(void);
 
