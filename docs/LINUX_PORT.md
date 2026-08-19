@@ -277,16 +277,34 @@ moment, and a simulator whose severity sliders cannot be dragged is not a produc
 approaches were designed and judged against each other, and all three verdicts landed on
 this same objection from different directions.
 
-The order of work that follows:
+**This was done, and the answer was to stop hiding the window and give the player a
+compositor of its own.** `linux/presenter/host.c` is a Wayland server on a private socket;
+the player is pointed at it, so its `xdg_toplevel` is created inside the presenter's world
+and never reaches the user's compositor. There is then nothing to hide, no decorations to
+suppress and no size to disagree about, because the `wl_output` the player is told about is
+whatever the real compositor configured the layer surface to be. Measured in nested sway
+with the real player: `VIP-Sim toplevels in sway: NONE`, the desktop visible across the
+whole output, and the interface drawn exactly once.
 
-1. **Server-side decorations and exact sizing.** One defect wearing three hats: the title
-   bar is visible residue, it makes the window 1276x693 against a 1280x720 output, and that
-   offset is what would put any input rectangle in the wrong place. Unity's `-popupwindow`
-   is not honoured here -- measured, sway still reports `deco normal` -- so this needs
-   `zxdg_decoration_manager_v1`, which means reaching the surface.
-2. **An input path from the overlay back to the player**, so the panel stays operable once
-   the player's window no longer catches clicks. `vipsim_shm.h` is one-directional today.
-3. **Only then, hiding the player's window.** `wp_alpha_modifier_v1.set_multiplier(0)` makes
+Everything the host advertises is a measured floor, and each one fails silently or
+misleadingly if it is wrong -- `wl_output` at v1 kills the player with "invalid version",
+a missing `wl_seat` segfaults it inside `SDL_Init` before it prints anything, a `done` event
+sent late rather than from inside `bind` produces "the video driver did not add any
+displays", and a first `xdg_surface.configure` withheld until the client commits deadlocks
+both sides in silence. `zxdg_decoration_manager_v1` is advertised for one reason: its
+presence stops SDL loading libdecor, and that is what removes the title bar.
+
+What is left of the original order:
+
+1. ~~**Server-side decorations and exact sizing.**~~ Done, and for free: the host owns the
+   output the player sizes itself from, and advertising the decoration manager keeps
+   libdecor out. Measured: `window geometry 0,0 1280x720`, no offset.
+2. **An input path from the overlay back to the player.** Still outstanding, and now the
+   whole remaining task: the host's `wl_seat` advertises no capabilities, so nothing in
+   VIP-Sim is clickable when it runs this way. It is ours to do rather than a protocol
+   problem -- the seat is our own, and the overlay already knows which rectangle should
+   catch the mouse.
+3. ~~**Hiding the player's window.**~~ Moot. `wp_alpha_modifier_v1.set_multiplier(0)` makes
    a surface invisible while frame callbacks keep flowing, which minimising and unmapping do
    not: sway ignores `set_minimized` outright, and Mutter and KWin stop frame callbacks for
    minimised windows, which would freeze the overlay. Whatever does the hiding must be gated
@@ -295,11 +313,14 @@ The order of work that follows:
    on its own preconditions would make VIP-Sim vanish completely on GNOME with nothing to
    replace it and no error anywhere.
 
-One measured constraint for step 3: the render loop must not block on the compositor. With
-`eglSwapInterval(1)` a hidden window blocked inside a single `eglSwapBuffers` for 40
-seconds; at interval 0 it kept swapping at ~1,900/s. The player logs `Default vsync count 1`
-at startup, so vSync 0 is a load-bearing invariant on Linux and should be asserted rather
-than assumed.
+Two things the nested host does not solve. Frames still cross through a CPU copy, because
+the host offers only `wl_shm`; the hardware path is `zwp_linux_dmabuf_v1`, and it cannot be
+written here -- there is no GPU and no `/dev/dri`, so everything above ran on llvmpipe.
+Note also that `wl_drm` is dead on modern distros: Mesa ships with `HAVE_BIND_WL_DISPLAY`
+disabled, so `zwp_linux_dmabuf_v1` is the only route. And `LIBGL_ALWAYS_SOFTWARE=1` belongs
+in the player's environment only while the host is shm-only -- with it set, Mesa goes
+straight to the swrast path instead of climbing its three-rung retry ladder and printing
+four alarming warnings that are pure noise on a GPU-less machine.
 5. **dmabuf** — probed, not implemented, and the probe is why. Nested Sway on a software
    renderer does not advertise `zwp_linux_dmabuf_v1` at all, and the container has neither
    `/dev/dri` nor a `udmabuf` module, so a dmabuf cannot be created by any route here. The
