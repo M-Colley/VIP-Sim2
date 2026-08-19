@@ -24,11 +24,18 @@ pkg-config --exists wayland-client || {
 XDG="$(pkg-config --variable=pkgdatadir wayland-protocols)/stable/xdg-shell/xdg-shell.xml"
 [ -f "$XDG" ] || { echo "missing xdg-shell.xml -- install wayland-protocols"; exit 1; }
 
+# linux-dmabuf: the zero-copy path. Only its capability probe is used today -- README.md
+# says exactly how far that goes and what is still missing.
+DMABUF="$(pkg-config --variable=pkgdatadir wayland-protocols)/stable/linux-dmabuf/linux-dmabuf-v1.xml"
+[ -f "$DMABUF" ] || { echo "missing linux-dmabuf-v1.xml -- install wayland-protocols"; exit 1; }
+
 mkdir -p build
 wayland-scanner client-header "$XML" build/wlr-layer-shell-unstable-v1-client-protocol.h
 wayland-scanner private-code  "$XML" build/wlr-layer-shell-unstable-v1-protocol.c
 wayland-scanner client-header "$XDG" build/xdg-shell-client-protocol.h
 wayland-scanner private-code  "$XDG" build/xdg-shell-protocol.c
+wayland-scanner client-header "$DMABUF" build/linux-dmabuf-v1-client-protocol.h
+wayland-scanner private-code  "$DMABUF" build/linux-dmabuf-v1-protocol.c
 
 WARN="-Wall -Wextra -Wno-unused-parameter"
 
@@ -44,6 +51,7 @@ gcc -O2 $WARN -I build -I . \
     presenter.c \
     build/wlr-layer-shell-unstable-v1-protocol.c \
     build/xdg-shell-protocol.c \
+    build/linux-dmabuf-v1-protocol.c \
     $(pkg-config --cflags --libs wayland-client) -lrt
 echo "built: build/vipsim-presenter"
 
@@ -56,7 +64,7 @@ else
     echo "skipped libvipsim_capture.so (needs libglib2.0-dev and libpipewire-0.3-dev)"
 fi
 
-# 3. A stand-in for Unity, linked against the real library.
+# 4. Stand-ins for Unity, linked against the real libraries.
 gcc -O2 $WARN -I . \
     -o build/testproducer \
     testproducer.c -L build -lvipsim_present -Wl,-rpath,'$ORIGIN' -lm

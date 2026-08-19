@@ -77,6 +77,15 @@ public class SymptomInfo : MonoBehaviour
 
         UpdateChecker.Install(gameObject);
         VipSimAccessibility.Install(gameObject);
+
+#if UNITY_STANDALONE_LINUX && !UNITY_EDITOR
+        // Linux gets its overlay from a separate presenter process and its capture from
+        // the desktop portal; both are attached here for the same reason as the components
+        // above -- a component that exists only in code cannot drift between the two
+        // platform projects, and neither can be added to a scene the other platforms share.
+        LinuxPresenter.Install(gameObject);
+        LinuxCapture.Install(gameObject);
+#endif
     }
 
     private System.Collections.IEnumerator RestoreDisplayWhenSettled()

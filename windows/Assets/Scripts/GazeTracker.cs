@@ -111,6 +111,31 @@ public class GazeTracker : MonoBehaviour
         // first Update() do not each pay for a scene search.
         if (instance == null)
             instance = this;
+
+#if UNITY_STANDALONE_LINUX && !UNITY_EDITOR
+        // Webcam gaze is the default on Linux, and this is not a preference.
+        //
+        // Wayland does not let a client read the global pointer -- deliberately, as part
+        // of the same isolation that stops one client reading another's surface. Unity's
+        // Input.mousePosition reports a position inside Unity's OWN window, and on this
+        // platform that window is not the overlay: the overlay is a separate presenter
+        // process holding a layer surface. So the mouse position VIP-Sim can see bears no
+        // relation to where the pointer is over the screen being simulated, and
+        // mouse-following would silently place every gaze-contingent symptom in the wrong
+        // place -- worse than not offering it, because it would look like it worked.
+        //
+        // VIP-Sim is unusual in having a second pointer to fall back on. On Windows and
+        // macOS webcam gaze is the opt-in; here it is the only source that means anything,
+        // so it is the default. Mouse remains selectable for anyone who understands the
+        // caveat, and F9 calibration matters more here than anywhere else.
+        if (gazeSource == GazeSource.Mouse)
+        {
+            gazeSource = GazeSource.UnitEye;
+            Debug.Log("[GazeTracker] Linux: defaulting to webcam gaze. Wayland does not " +
+                      "expose the global pointer, so mouse-following cannot track the " +
+                      "screen being simulated. Run calibration (F9) before relying on it.");
+        }
+#endif
     }
 
     private void OnEnable()

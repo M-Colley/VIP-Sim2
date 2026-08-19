@@ -96,16 +96,26 @@ Frame transport Unity → presenter: v1 shared memory (`wl_shm`) fed by
 `AsyncGPUReadback` (~500 MB/s at 4K30 — measurable, and acceptable to prove the
 pipeline); v2 `zwp_linux_dmabuf_v1` GPU handoff.
 
-### Open problem, stated rather than hidden: the global cursor
+### The global cursor — decided: webcam gaze is the default here
 
-Wayland does not let clients read the global pointer — deliberately. Mouse-following
-mode therefore has no clean native path. Candidates, in preference order:
+Wayland does not let clients read the global pointer, deliberately, as part of the same
+isolation that stops one client reading another's surface. `Input.mousePosition` reports a
+position inside Unity's *own* window, and on this platform that window is not the overlay
+— the overlay is the presenter process. So the mouse position VIP-Sim can see bears no
+relation to where the pointer is over the screen being simulated.
 
-1. **Webcam gaze tracking as the primary pointer source on Linux.** VIP-Sim is unusual
-   in *having* a second pointer; on this platform it may simply be the default.
-2. The Unity process is an XWayland client and can `XQueryPointer`; coordinates are
-   usable on today's major compositors but not guaranteed by anything.
-3. Compositor-specific interfaces (hyprctl etc.) — a maintenance treadmill; last resort.
+Mouse-following would therefore place every gaze-contingent symptom in the wrong place
+while looking like it worked, which is worse than not offering it. `GazeTracker` now
+switches to `UnitEye` on Linux at startup and says so in the log.
+
+VIP-Sim is unusual in having a second pointer to fall back on: on Windows and macOS webcam
+gaze is the opt-in, here it is the only source that means anything. Calibration (F9)
+matters more on this platform than on any other. Mouse remains selectable for anyone who
+understands the caveat.
+
+Rejected: `XQueryPointer` through XWayland works on today's compositors but is guaranteed
+by nothing and is a bet on a deprecated path; per-compositor interfaces (hyprctl and
+friends) are a maintenance treadmill.
 
 ### GNOME
 
@@ -148,7 +158,11 @@ cycle no longer does.
    where no portal exists. The streaming path itself is unverified because WSL has no
    desktop portal; `linux/presenter/testcapture` will settle it on a real session in
    about a minute.
-4. dmabuf v2 for both directions; performance pass with the F11 benchmark.
+4. **dmabuf** — probed, not implemented, and the probe is why. Nested Sway on a software
+   renderer does not advertise `zwp_linux_dmabuf_v1` at all, and the container has neither
+   `/dev/dri` nor a `udmabuf` module, so a dmabuf cannot be created by any route here. The
+   presenter binds the protocol and reports accepted formats when a compositor offers it;
+   the import path itself is left for a machine with a GPU rather than written blind.
 5. Packaging: tarball/AppImage, `.desktop` file, `setup.sh` equivalent (the execute bit
    dies in transit exactly as it does for macOS); flip CI's Linux entry from
    experimental once the licence secrets exist.

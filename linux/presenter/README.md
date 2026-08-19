@@ -157,6 +157,35 @@ the format negotiation and the frame loop have never run. That needs a real desk
 session, and until someone runs `./build/testcapture` there and sees a frame count, this
 half of capture is code review rather than evidence.
 
+## Where the libraries have to go
+
+Unity looks for a `[DllImport("vipsim_present")]` in **`<player>_Data/Plugins/x86_64/`**,
+not beside the executable. Copying them next to the binary silently fails with
+"not found", which cost a debugging round here. For a packaged build they belong in
+`Assets/Plugins/x86_64/` in the Unity project, so Unity includes them itself.
+
+## Phase 4: dmabuf — probed, deliberately not implemented
+
+The presenter now binds `zwp_linux_dmabuf_v1` when offered and reports the formats and
+modifiers the compositor accepts. That is as far as this can honestly go here, and the
+probe is what established why:
+
+```
+[presenter] dmabuf: not offered here; wl_shm is the only path.
+```
+
+Nested Sway on the software renderer does not advertise the protocol at all — not "I
+cannot allocate a buffer", but the compositor never offers it, because there is no GPU
+behind it. The container has no `/dev/dri` and no `udmabuf` kernel module either, so a
+dmabuf cannot be created by any route.
+
+Writing the import path anyway would put a few hundred lines of protocol code in the tree
+that had never once run, and a first dmabuf attempt usually renders black for exactly the
+reasons a probe like this exists to rule out. On a machine with a GPU the probe prints the
+accepted ARGB8888 modifiers, which is the information the import path must be written
+against, and the remaining work is then: export Unity's texture as a dmabuf through a
+native rendering plugin, pass the fd, and build a `wl_buffer` from it on this side.
+
 ## Next
 
 1. **Run `testcapture` on a real desktop** — the cheapest way to turn the paragraph above

@@ -28,6 +28,7 @@
 
 #include <wayland-client.h>
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
+#include "linux-dmabuf-v1-client-protocol.h"
 #include "vipsim_shm.h"
 
 // ---------------------------------------------------------------- globals
@@ -35,6 +36,8 @@
 static struct wl_compositor         *g_compositor;
 static struct wl_shm                *g_shm;
 static struct zwlr_layer_shell_v1   *g_layer_shell;
+static struct zwp_linux_dmabuf_v1   *g_dmabuf;
+static int                           g_dmabuf_entries;
 static struct wl_surface            *g_surface;
 static struct zwlr_layer_surface_v1 *g_layer_surface;
 
@@ -288,6 +291,42 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
     .closed    = on_closed,
 };
 
+// ---------------------------------------------------------------- dmabuf probe
+
+// Phase 4 groundwork, and deliberately only that.
+//
+// Importing a GPU buffer needs Unity to export its texture as a dmabuf, which needs a real
+// GPU and a real session. The container this was written in has neither: no /dev/dri, and
+// no udmabuf module either, so a dmabuf cannot be created by any route at all. Writing the
+// import path blind would put two hundred lines of protocol code in the tree that had
+// never once run -- the same shape of mistake as an effect whose severity ships at zero.
+//
+// What is testable today is the negotiation: whether the compositor offers the protocol,
+// at what version, and which formats it accepts. That is exactly what the import path has
+// to be written against, and getting it wrong is the usual reason a first dmabuf attempt
+// renders black.
+
+static void dmabuf_format(void *data, struct zwp_linux_dmabuf_v1 *d, uint32_t format)
+{
+    (void)data; (void)d; (void)format;
+    g_dmabuf_entries++;
+}
+
+static void dmabuf_modifier(void *data, struct zwp_linux_dmabuf_v1 *d, uint32_t format,
+                            uint32_t hi, uint32_t lo)
+{
+    (void)data; (void)d;
+    // ARGB8888 is what VIP-Sim produces, so report that one by name rather than count it.
+    if (format == 0x34325241u /* DRM_FORMAT_ARGB8888 */)
+        printf("[presenter] dmabuf: ARGB8888 accepted, modifier %08x:%08x\n", hi, lo);
+    g_dmabuf_entries++;
+}
+
+static const struct zwp_linux_dmabuf_v1_listener dmabuf_listener = {
+    .format = dmabuf_format,
+    .modifier = dmabuf_modifier,
+};
+
 // ---------------------------------------------------------------- registry
 
 static void on_global(void *data, struct wl_registry *reg, uint32_t name,
@@ -301,6 +340,12 @@ static void on_global(void *data, struct wl_registry *reg, uint32_t name,
     else if (!strcmp(iface, zwlr_layer_shell_v1_interface.name)) {
         g_layer_shell = wl_registry_bind(reg, name, &zwlr_layer_shell_v1_interface, version < 4 ? version : 4);
         printf("[presenter] compositor offers zwlr_layer_shell_v1 v%u\n", version);
+    }
+    else if (!strcmp(iface, zwp_linux_dmabuf_v1_interface.name)) {
+        uint32_t v = version < 3 ? version : 3;   // v4+ moves formats to a feedback object
+        g_dmabuf = wl_registry_bind(reg, name, &zwp_linux_dmabuf_v1_interface, v);
+        if (v >= 3) zwp_linux_dmabuf_v1_add_listener(g_dmabuf, &dmabuf_listener, NULL);
+        printf("[presenter] compositor offers zwp_linux_dmabuf_v1 v%u (bound v%u)\n", version, v);
     }
 }
 static void on_global_remove(void *d, struct wl_registry *r, uint32_t n) { (void)d; (void)r; (void)n; }
@@ -338,6 +383,14 @@ int main(int argc, char **argv)
             "            VIP-Sim's overlay cannot run here. GNOME/Mutter does not implement\n"
             "            it, and neither does WSLg. Try KWin, Sway, Hyprland, labwc or niri.\n");
         return 2;
+    }
+
+    if (g_dmabuf) {
+        wl_display_roundtrip(display);   // let the format/modifier events land
+        printf("[presenter] dmabuf: %d format/modifier entries advertised. Zero-copy "
+               "is not wired up; frames still go through wl_shm.\n", g_dmabuf_entries);
+    } else {
+        printf("[presenter] dmabuf: not offered here; wl_shm is the only path.\n");
     }
 
     if (!g_force_test_pattern && !open_producer())
