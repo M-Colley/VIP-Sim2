@@ -7,14 +7,29 @@
 **Applies to:** VIP-Sim 2.0.0 (Windows, macOS) and the VIP-Sim website
 **Last updated:** 19 August 2026
 
-**Controller**
-Mark Colley
-66–72 Gower Street, London WC1E 6EA, United Kingdom
+### Who is responsible for what
+
+There are two, and they are not the same organisation.
+
+**Zefwih GbR — the product, the website and the mailing list**
+Partners: Fabian Fischbach, Pascal Jansen, Mark Colley
+Ulmer Straße 8/2, 88471 Laupheim, Germany
+contact@zefwih.com · VAT ID DE351018477
+Full legal notice: https://zefwih.com/legal-notice/
+
+Zefwih is established in Germany, so **EU GDPR** applies. The competent supervisory
+authority is the Landesbeauftragter für den Datenschutz und die Informationsfreiheit
+Baden-Württemberg (baden-wuerttemberg.datenschutz.de). You may also complain to the
+authority where you live.
+
+**University College London — the research study only**
+Contact: Mark Colley, 66–72 Gower Street, London WC1E 6EA, United Kingdom —
 m.colley@ucl.ac.uk
 
-Because the controller is established in the United Kingdom, **UK GDPR** applies and the
-supervisory authority is the Information Commissioner's Office (ICO), ico.org.uk. If you
-are in the EU or EEA you may also complain to your own national authority.
+The study is run by UCL under its own ethics approval and **UK GDPR**, with the
+Information Commissioner's Office (ICO) as supervisory authority. Study data is held by
+UCL, never by Zefwih, and no address moves between them.
+
 
 ---
 
@@ -31,10 +46,9 @@ choose to, you can give us your email address for news about VIP-Sim. Nothing ab
 downloading or using VIP-Sim requires it.
 
 **Two organisations, deliberately kept apart.** The VIP-Sim product and its mailing list
-come from **Zefwih**. The research study is run separately by **University College
-London** under its own ethics approval, and interest in it is handled by email rather than
-through the mailing list. Joining one does not join you to the other, and no address moves
-between them.
+come from **Zefwih** in Germany. The research study is run separately by **University
+College London**, and interest in it is handled by email rather than through the mailing
+list. Joining one does not join you to the other, and no address moves between them.
 
 ---
 
@@ -100,7 +114,7 @@ If you fill in the form on the website, we store your **email address** and noth
 | | |
 |---|---|
 | **Lawful basis** | Your consent, given by ticking the box. |
-| **Processor** | Mailchimp (Intuit Inc.). The list is stored on their systems in the **United States**, i.e. outside the UK and EEA, under their standard contractual clauses and the UK International Data Transfer Addendum. |
+| **Processor** | Mailchimp (Intuit Inc.). The list is stored on their systems in the **United States**, i.e. outside the EEA, under the EU standard contractual clauses. Check whether Intuit's current EU–US Data Privacy Framework certification also covers this before publication. |
 | **What we send** | News about VIP-Sim: launch, new versions, and where the project is heading. A handful of emails a year. Never advertising for anyone, and never anything to do with the research study. |
 | **How long** | Until you unsubscribe or ask us to delete you. |
 | **Sharing** | Never sold, never passed to a third party beyond the processor above. |
@@ -164,8 +178,10 @@ updated.
 
 ## Contact
 
-Mark Colley, 66–72 Gower Street, London WC1E 6EA, United Kingdom — m.colley@ucl.ac.uk
+**About the mailing list or the product** — Zefwih, Ulmer Straße 8/2, 88471 Laupheim,
+Germany, contact@zefwih.com. Use this for unsubscribing, correction, erasure, or a copy of
+what we hold.
 
-Use that address for anything about your data: unsubscribing, correction, erasure, or a
-copy of what we hold. Bug reports go to
-https://github.com/M-Colley/VIP-Sim2/issues instead.
+**About the research study** — Mark Colley, UCL, m.colley@ucl.ac.uk.
+
+**Bug reports** go to https://github.com/M-Colley/VIP-Sim2/issues instead of either.

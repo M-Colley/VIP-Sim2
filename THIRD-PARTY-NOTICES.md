@@ -29,6 +29,18 @@ outstanding licence question below is a decision for both. And MIT permits anyon
 redistribute or sell this code, so a published MIT repository cannot itself be the basis
 for exclusivity — what is sold is convenience, support and signed builds.
 
+**ACTION — the owners and the vendor are not the same people.** VIP-Sim is distributed as
+a product of **Zefwih GbR**, whose partners are Fabian Fischbach, Pascal Jansen and Mark
+Colley. The copyright is held by **Mark Colley and Max Rädler**. Only Mark Colley is in
+both sets: Max Rädler is not a partner in Zefwih, and Fischbach and Jansen are not
+copyright holders.
+
+So Zefwih is currently selling something it does not itself own. That is entirely fixable
+and completely ordinary — the owners grant Zefwih a licence, or assign the copyright to
+the GbR — but it has to be written down. Until it is, the GbR's right to distribute rests
+on nothing more than one partner also happening to be an owner, which is not a position to
+be in when money is involved or if the partnership ever changes.
+
 ---
 
 ## UnitEye — webcam eye tracking
@@ -213,6 +225,7 @@ See [LICENSE](LICENSE) in the repository, and the ownership question recorded ab
 | 1 | UnitEye | ~~Obtain a licence, or replace~~ — authored in-house, confirmed | Record it in a licence file |
 | 2 | uWindowCapture | ~~Vendor the upstream MIT licence text~~ | **Done** |
 | 3 | VIP-Sim | ~~Establish ownership~~ — Mark Colley and Max Rädler | **Done** |
+| 3c | VIP-Sim | Licence or assign the copyright from the owners to Zefwih GbR | **Yes** |
 | 3b | VIP-Sim | Resolve the MIT vs CC BY 4.0 contradiction | **Yes** |
 | 4 | Unity | ~~Confirm plan; decide on the splash~~ — staying on Personal, splash kept | Revisit if revenue crosses the threshold |
 
