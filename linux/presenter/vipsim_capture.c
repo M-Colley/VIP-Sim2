@@ -66,6 +66,7 @@ static struct {
     struct pw_stream      *pw_stream;
 
     uint32_t         source_types;     // what the portal says this desktop can share
+    bool             opaque_format;    // negotiated format has padding where alpha would be
 
     pthread_mutex_t  lock;
     uint8_t         *frame;            // BGRA, width*height*4
@@ -128,7 +129,14 @@ static void on_stream_param_changed(void *data, uint32_t id, const struct spa_po
         SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int(1 << SPA_DATA_MemFd));
     pw_stream_update_params(C.pw_stream, &buffers, 1);
 
-    set_state(VIPSIM_STREAMING, "streaming %ux%u", C.width, C.height);
+    // BGRx carries no alpha: the fourth byte is undefined padding. Remember that, because
+    // a consumer that treats it as alpha gets a fully transparent picture out of a
+    // perfectly good capture.
+    C.opaque_format = (info.info.raw.format == SPA_VIDEO_FORMAT_BGRx ||
+                       info.info.raw.format == SPA_VIDEO_FORMAT_RGBx);
+
+    set_state(VIPSIM_STREAMING, "streaming %ux%u, format %s", C.width, C.height,
+              spa_debug_type_find_short_name(spa_type_video_format, info.info.raw.format));
 }
 
 /// Map a buffer's memory ourselves, rather than letting PW_STREAM_FLAG_MAP_BUFFERS do it.
@@ -577,6 +585,20 @@ EXPORT unsigned vipsim_capture_copy_frame(void *dst, int dst_stride)
         for (uint32_t y = 0; y < C.height; y++)
             memcpy((char *)dst + (size_t)y * (size_t)dst_stride,
                    C.frame + (size_t)y * row, row);
+
+        // A captured screen is opaque. Say so in the bytes.
+        //
+        // The negotiated format may be BGRx, whose fourth byte is undefined padding rather
+        // than alpha, and the caller uploads these bytes straight into a BGRA32 texture.
+        // Whatever happens to be in that byte then becomes transparency: draw the texture
+        // and a perfectly good capture renders as nothing at all, with the stream reporting
+        // itself healthy the whole time.
+        if (C.opaque_format) {
+            for (uint32_t y = 0; y < C.height; y++) {
+                unsigned char *d = (unsigned char *)dst + (size_t)y * (size_t)dst_stride;
+                for (uint32_t x = 0; x < C.width; x++) d[x * 4 + 3] = 0xFF;
+            }
+        }
     } else {
         seq = 0;
     }

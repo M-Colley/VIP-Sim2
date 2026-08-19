@@ -49,6 +49,37 @@ namespace VipSim.EditorTools
         [MenuItem("VIP-Sim/Build/Linux (x64, experimental)")]
         public static void BuildLinux() => Build(BuildTarget.StandaloneLinux64, "VIP-Sim");
 
+        /// <summary>
+        /// Add a shader to Always Included Shaders if it is not already there.
+        /// </summary>
+        private static void EnsureAlwaysIncludedShader(string name)
+        {
+            var shader = Shader.Find(name);
+            if (shader == null)
+            {
+                Debug.LogWarning($"[VipSimBuild] shader '{name}' not found; cannot guarantee it " +
+                                 "is included in the build.");
+                return;
+            }
+
+            var settings = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(
+                "ProjectSettings/GraphicsSettings.asset");
+            if (settings == null) return;
+
+            var so = new SerializedObject(settings);
+            var list = so.FindProperty("m_AlwaysIncludedShaders");
+            if (list == null) return;
+
+            for (int i = 0; i < list.arraySize; i++)
+                if (list.GetArrayElementAtIndex(i).objectReferenceValue == shader) return;
+
+            list.InsertArrayElementAtIndex(list.arraySize);
+            list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = shader;
+            so.ApplyModifiedProperties();
+            AssetDatabase.SaveAssets();
+            Debug.Log($"[VipSimBuild] added '{name}' to Always Included Shaders.");
+        }
+
         private static string[] EnabledScenes()
         {
             var scenes = EditorBuildSettings.scenes
@@ -98,6 +129,13 @@ namespace VipSim.EditorTools
             PlayerSettings.visibleInBackground = true;
             PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
             PlayerSettings.resizableWindow = false;
+
+            // Linux draws the captured screen on a quad it builds at runtime, and reaches
+            // its shader through Shader.Find. Nothing in the project references that shader,
+            // so without this it is stripped from the build and Shader.Find returns null --
+            // a material that draws nothing, no exception, no log line, and a simulation
+            // with no image in it.
+            EnsureAlwaysIncludedShader("Unlit/Texture");
 
             var options = new BuildPlayerOptions
             {

@@ -85,6 +85,7 @@ public class SymptomInfo : MonoBehaviour
         // platform projects, and neither can be added to a scene the other platforms share.
         LinuxPresenter.Install(gameObject);
         LinuxCapture.Install(gameObject);
+        LinuxCaptureSurface.Install(gameObject);
 #endif
     }
 

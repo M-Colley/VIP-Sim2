@@ -105,17 +105,18 @@ EXPORT int vipsim_present_push_rgba32(const void *src, int src_stride, int flip)
     const uint32_t w = g_head->width, h = g_head->height;
     const uint32_t dst_stride = g_head->stride;
 
-    // Say once what alpha actually arrived, on the first frame that carries anything.
+    // Report what the frame is made of, whenever that materially changes.
     //
     // The overlay is only as transparent as the frame handed to it: an all-opaque frame
     // renders as a black rectangle over the desktop, which reads as a compositing failure
     // rather than a producer that sent alpha 255 everywhere. Reporting frame 1 is useless
     // -- it is legitimately blank before anything has been drawn -- so this waits for a
     // frame with at least one non-clear pixel, which is also the proof that content is
-    // reaching the segment at all.
+    // reaching the segment at all. Reporting only on a ten-point move keeps this to a few
+    // lines a session -- the transitions -- rather than a number every frame.
     {
-        static int reported;
-        if (!reported) {
+        static int last_pct = -1;
+        {
             size_t clear = 0, opaque = 0, n = (size_t)w * (size_t)h;
             for (uint32_t y = 0; y < h; y++) {
                 const unsigned char *s = (const unsigned char *)src + (size_t)y * (size_t)src_stride;
@@ -124,9 +125,10 @@ EXPORT int vipsim_present_push_rgba32(const void *src, int src_stride, int flip)
                     else if (s[3] == 255) opaque++;
                 }
             }
-            if (clear < n) {
-                reported = 1;
-                fprintf(stderr, "[vipsim_present] first frame with content: %.1f%% clear, "
+            int pct = (int)(100.0 * clear / n + 0.5);
+            if (clear < n && (last_pct < 0 || abs(pct - last_pct) >= 10)) {
+                last_pct = pct;
+                fprintf(stderr, "[vipsim_present] frame composition: %.1f%% clear, "
                                 "%.1f%% opaque, %.1f%% partial\n",
                         100.0 * clear / n, 100.0 * opaque / n,
                         100.0 * (n - clear - opaque) / n);
