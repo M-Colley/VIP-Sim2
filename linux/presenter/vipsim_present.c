@@ -94,15 +94,49 @@ EXPORT int vipsim_present_push(const void *src, int src_stride)
 /// conversion here rather than in C# keeps a per-pixel loop out of the managed heap --
 /// at 4K that is eight million iterations a frame, which is not something to hand to the
 /// garbage collector.
-EXPORT int vipsim_present_push_rgba32(const void *src, int src_stride)
+/// `flip` reads the source bottom-up. Unity's ScreenCapture hands back an image whose
+/// first row is the bottom of the screen under OpenGL, so without this the overlay is a
+/// mirror image of the application -- which is obvious once seen and invisible in every
+/// log. The caller decides, because only it knows which graphics API is in use.
+EXPORT int vipsim_present_push_rgba32(const void *src, int src_stride, int flip)
 {
     if (!g_head || !src) return -1;
 
     const uint32_t w = g_head->width, h = g_head->height;
     const uint32_t dst_stride = g_head->stride;
 
+    // Say once what alpha actually arrived, on the first frame that carries anything.
+    //
+    // The overlay is only as transparent as the frame handed to it: an all-opaque frame
+    // renders as a black rectangle over the desktop, which reads as a compositing failure
+    // rather than a producer that sent alpha 255 everywhere. Reporting frame 1 is useless
+    // -- it is legitimately blank before anything has been drawn -- so this waits for a
+    // frame with at least one non-clear pixel, which is also the proof that content is
+    // reaching the segment at all.
+    {
+        static int reported;
+        if (!reported) {
+            size_t clear = 0, opaque = 0, n = (size_t)w * (size_t)h;
+            for (uint32_t y = 0; y < h; y++) {
+                const unsigned char *s = (const unsigned char *)src + (size_t)y * (size_t)src_stride;
+                for (uint32_t x = 0; x < w; x++, s += 4) {
+                    if (s[3] == 0)        clear++;
+                    else if (s[3] == 255) opaque++;
+                }
+            }
+            if (clear < n) {
+                reported = 1;
+                fprintf(stderr, "[vipsim_present] first frame with content: %.1f%% clear, "
+                                "%.1f%% opaque, %.1f%% partial\n",
+                        100.0 * clear / n, 100.0 * opaque / n,
+                        100.0 * (n - clear - opaque) / n);
+            }
+        }
+    }
+
     for (uint32_t y = 0; y < h; y++) {
-        const unsigned char *s = (const unsigned char *)src + (size_t)y * (size_t)src_stride;
+        uint32_t sy = flip ? (h - 1 - y) : y;
+        const unsigned char *s = (const unsigned char *)src + (size_t)sy * (size_t)src_stride;
         unsigned char *d = (unsigned char *)g_pixels + (size_t)y * dst_stride;
         for (uint32_t x = 0; x < w; x++) {
             unsigned a = s[3];

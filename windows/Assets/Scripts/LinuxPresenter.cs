@@ -31,7 +31,7 @@ public class LinuxPresenter : MonoBehaviour
     private static System.Diagnostics.Process _presenter;
 
     [DllImport(Lib)] private static extern int vipsim_present_open(int width, int height);
-    [DllImport(Lib)] private static extern int vipsim_present_push_rgba32(IntPtr src, int stride);
+    [DllImport(Lib)] private static extern int vipsim_present_push_rgba32(IntPtr src, int stride, int flip);
     [DllImport(Lib)] private static extern void vipsim_present_set_panel(int x, int y, int w, int h);
     [DllImport(Lib)] private static extern void vipsim_present_close();
     [DllImport(Lib)] private static extern uint vipsim_present_frame_count();
@@ -43,6 +43,7 @@ public class LinuxPresenter : MonoBehaviour
     private int _lastPanelHash;
     private byte[] _staging;
     private GCHandle _pin;
+    private bool _flip;
 
     public static bool Active { get; private set; }
     public static uint FramesSent => Active ? vipsim_present_frame_count() : 0u;
@@ -84,10 +85,22 @@ public class LinuxPresenter : MonoBehaviour
             return;
         }
 
+        // ScreenCapture hands back the screen with its first row at the bottom under an API
+        // whose texture origin is bottom-left, which is every OpenGL target -- and Linux is
+        // OpenGL by default. Left uncorrected the overlay is a perfect mirror image of the
+        // application, which nothing in any log would ever mention. Logged because it is an
+        // assumption about the graphics API, and assumptions should be visible when someone
+        // runs this under Vulkan and sees it upside down.
+        _flip = !SystemInfo.graphicsUVStartsAtTop;
+        Debug.Log($"[LinuxPresenter] {SystemInfo.graphicsDeviceType}, texture origin " +
+                  $"{(SystemInfo.graphicsUVStartsAtTop ? "top-left" : "bottom-left")}; " +
+                  $"{(_flip ? "flipping" : "not flipping")} each frame.");
+
         _rt = new RenderTexture(_w, _h, 0, RenderTextureFormat.ARGB32) { name = "VipSimPresent" };
         _rt.Create();
         _open = true;
         Active = true;
+        StartCoroutine(PresentLoop());
         Debug.Log($"[LinuxPresenter] presenting {_w}x{_h} to the Wayland layer surface.");
     }
 
@@ -194,15 +207,32 @@ public class LinuxPresenter : MonoBehaviour
         vipsim_present_set_panel(x, y, w, h);
     }
 
-    private void OnRenderImage(RenderTexture src, RenderTexture dest)
+    /// <summary>
+    /// Take each frame from the backbuffer once everything has drawn.
+    ///
+    /// The obvious source is OnRenderImage, and it is the wrong one twice over. It is
+    /// delivered only to a component sitting on a Camera, and it hands over that camera's
+    /// image-effect buffer -- the scene, before any ScreenSpaceOverlay canvas or IMGUI
+    /// panel has been composited. VIP-Sim's whole interface is drawn after that point, so
+    /// the presenter received frames that were 100% transparent while the screen itself
+    /// was 20.8% opaque, and the overlay showed nothing while every log line said success.
+    ///
+    /// WaitForEndOfFrame is the point where the backbuffer holds what the user sees, alpha
+    /// included -- the same place VipSimDiagnostics samples to measure it. The copy stays
+    /// on the GPU and the readback stays asynchronous, so the render thread is not stalled.
+    /// </summary>
+    private System.Collections.IEnumerator PresentLoop()
     {
-        // Pass the image through untouched; this component observes, it does not alter.
-        Graphics.Blit(src, dest);
-        if (!_open || _readbackPending) return;
+        var endOfFrame = new WaitForEndOfFrame();
+        while (_open)
+        {
+            yield return endOfFrame;
+            if (_readbackPending || _rt == null) continue;
 
-        Graphics.Blit(src, _rt);
-        _readbackPending = true;
-        AsyncGPUReadback.Request(_rt, 0, TextureFormat.RGBA32, OnReadback);
+            ScreenCapture.CaptureScreenshotIntoRenderTexture(_rt);
+            _readbackPending = true;
+            AsyncGPUReadback.Request(_rt, 0, TextureFormat.RGBA32, OnReadback);
+        }
     }
 
     private void OnReadback(AsyncGPUReadbackRequest req)
@@ -225,7 +255,7 @@ public class LinuxPresenter : MonoBehaviour
         // direct pointer, but that needs unsafe code enabled project-wide, and v1 of this
         // path is a CPU copy in any case -- the zero-copy answer is dmabuf, not this.
         data.CopyTo(_staging);
-        vipsim_present_push_rgba32(_pin.AddrOfPinnedObject(), _w * 4);
+        vipsim_present_push_rgba32(_pin.AddrOfPinnedObject(), _w * 4, _flip ? 1 : 0);
     }
 
     private void Update()
