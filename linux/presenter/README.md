@@ -130,7 +130,7 @@ Verified 2026-08-19 in nested Sway, background `#104020`:
 `testproducer` stands in for Unity against the same library, so what was tested is the
 real path rather than a mock of it.
 
-## Phase 2: capture — built, partially verified
+## Phase 2: capture — done and verified
 
 `libvipsim_capture.so` takes the place of VIP-Sim's window list. On Wayland there is
 nothing to enumerate: a client cannot see, list or read another client's surface, which is
@@ -152,10 +152,41 @@ answered. That last behaviour is the one a user with an unusual setup actually m
                  provided by any .service files). Screen capture needs one.
 ```
 
-What is **not** verified: the streaming path. WSL has no desktop portal, so the picker,
-the format negotiation and the frame loop have never run. That needs a real desktop
-session, and until someone runs `./build/testcapture` there and sees a frame count, this
-half of capture is code review rather than evidence.
+The streaming path is verified too, by `./run-capture-test.sh`. It stands up the whole
+stack — session bus, PipeWire, WirePlumber, `xdg-desktop-portal` and its wlroots backend
+— inside a nested Sway session, with `chooser_type=none` so the picker resolves to the
+only output and nobody has to be at the keyboard:
+
+```
+$ ./run-capture-test.sh 10
+  format settled: 1280x720
+  t= 1s  frames=1 (0 blank)  state=streaming  centre BGRA=20 30 a0 ff
+  t= 2s  frames=2 (0 blank)  state=streaming  centre BGRA=50 30 20 ff
+  ...
+11 distinct frames in 10 seconds (1280x720), 0 of them blank
+last non-blank frame: 100.0% non-zero bytes, mean 123.8
+```
+
+The pixels are the evidence, not the frame count. The harness repaints the background
+between `#A03020` and `#203050`, and the captured centre pixel alternates `20 30 a0` and
+`50 30 20` in step with it — the same two colours, BGRA. The dumped frame is 99.97% the
+expected colour, the rest being the status bar. A frame counter on its own proves only
+that bytes moved; it cannot tell live content from a buffer of zeros, which is why the
+run counts blank frames separately and reports the last one that had something in it.
+
+Three things had to be right, and each failed in a way that reported no error:
+
+- **Map the buffers by hand.** `PW_STREAM_FLAG_MAP_BUFFERS` maps with the protection
+  implied by the data flags, and xdg-desktop-portal-wlr sets only `MAPPABLE` — neither
+  `READABLE` nor `WRITABLE` — so the mapping came back `PROT_NONE`: a plausible,
+  page-aligned address that segfaults on the first byte.
+- **Request `MemFd` only.** A `MemPtr` address belongs to the producer's process and is a
+  pointer into nothing on this side of the boundary.
+- **Skip chunks of size 0.** wlroots emits them around a renegotiation. Copying one
+  publishes a black frame and counts it as delivered, so the capture looks alive and shows
+  nothing.
+
+Still outstanding: a real GPU (this runs on the pixman software renderer), and KWin.
 
 ## Where the libraries have to go
 

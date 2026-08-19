@@ -106,7 +106,11 @@ that can be handed to someone who was not in the room when it was written.
   Supporting them needs a native plugin per platform. VIP-Sim is currently usable with low
   vision and not usable non-visually; see `docs/ACCESSIBILITY.md`.
 
-- **Windows capture only.** macOS capture works; Linux has no capture or transparency yet.
+- **Linux is verified in a nested compositor, not yet on a real desktop.** Overlay,
+  transport and screen capture all work end-to-end under Sway with a real portal stack,
+  including pixel-verified frames. Confirmation against KWin and a real GPU is still
+  outstanding, and GNOME is expected to refuse the overlay because Mutter implements no
+  layer-shell protocol.
 - **Severities are not clinically validated.** They are plausible starting points, and the
   tool must not be presented as showing "what condition X looks like".
 - **Not signed or notarised.** Until certificates exist, Gatekeeper and SmartScreen will

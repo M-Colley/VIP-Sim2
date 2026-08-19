@@ -78,6 +78,20 @@ void vipsim_capture_stop(void);
 v1 copies frames through CPU memory (simple, correct); v2 imports the PipeWire dmabuf
 directly as a Unity external texture (zero-copy — required for 4K at full rate).
 
+**The plugin maps buffers itself instead of using `PW_STREAM_FLAG_MAP_BUFFERS`.** That
+flag makes libpipewire map each buffer with the protection implied by its data flags:
+`READABLE` gives `PROT_READ`, `WRITABLE` gives `PROT_WRITE`, and neither gives
+`PROT_NONE`. xdg-desktop-portal-wlr publishes buffers with only `SPA_DATA_FLAG_MAPPABLE`
+set, so the mapping came back `PROT_NONE` — a page-aligned, entirely plausible-looking
+address that segfaults on the first byte read. Nothing reports an error, because nothing
+failed: the stream negotiates, reaches `STREAMING`, hands over a buffer, and the consumer
+dies touching it. Mapping the fd directly with `PROT_READ` does not depend on which side
+is newer. Two related rules the same debugging session produced: request `SPA_DATA_MemFd`
+only — a `MemPtr` address belongs to the process that produced it and is a valid-looking
+pointer into nothing across a process boundary — and take each frame's extent from the
+buffer's own `maxsize`/`offset`/`stride` rather than from the negotiated format, because
+the two do disagree.
+
 ### Component 2 — presenter (`vipsim-presenter`)
 
 Native Wayland client owning one `zwlr_layer_surface_v1`:
@@ -130,6 +144,17 @@ lives on borrowed time), or declare the overlay unsupported on GNOME while captu
 and layer-shell works inside it, so the whole edit-compile-run cycle happens on the
 Windows build machine. Installing sway plus grim was the entire setup.
 
+**A full portal stack also runs here**, which an earlier version of this document said
+it could not. `xdg-desktop-portal`, `xdg-desktop-portal-wlr`, PipeWire and WirePlumber
+install and run inside the nested Sway session, with `chooser_type=none` picking the only
+output so the run needs nobody at the keyboard. One trap: the nested session must be
+given its **own `XDG_RUNTIME_DIR`**. WSLg already runs a PipeWire daemon on the default
+one and holds `pipewire-0.lock`, so a second daemon dies at startup and every client
+silently falls through to WSLg's audio-only one — which has no session manager for video,
+so the screencast node is published and never linked and the stream sits at `paused`
+forever, with no error anywhere. Sway still needs to reach WSLg's compositor, so its
+socket is passed as an absolute path, which libwayland uses verbatim.
+
 WSL2/WSLg on the Windows build machine runs the player (verified: 30s, OpenGL 4.5,
 seam reporting `wayland-0` / XWayland `:0`) and now carries gcc 15 plus
 `libwayland-dev`/`wayland-protocols`. **WSLg's own compositor exposes no layer-shell**
@@ -153,11 +178,14 @@ cycle no longer does.
    presenter hot-attaches to a producer that starts later, and the input region switches
    between click-through and an interactive panel rect. `LinuxPresenter.cs` is the Unity
    end, using `AsyncGPUReadback` so the render thread is not stalled.
-3. ~~**Capture plugin v1**~~ — **BUILT**, and verified as far as this machine allows:
-   compiles against real GLib and PipeWire, exports the full ABI, and degrades honestly
-   where no portal exists. The streaming path itself is unverified because WSL has no
-   desktop portal; `linux/presenter/testcapture` will settle it on a real session in
-   about a minute.
+3. ~~**Capture plugin v1**~~ — **DONE, and verified against a real portal.** Run
+   2026-08-19 in a nested Sway session carrying a full stack — PipeWire, WirePlumber,
+   `xdg-desktop-portal` and `xdg-desktop-portal-wlr`. The portal created the session and
+   handed over a node, the stream negotiated BGRx 1280x720, and `testcapture` read 12
+   distinct frames in 12 seconds. The pixels are the proof rather than the frame count:
+   the harness repaints the background between two colours and the captured centre pixel
+   alternates `BGRA=50 30 20` / `20 30 a0`, which is exactly `#203050` / `#A03020`, with
+   the dumped frame 99.97% the expected colour.
 4. **dmabuf** — probed, not implemented, and the probe is why. Nested Sway on a software
    renderer does not advertise `zwp_linux_dmabuf_v1` at all, and the container has neither
    `/dev/dri` nor a `udmabuf` module, so a dmabuf cannot be created by any route here. The

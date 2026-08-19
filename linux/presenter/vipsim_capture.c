@@ -21,6 +21,7 @@
 #include <gio/gunixfdlist.h>
 #include <pipewire/pipewire.h>
 #include <spa/param/video/format-utils.h>
+#include <spa/param/buffers.h>
 #include <spa/debug/types.h>
 
 #include <pthread.h>
@@ -29,6 +30,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #define EXPORT __attribute__((visibility("default")))
 
@@ -95,7 +97,68 @@ static void on_stream_param_changed(void *data, uint32_t id, const struct spa_po
     C.frame = calloc((size_t)C.width * C.height, 4);
     pthread_mutex_unlock(&C.lock);
 
+    // Ask for one buffer kind: a file descriptor we can map.
+    //
+    // Without this it is free to hand back DMA-BUFs, and xdg-desktop-portal-wlr does
+    // exactly that on a wlroots compositor. A DMA-BUF cannot be read as plain memory --
+    // datas[0].data comes back NULL -- so every frame was silently skipped and the stream
+    // looked alive while delivering nothing. v1 of this path is a CPU copy by design, so
+    // ask for shared memory; importing the DMA-BUF directly is the v2 job and needs a GPU
+    // to be worth anything.
+    //
+    // MemFd only, deliberately. Allowing MemPtr as well looks harmless -- it is plain
+    // memory -- but a MemPtr address belongs to the process that produced it, so across
+    // a process boundary it is a valid-looking pointer into nothing. The stream then
+    // negotiates, reports itself streaming, and segfaults on the first frame.
+    uint8_t pod_buf[512];
+    struct spa_pod_builder pb = SPA_POD_BUILDER_INIT(pod_buf, sizeof pod_buf);
+    const struct spa_pod *buffers = spa_pod_builder_add_object(&pb,
+        SPA_TYPE_OBJECT_ParamBuffers, SPA_PARAM_Buffers,
+        SPA_PARAM_BUFFERS_buffers,  SPA_POD_CHOICE_RANGE_Int(4, 2, 8),
+        SPA_PARAM_BUFFERS_blocks,   SPA_POD_Int(1),
+        SPA_PARAM_BUFFERS_size,     SPA_POD_Int((int)(C.width * C.height * 4)),
+        SPA_PARAM_BUFFERS_stride,   SPA_POD_Int((int)(C.width * 4)),
+        SPA_PARAM_BUFFERS_dataType, SPA_POD_CHOICE_FLAGS_Int(1 << SPA_DATA_MemFd));
+    pw_stream_update_params(C.pw_stream, &buffers, 1);
+
     set_state(VIPSIM_STREAMING, "streaming %ux%u", C.width, C.height);
+}
+
+/// Map a buffer's memory ourselves, rather than letting PW_STREAM_FLAG_MAP_BUFFERS do it.
+///
+/// libpipewire maps with the protection implied by the data flags: READABLE gives PROT_READ,
+/// WRITABLE gives PROT_WRITE, and neither gives PROT_NONE. xdg-desktop-portal-wlr publishes
+/// its buffers with only SPA_DATA_FLAG_MAPPABLE set, so the client-side mapping came back
+/// PROT_NONE -- a page-aligned, plausible-looking address that segfaults on the first byte
+/// read. Nothing reports an error, because nothing failed: the stream negotiates, reaches
+/// STREAMING, hands over a buffer, and the consumer dies touching it.
+///
+/// Mapping the fd here with PROT_READ sidesteps the flags entirely and does not depend on
+/// which side is newer.
+static void on_add_buffer(void *data, struct pw_buffer *b)
+{
+    (void)data;
+    struct spa_data *d = &b->buffer->datas[0];
+    b->user_data = NULL;
+
+    if (d->type != SPA_DATA_MemFd || d->fd < 0) return;   // DMA-BUF: handled in process()
+
+    size_t len = (size_t)d->mapoffset + d->maxsize;
+    void  *p   = mmap(NULL, len, PROT_READ, MAP_SHARED, (int)d->fd, 0);
+    if (p == MAP_FAILED) {
+        set_state(VIPSIM_FAILED, "could not map a capture buffer (%u bytes)", d->maxsize);
+        return;
+    }
+    b->user_data = p;
+}
+
+static void on_remove_buffer(void *data, struct pw_buffer *b)
+{
+    (void)data;
+    if (!b->user_data) return;
+    struct spa_data *d = &b->buffer->datas[0];
+    munmap(b->user_data, (size_t)d->mapoffset + d->maxsize);
+    b->user_data = NULL;
 }
 
 static void on_stream_process(void *data)
@@ -104,29 +167,68 @@ static void on_stream_process(void *data)
     struct pw_buffer *b = pw_stream_dequeue_buffer(C.pw_stream);
     if (!b) return;
 
-    struct spa_buffer *buf = b->buffer;
-    if (buf->datas[0].data && C.frame) {
-        pthread_mutex_lock(&C.lock);
-        uint32_t stride = buf->datas[0].chunk->stride;
-        uint32_t rows = C.height;
-        uint32_t want = C.width * 4;
-        const uint8_t *src = buf->datas[0].data;
-        if (stride == want) {
-            memcpy(C.frame, src, (size_t)want * rows);
-        } else {
-            for (uint32_t y = 0; y < rows; y++)
-                memcpy(C.frame + (size_t)y * want, src + (size_t)y * stride, want);
+    struct spa_data *d    = &b->buffer->datas[0];
+    const uint8_t   *base = b->user_data ? (const uint8_t *)b->user_data + d->mapoffset
+                                         : NULL;
+    if (!base) {
+        // Nothing readable: almost certainly a DMA-BUF this build cannot map. Report once
+        // rather than dropping frames quietly, which is indistinguishable from a stream
+        // that never started.
+        static int warned;
+        if (!warned) {
+            warned = 1;
+            set_state(VIPSIM_FAILED,
+                      "frames arrive as type %u, which this build cannot read (no CPU "
+                      "mapping). Expected shared memory; see docs/LINUX_PORT.md.",
+                      d->type);
         }
-        C.seq++;
-        pthread_mutex_unlock(&C.lock);
+        pw_stream_queue_buffer(C.pw_stream, b);
+        return;
     }
+
+    // An empty or corrupted chunk carries no picture. Copying it anyway publishes a black
+    // frame and bumps the sequence number, so it counts as delivered -- the capture then
+    // looks alive and shows nothing, which is the hardest failure of all to read. wlroots
+    // sends these around each renegotiation, and it renegotiates whenever the output's
+    // buffer constraints change.
+    if (d->chunk->size == 0 || (d->chunk->flags & SPA_CHUNK_FLAG_CORRUPTED)) {
+        pw_stream_queue_buffer(C.pw_stream, b);
+        return;
+    }
+
+    pthread_mutex_lock(&C.lock);
+    if (C.frame && C.width && C.height) {
+        // Take the extent from the buffer, not from the negotiated format. A producer may
+        // hand over fewer bytes than width*height*4, or start the payload at an offset, so
+        // deriving the size from the format alone reads off the end of the mapping.
+        const uint32_t row    = C.width * 4;
+        uint32_t       stride = d->chunk->stride > 0 ? (uint32_t)d->chunk->stride : row;
+        size_t         off    = d->chunk->offset > d->maxsize ? d->maxsize : d->chunk->offset;
+        size_t         avail  = (size_t)d->chunk->size;
+        if (avail > (size_t)d->maxsize - off) avail = (size_t)d->maxsize - off;
+
+        uint32_t rows = C.height;
+        if (stride && avail / stride < rows) rows = (uint32_t)(avail / stride);
+        const uint32_t copy = stride < row ? stride : row;
+
+        const uint8_t *src = base + off;
+        for (uint32_t y = 0; y < rows; y++)
+            memcpy(C.frame + (size_t)y * row, src + (size_t)y * stride, copy);
+        C.seq++;
+    }
+    pthread_mutex_unlock(&C.lock);
     pw_stream_queue_buffer(C.pw_stream, b);
 }
 
 static void on_stream_state_changed(void *data, enum pw_stream_state old,
                                     enum pw_stream_state state, const char *error)
 {
-    (void)data; (void)old;
+    (void)data;
+    // Every transition, not just errors. A stream that quietly stops at CONNECTING looks
+    // identical from outside to one that never started, and that cost a debugging round.
+    fprintf(stderr, "[vipsim_capture] stream %s -> %s%s%s\n",
+            pw_stream_state_as_string(old), pw_stream_state_as_string(state),
+            error ? ": " : "", error ? error : "");
     if (state == PW_STREAM_STATE_ERROR)
         set_state(VIPSIM_FAILED, "PipeWire stream error: %s", error ? error : "unknown");
 }
@@ -135,6 +237,8 @@ static const struct pw_stream_events stream_events = {
     PW_VERSION_STREAM_EVENTS,
     .state_changed = on_stream_state_changed,
     .param_changed = on_stream_param_changed,
+    .add_buffer    = on_add_buffer,
+    .remove_buffer = on_remove_buffer,
     .process       = on_stream_process,
 };
 
@@ -144,11 +248,20 @@ static bool start_pipewire(int fd, uint32_t node_id)
     C.pw_loop = pw_thread_loop_new("vipsim-capture", NULL);
     if (!C.pw_loop) { set_state(VIPSIM_FAILED, "could not create the PipeWire loop"); return false; }
 
+    // Start the loop BEFORE connecting, not after.
+    //
+    // Connecting first and starting afterwards leaves no loop running to process the
+    // negotiation that connect kicks off, so the format event can be missed. The symptom
+    // is a stream that reaches PAUSED and stops there: connected, no error, no format, no
+    // frames, and nothing in any log to say why.
+    pw_thread_loop_start(C.pw_loop);
+
     pw_thread_loop_lock(C.pw_loop);
     C.pw_context = pw_context_new(pw_thread_loop_get_loop(C.pw_loop), NULL, 0);
     C.pw_core = pw_context_connect_fd(C.pw_context, fd, NULL, 0);
     if (!C.pw_core) {
         pw_thread_loop_unlock(C.pw_loop);
+        pw_thread_loop_stop(C.pw_loop);
         set_state(VIPSIM_FAILED, "could not connect to PipeWire");
         return false;
     }
@@ -184,12 +297,11 @@ static bool start_pipewire(int fd, uint32_t node_id)
         SPA_FORMAT_VIDEO_framerate, SPA_POD_CHOICE_RANGE_Fraction(&rdef, &rmin, &rmax));
 
     int rc = pw_stream_connect(C.pw_stream, PW_DIRECTION_INPUT, node_id,
-                               PW_STREAM_FLAG_AUTOCONNECT | PW_STREAM_FLAG_MAP_BUFFERS,
+                               PW_STREAM_FLAG_AUTOCONNECT,   // we map buffers ourselves
                                params, 1);
     pw_thread_loop_unlock(C.pw_loop);
 
     if (rc < 0) { set_state(VIPSIM_FAILED, "could not connect the PipeWire stream"); return false; }
-    pw_thread_loop_start(C.pw_loop);
     return true;
 }
 
