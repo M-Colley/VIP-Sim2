@@ -27,8 +27,14 @@ and a research logging mode that is **off** unless someone deliberately switches
 obtains consent.
 
 **The website** is separate, and it is the only part that collects personal data: if you
-choose to, you can give us your email address for release announcements or to hear about
-the research study. Nothing about downloading or using VIP-Sim requires it.
+choose to, you can give us your email address for news about VIP-Sim. Nothing about
+downloading or using VIP-Sim requires it.
+
+**Two organisations, deliberately kept apart.** The VIP-Sim product and its mailing list
+come from **Zefwih**. The research study is run separately by **University College
+London** under its own ethics approval, and interest in it is handled by email rather than
+through the mailing list. Joining one does not join you to the other, and no address moves
+between them.
 
 ---
 
@@ -86,7 +92,7 @@ information sheet, a consent record, and a retention period.
 
 ---
 
-## The mailing list (website only, opt-in)
+## The mailing list — Zefwih (website only, opt-in)
 
 If you fill in the form on the website, we store your **email address** and nothing else
 &mdash; no name, and no record of anything you have read or clicked.
@@ -95,7 +101,7 @@ If you fill in the form on the website, we store your **email address** and noth
 |---|---|
 | **Lawful basis** | Your consent, given by ticking the box. |
 | **Processor** | Mailchimp (Intuit Inc.). The list is stored on their systems in the **United States**, i.e. outside the UK and EEA, under their standard contractual clauses and the UK International Data Transfer Addendum. |
-| **What we send** | Release announcements only, a few times a year. Never anything else, and never advertising for anyone. |
+| **What we send** | News about VIP-Sim: launch, new versions, and where the project is heading. A handful of emails a year. Never advertising for anyone, and never anything to do with the research study. |
 | **How long** | Until you unsubscribe or ask us to delete you. |
 | **Sharing** | Never sold, never passed to a third party beyond the processor above. |
 
@@ -107,7 +113,7 @@ complain to a supervisory authority.
 If you would rather not give us an address at all, the website lists three other ways to
 follow releases that involve us not at all.
 
-## The research study (separate from everything else)
+## The research study — UCL (separate from everything else)
 
 Interest in the study is handled **by email to m.colley@ucl.ac.uk**, deliberately not through the
 signup form: interest in a research study should not pass through a marketing processor.
