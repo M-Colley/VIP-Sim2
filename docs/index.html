@@ -256,53 +256,40 @@
   <div class="wrap">
     <h2>What it looks like</h2>
     <p class="sub">
-      The same plain text document, captured live through VIP-Sim. Nothing here is a
-      mock-up or a photo filter &mdash; it is the running application.
+      The same plain text document, recorded from the running application. Nothing here is
+      a mock-up or a photo filter.
     </p>
-    <figure class="shot demo" style="margin:0 0 20px">
-      <video src="img/vipsim-demo.mp4" poster="img/vipsim-demo-poster.png"
-             width="1120" height="362"
-             autoplay loop muted playsinline controls
-             aria-label="Screen recording: a text document with central vision loss
-                         simulated. A blurred patch covers the middle of the reader's
-                         vision and moves across the page as the cursor moves, so the
-                         words being looked at are the ones that cannot be read.">
-        Your browser cannot play this video.
-        <a href="img/vipsim-demo.mp4">Download it instead</a>.
-      </video>
-      <figcaption class="cap">
-        <h3>The simulation follows your gaze</h3>
-        <p>Central vision loss, recorded from the running application. Captured frame by
-           frame, because ordinary screen recording excludes overlay windows &mdash; a
-           normal capture would show the document without the simulation on it.</p>
-      </figcaption>
-    </figure>
-
     <div class="shots">
-      <figure class="shot" style="margin:0">
-        <img src="img/symptom-none.png" width="1120" height="362"
-             alt="A plain text document about designing for low vision, shown normally:
-                  every line is crisp and readable.">
-        <figcaption class="cap">
-          <h3>No simulation</h3>
-          <p>The document as the designer sees it.</p>
-        </figcaption>
-      </figure>
-      <figure class="shot" style="margin:0">
-        <img src="img/symptom-central-vision-loss.png" width="1120" height="362"
-             alt="The same document with central vision loss simulated: a large blurred
-                  patch covers the middle of the text, leaving only fragments legible at
-                  the edges.">
+      <figure class="shot demo" style="margin:0">
+        <video src="img/vipsim-demo.mp4" poster="img/vipsim-demo-poster.png"
+               autoplay loop muted playsinline controls
+               aria-label="Screen recording of a text document with vision loss, central simulated. A blurred patch sits in the middle of vision and follows your gaze, so the words you are trying to read are the ones you cannot.">
+          Your browser cannot play this video.
+          <a href="img/vipsim-demo.mp4">Download it instead</a>.
+        </video>
         <figcaption class="cap">
           <h3>Vision Loss, Central <span class="term">central scotoma</span></h3>
-          <p>The patch follows your gaze, so the words you are trying to read are the ones
-             you cannot.</p>
+          <p>A blurred patch sits in the middle of vision and follows your gaze, so the words you are trying to read are the ones you cannot.</p>
+        </figcaption>
+      </figure>
+      <figure class="shot demo" style="margin:0">
+        <video src="img/vipsim-tremor.mp4" poster="img/vipsim-tremor-poster.png"
+               autoplay loop muted playsinline controls
+               aria-label="Screen recording of a text document with eye tremor simulated. Involuntary movement: the whole image drifts and jerks, and holding a line of text still enough to read it becomes the work.">
+          Your browser cannot play this video.
+          <a href="img/vipsim-tremor.mp4">Download it instead</a>.
+        </video>
+        <figcaption class="cap">
+          <h3>Eye Tremor <span class="term">nystagmus</span></h3>
+          <p>Involuntary movement: the whole image drifts and jerks, and holding a line of text still enough to read it becomes the work.</p>
         </figcaption>
       </figure>
     </div>
     <p class="note">
-      Severity is adjustable per symptom, and several can run at once. The values shipped
-      are plausible starting points, not clinically calibrated measurements.
+      Captured frame by frame, because ordinary screen recording excludes overlay windows
+      &mdash; a normal capture would show the document with no simulation on it. Severity
+      is adjustable per symptom and several can run at once; the values shown are
+      illustrative, not clinically calibrated.
     </p>
   </div>
 </section>
