@@ -2,8 +2,8 @@
 <!-- GitHub Topics: accessibility, visual-impairment, unity, simulation, hci, user-centered-design -->
 > A gaze-contingent vision impairment simulator to support accessible design.
 
-![License](https://img.shields.io/github/license/Max-Raed/vip-sim)
-![Release](https://img.shields.io/github/v/release/Max-Raed/vip-sim)
+![License](https://img.shields.io/github/license/M-Colley/VIP-Sim2)
+![Release](https://img.shields.io/github/v/release/M-Colley/VIP-Sim2)
 ![Made with Unity](https://img.shields.io/badge/made%20with-Unity-000?logo=unity)
 
 [Max Rädler](https://scholar.google.de/citations?user=HmSPxPsAAAAJ&hl=de&oi=ao), [Mark Colley](https://scholar.google.de/citations?user=Kt5I7wYAAAAJ&hl=de&oi=ao), and [Enrico Rukzio](https://scholar.google.de/citations?user=LEu4D5gAAAAJ&hl=de&oi=ao)
@@ -15,6 +15,79 @@
 ---
 
 
+
+## 🆕 What's new in version 2.0
+
+VIP-Sim 2.0 is a substantial rebuild of the version described in the UIST'25 paper. The
+research contribution is unchanged — same participatory design, same symptom set — but
+almost everything around it has been repaired or replaced. The short version: **the
+simulation now renders what it claims to, on both platforms, and the tool can be handed to
+someone who was not in the room when it was written.**
+
+### Simulation correctness
+
+- **Seven shaders produced nothing when switched on alone.** They blended their output
+  against its own alpha, squaring it; on a compositor-backed overlay the result was
+  invisible. Found by measuring the alpha channel rather than by looking, because a wrong
+  alpha and a dead effect are indistinguishable on screen. This is the most consequential
+  fix in the release: some symptoms simply did not work.
+- **Captured windows are drawn 1:1 where the window actually is**, aligned to the painted
+  frame rather than the invisible resize border, and correct on non-primary monitors.
+- **The retired VR rig is gone.** Every effect existed twice, once per eye, from the
+  FOVE-era stereo setup — 38 live components and a per-frame linking mechanism for a
+  monoscopic product. 816 lines removed, output verified identical before and after. That
+  duplication is what made the alpha bug so hard to find: "the effect is enabled" was true
+  of an instance that never reached the screen.
+
+### macOS
+
+- **It runs.** The macOS build previously compiled but had never been launched. It now
+  builds as a signed-ready universal binary, and the transparency, capture and permission
+  paths have been exercised.
+- **Captures keep their own shape** instead of being stretched to the screen's aspect.
+- **The bundle identifier is pinned.** It was being derived from the product name at build
+  time, so renaming the app silently invalidated every Screen Recording and Camera
+  permission the user had granted.
+
+### Usable without prior knowledge
+
+- **Plain-language symptom names** in place of clinical vocabulary, grouped by the part of
+  vision they affect, with condition presets.
+- **An in-app reference (F1)** explaining every symptom beside its clinical term, and a
+  **first-run tutorial**. Previously the panel was discoverable only if you already knew
+  it was there.
+- **Mouse-following is the default**, so the webcam is not touched at launch; eye tracking
+  is opt-in.
+- **Multi-monitor support** — move the overlay to whichever display the work is on.
+
+### The tool's own accessibility
+
+A simulator for finding visual-accessibility failures that a low-vision designer could not
+operate would be indefensible. Keyboard operation, a visible focus indicator, text size
+from 80% to 250%, and a high-contrast palette. What still does not work — screen readers
+— is stated plainly in [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md) rather than left
+implied.
+
+### Distribution and licensing
+
+- **ALGLIB replaced** with a self-contained RBF interpolator, removing a GPL dependency
+  that would have prevented distribution.
+- **Third-party notices ship with the binaries**, which MIT requires and the previous
+  release did not do.
+- **Telemetry is consent-gated and off by default**; the update check sends no identifier.
+- **Unity 6.5 (6000.5.8f1)**, 514 compiler warnings down to zero, crash logging, and an
+  in-app route to report a problem.
+
+### Linux
+
+The project builds and runs on Linux for the first time. The overlay itself is not there
+yet, but the Wayland design is proven rather than assumed: a layer-shell presenter spike
+demonstrates per-pixel alpha compositing and click-through. See
+[docs/LINUX_PORT.md](docs/LINUX_PORT.md).
+
+Full detail in [CHANGELOG.md](CHANGELOG.md), including the known limitations.
+
+---
 
 ## 🧠 Overview
 
