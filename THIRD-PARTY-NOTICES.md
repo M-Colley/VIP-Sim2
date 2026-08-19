@@ -14,11 +14,10 @@ this file must ship inside the release archive, not only live in the repository.
 
 MIT Licence, Copyright (c) 2025 Mark Colley and Max Rädler. See [LICENSE](LICENSE).
 
-**ACTION — the project states two different licences.** `LICENSE` contains the MIT
-Licence; `README.md` has said the project is licensed under CC BY 4.0. These are different
-grants with different obligations, and a user cannot tell which one they have been given.
-CC BY is in any case not intended for software. Decide which applies, make the two agree,
-and record the decision — an ambiguous licence is a poor position from which to sell.
+**Settled: MIT.** `LICENSE` and `README.md` previously disagreed, the README claiming
+CC BY 4.0. MIT is what applies. CC BY was never appropriate for software — Creative
+Commons advises against it, and it addresses neither source availability nor patents, and
+leaves attribution for a compiled binary undefined.
 
 Owned jointly by Mark Colley and Max Rädler, as stated by the rights-holders and now
 reflected in the copyright line, which previously named only one of them.
@@ -52,11 +51,10 @@ within VIP-Sim is permitted. Since the rights-holder for the component and for t
 are the same party, there is no third-party permission left to obtain and this no longer
 blocks a release.
 
-**ACTION — still no licence file in `packages/uniteye`.** The permission is real but
-undocumented: nothing in the repository records it, so a collaborator, a purchaser, or a
-future maintainer reading the tree sees the same all-rights-reserved default I did. Add a
-licence file stating the grant. Which text goes in it is the same decision as the MIT
-versus CC BY question above — settle that once and it covers both.
+Licensed under the **MIT Licence**, Copyright (c) 2025 Mark Colley, recorded at
+`packages/uniteye/LICENSE`. The permission is now documented rather than merely true, so a
+collaborator or purchaser reading the tree sees the grant instead of the
+all-rights-reserved default that applies when no licence file is present.
 
 ---
 
@@ -222,11 +220,11 @@ See [LICENSE](LICENSE) in the repository, and the ownership question recorded ab
 
 | # | Component | Action | Blocks a paid release? |
 |---|-----------|--------|------------------------|
-| 1 | UnitEye | ~~Obtain a licence, or replace~~ — authored in-house, confirmed | Record it in a licence file |
+| 1 | UnitEye | ~~Obtain a licence~~ — authored in-house, now MIT-licensed in the tree | **Done** |
 | 2 | uWindowCapture | ~~Vendor the upstream MIT licence text~~ | **Done** |
 | 3 | VIP-Sim | ~~Establish ownership~~ — Mark Colley and Max Rädler | **Done** |
 | 3c | VIP-Sim | Licence or assign the copyright from the owners to Zefwih GbR | **Yes** |
-| 3b | VIP-Sim | Resolve the MIT vs CC BY 4.0 contradiction | **Yes** |
+| 3b | VIP-Sim | ~~Resolve the MIT vs CC BY contradiction~~ — MIT | **Done** |
 | 4 | Unity | ~~Confirm plan; decide on the splash~~ — staying on Personal, splash kept | Revisit if revenue crosses the threshold |
 
 This file records what is in the repository and what the upstream licences say. It is not

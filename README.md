@@ -275,12 +275,17 @@ Developer hotkeys (F6/F7/F8/F10/F11) are disabled in release builds. Launch with
 
 # 📄 License
 
-> **Unresolved:** this line has said CC BY 4.0, while the repository's `LICENSE` file
-> contains the MIT Licence (Copyright (c) 2025 Max Rädler). Those are different grants
-> and only one of them can be the licence. Settle this before the project is distributed
-> commercially -- see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+VIP-Sim is released under the **MIT Licence** — see [LICENSE](LICENSE).
+Copyright (c) 2025 Mark Colley and Max Rädler.
 
-The `LICENSE` file currently governs: MIT.
+Earlier versions of this file said CC BY 4.0. That was wrong for software: Creative
+Commons advises against CC licences for code, and CC BY says nothing about source
+availability or patents, and leaves attribution for a compiled binary undefined. MIT
+is what the `LICENSE` file has always contained and is what applies.
+
+The vendored [UnitEye](packages/uniteye) component is MIT as well.
+Third-party components and their licences are listed in
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 # 📬 Contact
 Max Rädler – max.raedler@uni-ulm.de
