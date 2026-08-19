@@ -69,7 +69,9 @@ sleep 3
 swaymsg output '*' bg '#2060C0' solid_color >/dev/null 2>&1
 
 cd "$PLAYER_DIR"
-./VIP-Sim -logFile $OUT/player.log > $OUT/player.stdout 2>&1 &
+# Through the launcher, which is how it ships: it sets the SDL hint that lets the window
+# be transparent, and that hint has to exist before the player starts.
+sh ./VIP-Sim.sh -logFile $OUT/player.log > $OUT/player.stdout 2>&1 &
 PLAYERPID=\$!
 sleep $RUN_FOR
 
