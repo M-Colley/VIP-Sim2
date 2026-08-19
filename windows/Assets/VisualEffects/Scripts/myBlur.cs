@@ -23,6 +23,14 @@ namespace VisSim
         // geometry info
         [Linkable, Range(100, 10000)]
         public int screenWidth_px = 2560;
+        [Tooltip("Derive the screen width from the display actually in use.\n\n" +
+                 "Leave this on. The value below was a fixed constant, so every " +
+                 "degree-based parameter was silently mis-scaled on any display of a " +
+                 "different width -- on a 3840px screen a constant of 1334 makes each " +
+                 "degree 2.9x too small, and the simulated severity is wrong by that " +
+                 "factor. Turn it off only to reproduce a specific rig.")]
+        public bool autoScreenWidth = true;
+
         /*[Linkable, Range(0.001f, 60.0f)]
         public float screenWidth_cm = 3.0f;
         [Linkable, Range(0.001f, 60.0f)]
@@ -62,6 +70,9 @@ namespace VisSim
             widthMod = 1.0f / (1.0f * (1 << downsample));
             
             // compute kernalSigma
+            // The angular scale has to come from the display in use,
+            // not a constant baked in on someone else's monitor.
+            if (autoScreenWidth && Screen.width > 0) screenWidth_px = Screen.width;
             float pixel_per_dg = screenWidth_px / viewingAngle_deg; // screenWidth_dg
             //Debug.Log("pixel_per_dg: " + pixel_per_dg);
 

@@ -31,6 +31,14 @@ namespace VisSim
         // geometry info
         [Linkable, Range(100, 10000)]
         public int screenWidth_px = 1334;
+        [Tooltip("Derive the screen width from the display actually in use.\n\n" +
+                 "Leave this on. The value below was a fixed constant, so every " +
+                 "degree-based parameter was silently mis-scaled on any display of a " +
+                 "different width -- on a 3840px screen a constant of 1334 makes each " +
+                 "degree 2.9x too small, and the simulated severity is wrong by that " +
+                 "factor. Turn it off only to reproduce a specific rig.")]
+        public bool autoScreenWidth = true;
+
         [Linkable, Range(1f, 180.0f)]
         public float viewingAngle_deg = 100.0f;
         private float pixel_per_dg;
@@ -71,6 +79,9 @@ namespace VisSim
                 this.gameObject.transform.localEulerAngles = new Vector3(0, 0, this.gameObject.transform.localEulerAngles.z);
 
                 // convert deg to pixels
+                // The angular scale has to come from the display in use,
+                // not a constant baked in on someone else's monitor.
+                if (autoScreenWidth && Screen.width > 0) screenWidth_px = Screen.width;
                 pixel_per_dg = screenWidth_px / viewingAngle_deg;
                 float DisplaceX_px = DisplaceX_deg * pixel_per_dg; // convert deg to pixels
                 float DisplaceY_px = DisplaceY_deg * pixel_per_dg; // convert deg to pixels

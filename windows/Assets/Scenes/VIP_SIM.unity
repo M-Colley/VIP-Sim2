@@ -13118,7 +13118,7 @@ MonoBehaviour:
   Shader: {fileID: 4800000, guid: 5e6ba76c687f147fb91af2c287f17c3e, type: 3}
   LinkEyes: 1
   anomType: 0
-  severityIndex: 0
+  severityIndex: 0.7
 --- !u!114 &858823461
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13289,7 +13289,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Shader: {fileID: 4800000, guid: d451d34d323d6da46a27a1c7c3c110a6, type: 3}
   LinkEyes: 1
-  severityIndex: 0
+  severityIndex: 0.45
   useBrightness: 1
   useContrast: 1
   useFrosting: 1
@@ -13310,7 +13310,7 @@ MonoBehaviour:
   Shader: {fileID: 4800000, guid: d451d34d323d6da46a27a1c7c3c110a6, type: 3}
   LinkEyes: 1
   Brightness: 0
-  Contrast: 0
+  Contrast: -45
   ContrastCoeff: {x: 0.5, y: 0.5, z: 0.5}
   Gamma: 1
 --- !u!114 &858823471

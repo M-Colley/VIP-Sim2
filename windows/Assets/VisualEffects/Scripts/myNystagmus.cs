@@ -46,6 +46,14 @@ namespace VisSim
         // geometry info
         [Linkable, Range(100, 10000), Tooltip("Only required if using artificial rotation")]
         public int screenWidth_px = 1334;
+        [Tooltip("Derive the screen width from the display actually in use.\n\n" +
+                 "Leave this on. The value below was a fixed constant, so every " +
+                 "degree-based parameter was silently mis-scaled on any display of a " +
+                 "different width -- on a 3840px screen a constant of 1334 makes each " +
+                 "degree 2.9x too small, and the simulated severity is wrong by that " +
+                 "factor. Turn it off only to reproduce a specific rig.")]
+        public bool autoScreenWidth = true;
+
         [Linkable, Range(1f, 180.0f), Tooltip("Only required if using artificial rotation")]
         public float viewingAngle_deg = 100.0f;
         private float pixel_per_dg;
@@ -93,6 +101,9 @@ namespace VisSim
                 prev_rise_exp = rise_exp;
             }
 
+            // The angular scale has to come from the display in use,
+            // not a constant baked in on someone else's monitor.
+            if (autoScreenWidth && Screen.width > 0) screenWidth_px = Screen.width;
             pixel_per_dg = screenWidth_px / viewingAngle_deg;
 
             //Update timer

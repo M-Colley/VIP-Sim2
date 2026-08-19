@@ -83,6 +83,15 @@ that can be handed to someone who was not in the room when it was written.
 - The effect list being deadlocked by its own visibility gate.
 - Calibration and info toolbar buttons that had borders and no hover feedback.
 - Footer buttons rendering as unreadable slivers on 4K displays and on laptops.
+- **Three symptoms that did nothing when switched on.** Cataract and Color Vision
+  Deficiency shipped with severity 0 -- Cataract's shader returns early at
+  zero, so it was a literal no-op -- and Contrast Sensitivity shipped at neutral
+  brightness and contrast. Switching them on changed nothing, which is indistinguishable
+  from a broken effect.
+- **Degree-to-pixel conversion used a hardcoded screen width.** Blur, Double Vision and
+  Eye Tremor converted visual angle to pixels with a constant of 1334 or 2560, so on any
+  other display every degree-based severity was mis-scaled -- on a 3840px screen by a
+  factor of 2.9. The width is now read from the display in use.
 
 ### Known limitations
 
