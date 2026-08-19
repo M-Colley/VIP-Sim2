@@ -215,7 +215,46 @@ cycle no longer does.
 
    A second thing to decide with it: on wlroots the portal only offers whole outputs, so a
    monitor capture contains the overlay and feeds back into itself. Window capture, which
-   GNOME's and KDE's portals do offer, avoids that.
+   GNOME's and KDE's portals do offer, avoids that. VIP-Sim now reads
+   `AvailableSourceTypes` and asks for exactly one kind rather than hardcoding both, and
+   says what a whole-screen-only desktop costs. Measured on sway 1.11: it comes back
+   `0x1`, because xdg-desktop-portal-wlr advertises WINDOW only when the compositor
+   implements `ext_foreign_toplevel_image_capture_source_manager_v1`, which wlroots 0.19
+   does not. There is no protocol by which a client asks not to be captured -- that
+   exclusion exists nowhere in wayland-protocols and `ext-image-copy-capture-v1` does not
+   add it -- so source selection is the only lever.
+
+### What the player's window turned out to be, measured
+
+Everything below was run rather than reasoned about, because the obvious answers were
+wrong twice.
+
+- **The player is a native Wayland client.** `swaymsg -t get_tree` reports
+  `shell: xdg_shell`, `app_id: VIP-Sim`, no X11 window id, and the player log says
+  "Selected window backend: wayland".
+- **Nothing can be hooked in-process.** `objdump -T UnityPlayer.so` exports exactly one
+  dynamic symbol, `PlayerMain`. SDL2 is statically linked with every symbol hidden, and it
+  reaches libwayland by `dlopen` + `dlsym` rather than by linkage, so neither
+  `dlopen(NULL)` + `dlsym("SDL_GetWindowWMInfo")` nor a plain `LD_PRELOAD` of a
+  `wl_proxy_*` symbol can see it.
+- **`SDL_VIDEODRIVER=x11` does work**, and the whole pipeline survives it: the window
+  becomes an XWayland client with a real X11 id and capture, transport and the presenter
+  all still run. In WSL this additionally needs a writable `/tmp/.X11-unix` with its
+  sticky bit, which WSLg mounts read-only; an unprivileged user namespace with a tmpfs
+  over that path is enough.
+- **But the XWayland window has no alpha channel** -- `xwininfo` reports `Depth: 24` --
+  so it cannot be made transparent from the X11 side, however the compositing is done.
+- **And wlroots does not honour an empty `ShapeBounding`.** Setting both the bounding and
+  input shapes to nothing with `XShapeCombineRectangles` succeeds, and sway carries on
+  drawing the whole window: the desktop behind stayed hidden. The desktop was confirmed
+  visible in the same run by photographing it before the player started. So under
+  XWayland on wlroots this buys click-through and not invisibility.
+
+The remaining routes are therefore: interpose `dlsym` itself to catch the `wl_surface` as
+SDL creates it and then clear its opaque region and input region; or decouple rendering
+from the window, which is a genuinely large piece of work -- VIP-Sim's entire interface is
+two ScreenSpaceOverlay canvases and five IMGUI surfaces, and `OnGUI` cannot render into a
+RenderTexture at all.
 5. **dmabuf** — probed, not implemented, and the probe is why. Nested Sway on a software
    renderer does not advertise `zwp_linux_dmabuf_v1` at all, and the container has neither
    `/dev/dri` nor a `udmabuf` module, so a dmabuf cannot be created by any route here. The
