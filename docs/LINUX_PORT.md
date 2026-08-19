@@ -138,8 +138,13 @@ cycle no longer does.
    progressively more. That was the result the whole design hinged on, and it is no longer
    an assumption. Still to confirm on a real distro against KWin, and against GNOME, where
    the presenter is expected to report the missing protocol and exit.
-2. Capture plugin v1 (portal + PipeWire, CPU frames).
-3. Transport v1 (shm) wiring Unity → presenter; effects visible end-to-end.
+2. ~~**Transport v1**~~ — **DONE.** `wl_shm` segment, producer library and presenter,
+   verified in nested Sway: frames cross the process boundary, alpha survives, the
+   presenter hot-attaches to a producer that starts later, and the input region switches
+   between click-through and an interactive panel rect. `LinuxPresenter.cs` is the Unity
+   end, using `AsyncGPUReadback` so the render thread is not stalled.
+3. Capture plugin v1 (portal + PipeWire, CPU frames) — the remaining big piece, and the
+   one that works on GNOME even where the overlay does not.
 4. dmabuf v2 for both directions; performance pass with the F11 benchmark.
 5. Packaging: tarball/AppImage, `.desktop` file, `setup.sh` equivalent (the execute bit
    dies in transit exactly as it does for macOS); flip CI's Linux entry from

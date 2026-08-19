@@ -1,5 +1,6 @@
 #!/bin/bash
-# Build the VIP-Sim Wayland presenter spike.
+# Build the VIP-Sim Wayland presenter, the producer library Unity loads, and a test
+# producer that stands in for Unity.
 #
 # wayland-scanner turns the protocol XML into C: a client header of the request/event
 # stubs, and a "private-code" translation unit holding the interface tables the client
@@ -29,12 +30,25 @@ wayland-scanner private-code  "$XML" build/wlr-layer-shell-unstable-v1-protocol.
 wayland-scanner client-header "$XDG" build/xdg-shell-client-protocol.h
 wayland-scanner private-code  "$XDG" build/xdg-shell-protocol.c
 
-gcc -O2 -Wall -Wextra -Wno-unused-parameter \
-    -I build \
+WARN="-Wall -Wextra -Wno-unused-parameter"
+
+# 1. The producer library Unity loads. No Wayland dependency at all.
+gcc -O2 $WARN -fPIC -fvisibility=hidden -shared \
+    -o build/libvipsim_present.so \
+    vipsim_present.c -lrt
+echo "built: build/libvipsim_present.so"
+
+# 2. The presenter, which owns the layer surface.
+gcc -O2 $WARN -I build -I . \
     -o build/vipsim-presenter \
     presenter.c \
     build/wlr-layer-shell-unstable-v1-protocol.c \
     build/xdg-shell-protocol.c \
-    $(pkg-config --cflags --libs wayland-client)
+    $(pkg-config --cflags --libs wayland-client) -lrt
+echo "built: build/vipsim-presenter"
 
-echo "built: $(pwd)/build/vipsim-presenter"
+# 3. A stand-in for Unity, linked against the real library.
+gcc -O2 $WARN -I . \
+    -o build/testproducer \
+    testproducer.c -L build -lvipsim_present -Wl,-rpath,'$ORIGIN' -lm
+echo "built: build/testproducer"

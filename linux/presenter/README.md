@@ -94,11 +94,46 @@ rather than crashing or hanging, which is the behaviour GNOME users will get.
 Still unverified: behaviour on a real distro against KWin or GNOME, and anything involving
 Unity — the spike does not touch it.
 
-## Next, once the above is verified
+## Phase 3: frame transport — done and verified
 
-1. Frame transport, Unity → presenter: `wl_shm` first (simple and correct), then
-   `zwp_linux_dmabuf_v1` for zero-copy at 4K.
-2. Toggle the input region to the panel rect when the UI needs to be interactive — the
-   moral equivalent of `infoState` / `tutorialState` on the other platforms.
-3. Capture via `xdg-desktop-portal` + PipeWire, which is a separate component and works on
-   GNOME too, even where the overlay cannot.
+VIP-Sim's frames now reach the layer surface. Three pieces:
+
+| | |
+|---|---|
+| `vipsim_shm.h` | the whole interface: one header struct in one shared segment |
+| `libvipsim_present.so` | producer side, loaded by Unity. No Wayland dependency at all |
+| `vipsim-presenter` | owns the layer surface, presents whatever the producer publishes |
+
+The producer writes pixels then bumps a sequence number; the presenter watches it and
+presents. There is no lock, deliberately: a torn frame is harmless and 16ms from being
+replaced, whereas a hung producer holding a lock would stall the compositor callback loop
+and freeze an overlay covering the whole desktop.
+
+Verified 2026-08-19 in nested Sway, background `#104020`:
+
+```
+[presenter] no VIP-Sim frames yet; showing the alpha test pattern.
+[presenter] configured: 1280x720
+[presenter] attached to VIP-Sim: 640x360, stride 2560
+[presenter] input region = panel rect (interactive)
+```
+
+- **Frames arrive.** Two screenshots a second apart differ, so the moving pattern really
+  is crossing the process boundary rather than a first frame having stuck.
+- **Alpha survives the transport.** The producer's half-transparent ground shows the
+  compositor's green through it; the opaque disc does not.
+- **Hot attach works.** The presenter was already running and showing the test pattern
+  when the producer started, and picked it up without a restart.
+- **The input region switches**, which is the Wayland answer to `infoState` /
+  `tutorialState`: outside the panel rectangle the compositor never routes input here.
+
+`testproducer` stands in for Unity against the same library, so what was tested is the
+real path rather than a mock of it.
+
+## Next
+
+1. **Capture** — `xdg-desktop-portal` + PipeWire. Separate component, and the one that
+   also works on GNOME, where the overlay cannot.
+2. **dmabuf** — `zwp_linux_dmabuf_v1` to drop the CPU copies, needed for 4K at rate.
+3. **The global cursor** — Wayland does not let a client read the pointer. Still open;
+   webcam gaze may simply be the default on this platform.
