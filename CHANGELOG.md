@@ -37,6 +37,12 @@ that can be handed to someone who was not in the room when it was written.
 - **Linux presenter spike** (`linux/presenter/`). A standalone Wayland client proving the
   overlay design: layer surface on the overlay layer, per-pixel alpha composited by the
   compositor, empty input region for click-through. Verified in a nested Sway session.
+- **Linux frame transport and capture.** VIP-Sim feeds the Wayland presenter over shared
+  memory, and screen capture goes through xdg-desktop-portal and PipeWire. On Linux the
+  portal's picker replaces the window list, because Wayland does not let a client
+  enumerate another application's windows.
+- **Webcam gaze is the default on Linux.** Wayland does not expose the global pointer, so
+  mouse-following cannot track the screen being simulated — see `docs/LINUX_PORT.md`.
 - **Signing and release tooling** — `tools/sign-macos.sh`, `tools/sign-windows.ps1`,
   entitlements, and `docs/RELEASE.md`.
 - **Legal documentation** — `THIRD-PARTY-NOTICES.md`, `docs/PRIVACY.md`, `docs/EULA.md`.
