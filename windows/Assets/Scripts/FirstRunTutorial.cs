@@ -60,10 +60,17 @@ public class FirstRunTutorial : MonoBehaviour
         if (_open && Input.GetKeyDown(KeyCode.Escape)) Finish();
     }
 
+    /// <summary>
+    /// True while the walkthrough is up. Linux reads this: the portal's source picker has
+    /// to be raised by something the user did, and dismissing the tutorial is that moment.
+    /// </summary>
+    public static bool IsOpen { get; private set; }
+
     private void SetOpen(bool open)
     {
         if (_open == open) return;
         _open = open;
+        IsOpen = open;
 
         var window = FindAnyObjectByType<TransparentWindow>(FindObjectsInactive.Include);
         if (window == null) return;

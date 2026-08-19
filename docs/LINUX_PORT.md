@@ -186,12 +186,42 @@ cycle no longer does.
    the harness repaints the background between two colours and the captured centre pixel
    alternates `BGRA=50 30 20` / `20 30 a0`, which is exactly `#203050` / `#A03020`, with
    the dumped frame 99.97% the expected colour.
-4. **dmabuf** — probed, not implemented, and the probe is why. Nested Sway on a software
+4. ~~**End-to-end**~~ — **RUN, and it holds together.** `linux/presenter/run-endtoend-test.sh`
+   stages the libraries into a real Linux player, starts it inside the nested session, and
+   photographs the result. One process: the player launches the presenter itself, because
+   Wayland forcing a second process is our constraint and should not become a second thing
+   for the user to start. The chain each run prints:
+
+   ```
+   [LinuxPresenter] started .../vipsim-presenter (pid 3455)
+   [presenter] compositor offers zwlr_layer_shell_v1 v4
+   [presenter] configured: 1280x720
+   [presenter] attached to VIP-Sim: 1280x720, stride 5120
+   [presenter] input region empty (click-through)
+   [LinuxCapture] asking the compositor for a source
+   [vipsim_capture] streaming 1280x720
+   [LinuxCapture] source is 1280x720
+   ```
+
+   **One gap is left, and it is the architectural one this document already predicted.**
+   The diagram above says "Unity player (hidden / offscreen rendering)"; nothing implements
+   the hiding. Unity's own window is a fullscreen, opaque toplevel, so it sits between the
+   real desktop and the overlay: the frame is 79% transparent, the presenter composites
+   that alpha correctly, and what shows through is Unity's black window rather than the
+   desktop. Closing it needs the render path to stop depending on the player's window size
+   — a camera drawing into an output-sized RenderTexture, with the window itself reduced to
+   nothing — rather than a flag. It is not a compositor problem and not a capture problem;
+   both of those now work.
+
+   A second thing to decide with it: on wlroots the portal only offers whole outputs, so a
+   monitor capture contains the overlay and feeds back into itself. Window capture, which
+   GNOME's and KDE's portals do offer, avoids that.
+5. **dmabuf** — probed, not implemented, and the probe is why. Nested Sway on a software
    renderer does not advertise `zwp_linux_dmabuf_v1` at all, and the container has neither
    `/dev/dri` nor a `udmabuf` module, so a dmabuf cannot be created by any route here. The
    presenter binds the protocol and reports accepted formats when a compositor offers it;
    the import path itself is left for a machine with a GPU rather than written blind.
-5. Packaging: tarball/AppImage, `.desktop` file, `setup.sh` equivalent (the execute bit
+6. Packaging: tarball/AppImage, `.desktop` file, `setup.sh` equivalent (the execute bit
    dies in transit exactly as it does for macOS); flip CI's Linux entry from
    experimental once the licence secrets exist.
 

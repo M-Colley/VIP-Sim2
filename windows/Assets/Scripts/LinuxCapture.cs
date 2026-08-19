@@ -73,6 +73,8 @@ public class LinuxCapture : MonoBehaviour
         if (rc != 0) Debug.LogWarning($"[LinuxCapture] capture request failed ({rc}): {Message}");
     }
 
+    private bool _requested;
+
     private void Awake() => _instance = this;
 
     private void Start()
@@ -99,7 +101,25 @@ public class LinuxCapture : MonoBehaviour
 
     private void Update()
     {
-        if (!_available || (State)vipsim_capture_state() != State.Streaming) return;
+        if (!_available) return;
+
+        // Raise the picker once, as soon as the user is looking at the tool rather than at
+        // the walkthrough.
+        //
+        // On Windows and macOS this is a window list VIP-Sim draws itself. Wayland will not
+        // let a client enumerate anyone else's windows, so the compositor's own picker takes
+        // its place -- which means there is no list to click, and something has to ask for
+        // it. Asking during the tutorial would put a system dialog over the explanation of
+        // what the tool does, so it waits for that to close.
+        if (!_requested && !FirstRunTutorial.IsOpen)
+        {
+            _requested = true;
+            Debug.Log("[LinuxCapture] asking the compositor for a source -- on Wayland its " +
+                      "picker replaces VIP-Sim's window list.");
+            RequestSource();
+        }
+
+        if ((State)vipsim_capture_state() != State.Streaming) return;
         if (vipsim_capture_frame_size(out int w, out int h) != 0 || w <= 0 || h <= 0) return;
 
         if (Texture == null || Texture.width != w || Texture.height != h)

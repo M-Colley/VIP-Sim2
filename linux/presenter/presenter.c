@@ -357,6 +357,13 @@ static const struct wl_registry_listener registry_listener = {
 
 int main(int argc, char **argv)
 {
+    // Line-buffer stdout. VIP-Sim launches this process with its output on a pipe so the
+    // messages reach the player log, and a pipe is block-buffered by default: everything
+    // said here -- which protocols the compositor offers, what size it configured, whether
+    // a producer attached -- sits in the buffer and is lost when the player kills us on
+    // exit. The one case where these lines matter is the one where they never arrive.
+    setvbuf(stdout, NULL, _IOLBF, 0);
+
     for (int i = 1; i < argc; i++)
         if (!strcmp(argv[i], "--test")) g_force_test_pattern = true;
 
