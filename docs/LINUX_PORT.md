@@ -321,7 +321,21 @@ What is left of the original order:
 
 Two things the nested host does not solve. Frames still cross through a CPU copy, because
 the host offers only `wl_shm`; the hardware path is `zwp_linux_dmabuf_v1`, and it cannot be
-written here -- there is no GPU and no `/dev/dri`, so everything above ran on llvmpipe.
+written on this machine -- though not for the reason first recorded here.
+
+**There is a GPU, and OpenGL runs on it.** Mesa's `d3d12` driver reaches it through
+`/dev/dxg`: `glxinfo` reports `D3D12 (Intel(R) UHD Graphics 770)`. What is missing is a DRM
+render node. `/dev/dri` does not exist, `/sys/class/drm` holds only `version`, and dxgkrnl is
+a vmbus driver rather than a DRM one -- so GBM cannot initialise (`eglinfo` fails on the GBM
+platform) and there is no fd to export a dmabuf from. WSLg's own compositor advertises
+`wl_shm` and nothing else, no `zwp_linux_dmabuf_v1` and no `wl_drm`.
+
+That has a consequence worth stating plainly, because it makes dmabuf more than an
+optimisation: a compositor offering only `wl_shm` sends Mesa down its software path, so the
+player renders in **llvmpipe even on a machine with a working GPU**. Measured -- with
+`LIBGL_ALWAYS_SOFTWARE=0` and `GALLIUM_DRIVER=d3d12` forced, the hosted player still reports
+`Renderer: llvmpipe`. Offering dmabuf is not what makes the copy cheaper; it is what lets the
+player use the GPU at all inside our compositor.
 Note also that `wl_drm` is dead on modern distros: Mesa ships with `HAVE_BIND_WL_DISPLAY`
 disabled, so `zwp_linux_dmabuf_v1` is the only route. And `LIBGL_ALWAYS_SOFTWARE=1` belongs
 in the player's environment only while the host is shm-only -- with it set, Mesa goes

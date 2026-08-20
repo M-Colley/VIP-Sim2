@@ -659,10 +659,14 @@ int main(int argc, char **argv)
             setenv("WAYLAND_DISPLAY", vipsim_host_socket(), 1);
             setenv("VIPSIM_HOSTED", "1", 1);
 
-            // Only while the host offers shm and nothing else. Mesa would otherwise climb a
-            // three-rung retry ladder to reach the software path anyway, printing four
-            // alarming warnings on the way that mean nothing on a machine with no GPU.
-            setenv("LIBGL_ALWAYS_SOFTWARE", "1", 1);
+            // Only while the host offers shm and nothing else, and only if nobody has said
+            // otherwise -- hence overwrite 0, so this can be tested against.
+            //
+            // With no dmabuf to offer, Mesa's Wayland platform takes its software path
+            // regardless; this just stops it climbing a three-rung retry ladder to get
+            // there and printing four alarming warnings on the way. It is not what makes
+            // the rendering software: offering dmabuf is what would make it hardware.
+            setenv("LIBGL_ALWAYS_SOFTWARE", "1", 0);
 
             // Belt and braces with the decoration manager: neither libdecor nor a titlebar.
             setenv("SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR", "0", 1);
