@@ -50,6 +50,13 @@ static struct {
     int32_t   fw, fh;
     uint32_t  fstride;
     unsigned  fseq;
+
+    struct wl_list pointers;    // wl_pointer resources
+    struct wl_list keyboards;   // wl_keyboard resources
+    bool           pointer_in;  // the pointer is currently over the player's surface
+    bool           keyboard_in;
+    int            keymap_fd;
+    uint32_t       keymap_size, keymap_format;
 } H;
 
 static uint32_t now_ms(void)
@@ -222,7 +229,6 @@ static void compositor_create_surface(struct wl_client *c, struct wl_resource *r
                                                wl_resource_get_version(r), id);
     if (!s) { wl_client_post_no_memory(c); return; }
     wl_resource_set_implementation(s, &surface_impl, NULL, NULL);
-    if (!H.surface) H.surface = s;
 }
 
 static void compositor_create_region(struct wl_client *c, struct wl_resource *r, uint32_t id)
@@ -273,18 +279,59 @@ static void bind_output(struct wl_client *c, void *data, uint32_t version, uint3
 
 // ------------------------------------------------------------------ wl_seat
 
+// The player's input devices. A list rather than a single resource because a client may
+// legitimately ask for the same device more than once, and a stale pointer here would be a
+// use-after-free on the next event rather than a missing click.
+static void input_resource_destroyed(struct wl_resource *r)
+{
+    wl_list_remove(wl_resource_get_link(r));
+}
+
+static void pointer_set_cursor(struct wl_client *c, struct wl_resource *r, uint32_t serial,
+                               struct wl_resource *surface, int32_t hx, int32_t hy)
+{
+    (void)c; (void)r; (void)serial; (void)surface; (void)hx; (void)hy;
+    // The cursor the user sees is drawn by their own compositor over the overlay. A cursor
+    // set in here would be one nobody can see, on a surface nobody composites.
+}
+static void pointer_release(struct wl_client *c, struct wl_resource *r)
+{ (void)c; wl_resource_destroy(r); }
+
+static const struct wl_pointer_interface pointer_impl = { pointer_set_cursor, pointer_release };
+
+static void keyboard_release(struct wl_client *c, struct wl_resource *r)
+{ (void)c; wl_resource_destroy(r); }
+
+static const struct wl_keyboard_interface keyboard_impl = { keyboard_release };
+
 static void seat_get_pointer(struct wl_client *c, struct wl_resource *r, uint32_t id)
 {
     struct wl_resource *p = wl_resource_create(c, &wl_pointer_interface,
                                                wl_resource_get_version(r), id);
-    if (p) wl_resource_set_implementation(p, NULL, NULL, NULL);
+    if (!p) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(p, &pointer_impl, NULL, input_resource_destroyed);
+    wl_list_insert(&H.pointers, wl_resource_get_link(p));
 }
+
 static void seat_get_keyboard(struct wl_client *c, struct wl_resource *r, uint32_t id)
 {
     struct wl_resource *k = wl_resource_create(c, &wl_keyboard_interface,
                                                wl_resource_get_version(r), id);
-    if (k) wl_resource_set_implementation(k, NULL, NULL, NULL);
+    if (!k) { wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(k, &keyboard_impl, NULL, input_resource_destroyed);
+    wl_list_insert(&H.keyboards, wl_resource_get_link(k));
+
+    // The keymap has to go out now: SDL reads it as soon as it has the device, and a
+    // keyboard with no keymap produces keycodes it cannot turn into characters.
+    if (H.keymap_fd >= 0)
+        wl_keyboard_send_keymap(k, H.keymap_format, H.keymap_fd, H.keymap_size);
+    else
+        wl_keyboard_send_keymap(k, WL_KEYBOARD_KEYMAP_FORMAT_NO_KEYMAP, -1, 0);
+
+    if (wl_resource_get_version(k) >= 4)
+        wl_keyboard_send_repeat_info(k, 25, 600);
 }
+
 static void seat_get_touch(struct wl_client *c, struct wl_resource *r, uint32_t id)
 {
     struct wl_resource *t = wl_resource_create(c, &wl_touch_interface,
@@ -305,10 +352,10 @@ static void bind_seat(struct wl_client *c, void *data, uint32_t version, uint32_
     if (!r) { wl_client_post_no_memory(c); return; }
     wl_resource_set_implementation(r, &seat_impl, NULL, NULL);
 
-    // No capabilities yet. The seat exists so SDL does not dereference a null input device;
-    // forwarding real pointer and keyboard events from the overlay is the next stage. An
-    // empty capability set is legal and the player copes with it.
-    wl_seat_send_capabilities(r, 0);
+    // A pointer and a keyboard, both driven by what the overlay receives from the user's
+    // own compositor. Nothing here opens a device: this seat has no hardware behind it and
+    // reports only what is forwarded to it.
+    wl_seat_send_capabilities(r, WL_SEAT_CAPABILITY_POINTER | WL_SEAT_CAPABILITY_KEYBOARD);
     if (version >= 2) wl_seat_send_name(r, "vipsim");
 }
 
@@ -430,12 +477,16 @@ static void wm_base_create_positioner(struct wl_client *c, struct wl_resource *r
 static void wm_base_get_xdg_surface(struct wl_client *c, struct wl_resource *r, uint32_t id,
                                     struct wl_resource *surface)
 {
-    (void)surface;
     struct wl_resource *x = wl_resource_create(c, &xdg_surface_interface,
                                                wl_resource_get_version(r), id);
     if (!x) { wl_client_post_no_memory(c); return; }
     wl_resource_set_implementation(x, &xdg_surface_impl, NULL, NULL);
     H.xdg_surface = x;
+
+    // The window's surface, identified by the role rather than by being the first one
+    // created: SDL also makes surfaces for the cursor, and input aimed at one of those
+    // would go nowhere the user can see.
+    H.surface = surface;
 }
 
 static void wm_base_pong(struct wl_client *c, struct wl_resource *r, uint32_t serial)
@@ -516,6 +567,9 @@ const char *vipsim_host_start(void)
         return NULL;
     }
     H.loop = wl_display_get_event_loop(H.display);
+    wl_list_init(&H.pointers);
+    wl_list_init(&H.keyboards);
+    H.keymap_fd = -1;
 
     // A socket named for this process, not "wayland-N".
     //
@@ -610,6 +664,119 @@ void vipsim_host_stop(void)
     H.frame = NULL;
     H.frame_cap = 0;
 }
+// ------------------------------------------------------------------ input
+
+// The player has no input devices of its own. It sits inside a compositor with no hardware
+// behind it, so everything below is the overlay handing on what the user's real compositor
+// delivered to the layer surface. The layer surface covers the whole output and the player's
+// window is the same size, so surface coordinates pass through unchanged.
+
+void vipsim_host_set_keymap(int fd, uint32_t size, uint32_t format)
+{
+    if (H.keymap_fd >= 0) close(H.keymap_fd);
+    H.keymap_fd = fd;            // ours to close from here on
+    H.keymap_size = size;
+    H.keymap_format = format;
+
+    // Forwarded verbatim rather than rebuilt. The user's keymap is whatever their compositor
+    // decided it is, and handing the same description straight through means the player
+    // agrees with the rest of their desktop about what the keys mean -- including layouts
+    // this code has never heard of.
+    struct wl_resource *k;
+    wl_resource_for_each(k, &H.keyboards)
+        wl_keyboard_send_keymap(k, format, fd, size);
+}
+
+void vipsim_host_pointer_motion(uint32_t time, double x, double y)
+{
+    if (!H.surface) return;
+    struct wl_resource *p;
+    uint32_t   serial = wl_display_next_serial(H.display);
+    wl_fixed_t fx = wl_fixed_from_double(x), fy = wl_fixed_from_double(y);
+    bool       entering = !H.pointer_in;
+
+    static bool said;
+    if (!said) {
+        said = true;
+        printf("[host] forwarding pointer to the player; %s pointer resources, surface %s\n",
+               wl_list_empty(&H.pointers) ? "NO" : "have", H.surface ? "present" : "MISSING");
+    }
+
+    wl_resource_for_each(p, &H.pointers) {
+        if (entering) wl_pointer_send_enter(p, serial, H.surface, fx, fy);
+        wl_pointer_send_motion(p, time, fx, fy);
+        if (wl_resource_get_version(p) >= WL_POINTER_FRAME_SINCE_VERSION)
+            wl_pointer_send_frame(p);
+    }
+    H.pointer_in = true;
+}
+
+void vipsim_host_pointer_leave(void)
+{
+    if (!H.pointer_in || !H.surface) return;
+    struct wl_resource *p;
+    uint32_t serial = wl_display_next_serial(H.display);
+    wl_resource_for_each(p, &H.pointers) {
+        wl_pointer_send_leave(p, serial, H.surface);
+        if (wl_resource_get_version(p) >= WL_POINTER_FRAME_SINCE_VERSION)
+            wl_pointer_send_frame(p);
+    }
+    H.pointer_in = false;
+}
+
+void vipsim_host_pointer_button(uint32_t time, uint32_t button, uint32_t state)
+{
+    struct wl_resource *p;
+    uint32_t serial = wl_display_next_serial(H.display);
+    wl_resource_for_each(p, &H.pointers) {
+        wl_pointer_send_button(p, serial, time, button, state);
+        if (wl_resource_get_version(p) >= WL_POINTER_FRAME_SINCE_VERSION)
+            wl_pointer_send_frame(p);
+    }
+}
+
+void vipsim_host_pointer_axis(uint32_t time, uint32_t axis, double value)
+{
+    struct wl_resource *p;
+    wl_resource_for_each(p, &H.pointers) {
+        wl_pointer_send_axis(p, time, axis, wl_fixed_from_double(value));
+        if (wl_resource_get_version(p) >= WL_POINTER_FRAME_SINCE_VERSION)
+            wl_pointer_send_frame(p);
+    }
+}
+
+void vipsim_host_keyboard_focus(bool focused)
+{
+    if (!H.surface || H.keyboard_in == focused) return;
+    struct wl_resource *k;
+    uint32_t serial = wl_display_next_serial(H.display);
+    struct wl_array keys;
+    wl_array_init(&keys);
+
+    wl_resource_for_each(k, &H.keyboards) {
+        if (focused) wl_keyboard_send_enter(k, serial, H.surface, &keys);
+        else         wl_keyboard_send_leave(k, serial, H.surface);
+    }
+    wl_array_release(&keys);
+    H.keyboard_in = focused;
+}
+
+void vipsim_host_key(uint32_t time, uint32_t key, uint32_t state)
+{
+    struct wl_resource *k;
+    uint32_t serial = wl_display_next_serial(H.display);
+    wl_resource_for_each(k, &H.keyboards)
+        wl_keyboard_send_key(k, serial, time, key, state);
+}
+
+void vipsim_host_modifiers(uint32_t depressed, uint32_t latched, uint32_t locked, uint32_t group)
+{
+    struct wl_resource *k;
+    uint32_t serial = wl_display_next_serial(H.display);
+    wl_resource_for_each(k, &H.keyboards)
+        wl_keyboard_send_modifiers(k, serial, depressed, latched, locked, group);
+}
+
 // ------------------------------------------------------------------ self-test
 
 // Prove the socket is usable before the player is launched.

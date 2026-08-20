@@ -55,6 +55,25 @@ unsigned vipsim_host_commits(void);
 /// next dispatch.
 unsigned vipsim_host_frame(const void **data, int32_t *w, int32_t *h, uint32_t *stride);
 
+// ---- input, forwarded from the overlay ----
+//
+// The player has no input devices of its own: it runs in a compositor with no hardware
+// behind it. Everything here is what the user's real compositor delivered to the layer
+// surface, handed on. The layer surface covers the output and the player's window is the
+// same size, so surface coordinates pass through unchanged.
+
+/// Hand on the compositor's own keymap description. Takes ownership of the fd.
+void vipsim_host_set_keymap(int fd, uint32_t size, uint32_t format);
+
+void vipsim_host_pointer_motion(uint32_t time, double x, double y);
+void vipsim_host_pointer_leave(void);
+void vipsim_host_pointer_button(uint32_t time, uint32_t button, uint32_t state);
+void vipsim_host_pointer_axis(uint32_t time, uint32_t axis, double value);
+
+void vipsim_host_keyboard_focus(bool focused);
+void vipsim_host_key(uint32_t time, uint32_t key, uint32_t state);
+void vipsim_host_modifiers(uint32_t depressed, uint32_t latched, uint32_t locked, uint32_t group);
+
 /// True once a client has connected.
 bool vipsim_host_has_client(void);
 

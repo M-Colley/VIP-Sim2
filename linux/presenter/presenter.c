@@ -53,6 +53,7 @@ static bool g_force_test_pattern;
 // Producer segment, mapped read-only for as long as it exists.
 static struct vipsim_shm_header *g_prod;
 static unsigned g_last_host_seq;
+static bool g_host_mode;
 static void                     *g_prod_map;
 static size_t                    g_prod_size;
 static uint32_t                  g_last_seq = 0xFFFFFFFFu;
@@ -192,7 +193,11 @@ static void copy_host(uint32_t *dst, int dw, int dh)
 static void apply_input_region(void)
 {
     struct wl_region *r = wl_compositor_create_region(g_compositor);
-    if (g_panel[2] > 0 && g_panel[3] > 0)
+
+    // Only when we are hosting the player. Without the nested compositor the player still
+    // has its own window underneath catching clicks, and an overlay that took them instead
+    // would swallow them: there would be nowhere to forward them to.
+    if (g_host_mode && g_panel[2] > 0 && g_panel[3] > 0)
         wl_region_add(r, g_panel[0], g_panel[1], g_panel[2], g_panel[3]);
     wl_surface_set_input_region(g_surface, r);
     wl_region_destroy(r);
@@ -215,17 +220,24 @@ static void present(void)
         copy_host((uint32_t *)b->data, g_width, g_height);
     } else if (g_prod && !g_force_test_pattern) {
         copy_producer((uint32_t *)b->data, g_width, g_height);
+    } else {
+        draw_test_pattern((uint32_t *)b->data, g_width, g_height);
+    }
 
+    // The rectangle that should catch the mouse, whichever way the pixels arrived. This
+    // lived inside the producer branch and so was skipped the moment frames started coming
+    // from the host instead -- the overlay went on taking no input at all, which looks
+    // exactly like input forwarding that does not work.
+    if (g_prod) {
         int32_t p[4] = { g_prod->panel_x, g_prod->panel_y, g_prod->panel_w, g_prod->panel_h };
         if (!g_panel_valid || memcmp(p, g_panel, sizeof p) != 0) {
             memcpy(g_panel, p, sizeof p);
             g_panel_valid = true;
             apply_input_region();
-            printf("[presenter] input region %s\n",
-                   (p[2] > 0 && p[3] > 0) ? "= panel rect (interactive)" : "empty (click-through)");
+            printf("[presenter] input region %s (%d,%d %dx%d)\n",
+                   (p[2] > 0 && p[3] > 0) ? "= panel rect (interactive)" : "empty (click-through)",
+                   p[0], p[1], p[2], p[3]);
         }
-    } else {
-        draw_test_pattern((uint32_t *)b->data, g_width, g_height);
     }
 
     b->busy = true;
@@ -375,6 +387,150 @@ static const struct zwp_linux_dmabuf_v1_listener dmabuf_listener = {
     .modifier = dmabuf_modifier,
 };
 
+// ---------------------------------------------------------------- input
+
+// Everything the user's compositor delivers to the layer surface is handed to the player.
+//
+// The overlay is the only thing on screen: the player's window lives in our own compositor
+// and the user never sees it, so it can never be focused or clicked directly. Without this
+// the simulator is a picture -- the toolbar, the effect list and the severity sliders would
+// all be unreachable, which is the objection that sank every other way of getting the
+// player's window off the screen.
+//
+// Coordinates pass through unchanged. The layer surface covers the whole output and the
+// player's window is exactly that size, because the wl_output the player is told about is
+// the one we configure from the layer surface.
+
+static struct wl_seat     *g_seat;
+static struct wl_pointer  *g_pointer;
+static struct wl_keyboard *g_keyboard;
+
+static void pointer_enter(void *d, struct wl_pointer *p, uint32_t serial,
+                          struct wl_surface *surf, wl_fixed_t sx, wl_fixed_t sy)
+{
+    (void)d; (void)p; (void)serial; (void)surf;
+    printf("[presenter] pointer entered the overlay at (%.0f,%.0f)\n",
+           wl_fixed_to_double(sx), wl_fixed_to_double(sy));
+    vipsim_host_pointer_motion(0, wl_fixed_to_double(sx), wl_fixed_to_double(sy));
+}
+
+static void pointer_leave(void *d, struct wl_pointer *p, uint32_t serial, struct wl_surface *surf)
+{
+    (void)d; (void)p; (void)serial; (void)surf;
+    vipsim_host_pointer_leave();
+}
+
+static void pointer_motion(void *d, struct wl_pointer *p, uint32_t time,
+                           wl_fixed_t sx, wl_fixed_t sy)
+{
+    (void)d; (void)p;
+    vipsim_host_pointer_motion(time, wl_fixed_to_double(sx), wl_fixed_to_double(sy));
+}
+
+static void pointer_button(void *d, struct wl_pointer *p, uint32_t serial, uint32_t time,
+                           uint32_t button, uint32_t state)
+{
+    (void)d; (void)p; (void)serial;
+    // Once. The first click proves the whole chain -- the user's compositor routed it to
+    // the overlay, and it is on its way to a player whose window is not on their screen.
+    static bool said;
+    if (!said) { said = true; printf("[presenter] first click forwarded to the player.\n"); }
+    vipsim_host_pointer_button(time, button, state);
+}
+
+static void pointer_axis(void *d, struct wl_pointer *p, uint32_t time,
+                         uint32_t axis, wl_fixed_t value)
+{
+    (void)d; (void)p;
+    vipsim_host_pointer_axis(time, axis, wl_fixed_to_double(value));
+}
+
+static void pointer_noop_frame(void *d, struct wl_pointer *p) { (void)d; (void)p; }
+static void pointer_noop_u32(void *d, struct wl_pointer *p, uint32_t a) { (void)d; (void)p; (void)a; }
+static void pointer_noop_axis_stop(void *d, struct wl_pointer *p, uint32_t t, uint32_t a)
+{ (void)d; (void)p; (void)t; (void)a; }
+static void pointer_noop_axis_discrete(void *d, struct wl_pointer *p, uint32_t a, int32_t v)
+{ (void)d; (void)p; (void)a; (void)v; }
+static void pointer_noop_axis_value120(void *d, struct wl_pointer *p, uint32_t a, int32_t v)
+{ (void)d; (void)p; (void)a; (void)v; }
+static void pointer_noop_axis_direction(void *d, struct wl_pointer *p, uint32_t a, uint32_t v)
+{ (void)d; (void)p; (void)a; (void)v; }
+
+static const struct wl_pointer_listener pointer_listener = {
+    .enter                   = pointer_enter,
+    .leave                   = pointer_leave,
+    .motion                  = pointer_motion,
+    .button                  = pointer_button,
+    .axis                    = pointer_axis,
+    .frame                   = pointer_noop_frame,
+    .axis_source             = pointer_noop_u32,
+    .axis_stop               = pointer_noop_axis_stop,
+    .axis_discrete           = pointer_noop_axis_discrete,
+    .axis_value120           = pointer_noop_axis_value120,
+    .axis_relative_direction = pointer_noop_axis_direction,
+};
+
+static void kb_keymap(void *d, struct wl_keyboard *k, uint32_t format, int32_t fd, uint32_t size)
+{
+    (void)d; (void)k;
+    // Handed straight on rather than parsed. Ownership of the fd moves to the host.
+    vipsim_host_set_keymap(fd, size, format);
+}
+
+static void kb_enter(void *d, struct wl_keyboard *k, uint32_t serial,
+                     struct wl_surface *surf, struct wl_array *keys)
+{
+    (void)d; (void)k; (void)serial; (void)surf; (void)keys;
+    vipsim_host_keyboard_focus(true);
+}
+
+static void kb_leave(void *d, struct wl_keyboard *k, uint32_t serial, struct wl_surface *surf)
+{
+    (void)d; (void)k; (void)serial; (void)surf;
+    vipsim_host_keyboard_focus(false);
+}
+
+static void kb_key(void *d, struct wl_keyboard *k, uint32_t serial, uint32_t time,
+                   uint32_t key, uint32_t state)
+{
+    (void)d; (void)k; (void)serial;
+    vipsim_host_key(time, key, state);
+}
+
+static void kb_modifiers(void *d, struct wl_keyboard *k, uint32_t serial, uint32_t depressed,
+                         uint32_t latched, uint32_t locked, uint32_t group)
+{
+    (void)d; (void)k; (void)serial;
+    vipsim_host_modifiers(depressed, latched, locked, group);
+}
+
+static void kb_repeat_info(void *d, struct wl_keyboard *k, int32_t rate, int32_t delay)
+{ (void)d; (void)k; (void)rate; (void)delay; }
+
+static const struct wl_keyboard_listener keyboard_listener = {
+    kb_keymap, kb_enter, kb_leave, kb_key, kb_modifiers, kb_repeat_info
+};
+
+static void seat_capabilities(void *d, struct wl_seat *seat, uint32_t caps)
+{
+    (void)d;
+    if ((caps & WL_SEAT_CAPABILITY_POINTER) && !g_pointer) {
+        g_pointer = wl_seat_get_pointer(seat);
+        wl_pointer_add_listener(g_pointer, &pointer_listener, NULL);
+    }
+    if ((caps & WL_SEAT_CAPABILITY_KEYBOARD) && !g_keyboard) {
+        g_keyboard = wl_seat_get_keyboard(seat);
+        wl_keyboard_add_listener(g_keyboard, &keyboard_listener, NULL);
+    }
+    printf("[presenter] seat: %s%s\n",
+           (caps & WL_SEAT_CAPABILITY_POINTER)  ? "pointer "  : "",
+           (caps & WL_SEAT_CAPABILITY_KEYBOARD) ? "keyboard" : "");
+}
+
+static void seat_name(void *d, struct wl_seat *s, const char *n) { (void)d; (void)s; (void)n; }
+
+static const struct wl_seat_listener seat_listener = { seat_capabilities, seat_name };
+
 // ---------------------------------------------------------------- registry
 
 static void on_global(void *data, struct wl_registry *reg, uint32_t name,
@@ -388,6 +544,14 @@ static void on_global(void *data, struct wl_registry *reg, uint32_t name,
     else if (!strcmp(iface, zwlr_layer_shell_v1_interface.name)) {
         g_layer_shell = wl_registry_bind(reg, name, &zwlr_layer_shell_v1_interface, version < 4 ? version : 4);
         printf("[presenter] compositor offers zwlr_layer_shell_v1 v%u\n", version);
+    }
+    else if (!strcmp(iface, wl_seat_interface.name) && !g_seat) {
+        // Only useful in host mode, but bound unconditionally: the layer surface's input
+        // region is what decides whether any of these events ever arrive, and that is
+        // already driven by the panel rectangle.
+        uint32_t v = version < 7 ? version : 7;
+        g_seat = wl_registry_bind(reg, name, &wl_seat_interface, v);
+        wl_seat_add_listener(g_seat, &seat_listener, NULL);
     }
     else if (!strcmp(iface, zwp_linux_dmabuf_v1_interface.name)) {
         uint32_t v = version < 3 ? version : 3;   // v4+ moves formats to a feedback object
@@ -465,6 +629,7 @@ int main(int argc, char **argv)
     zwlr_layer_surface_v1_set_keyboard_interactivity(g_layer_surface, 0);
     wl_surface_commit(g_surface);
 
+    g_host_mode = host_mode;
     if (host_mode) {
         if (!vipsim_host_start()) return 1;
         if (!vipsim_host_selftest()) return 1;

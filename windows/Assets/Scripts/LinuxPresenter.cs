@@ -40,7 +40,9 @@ public class LinuxPresenter : MonoBehaviour
     private bool _open;
     private bool _readbackPending;
     private int _w, _h;
-    private int _lastPanelHash;
+    private readonly int[] _rect = { -1, -1, -1, -1 };
+    private readonly Vector3[] _corners = new Vector3[4];
+    private TransparentWindow _window;
     private byte[] _staging;
     private GCHandle _pin;
     private bool _flip;
@@ -262,15 +264,56 @@ public class LinuxPresenter : MonoBehaviour
     {
         if (!_open) return;
 
-        // Keep the interactive rectangle in step with whichever panel is open. The IMGUI
-        // panels already know their own bounds; anything modal wants the whole screen.
-        int hash = (SymptomInfoOpenHint ? 1 : 0);
-        if (hash != _lastPanelHash)
+        // Publish the rectangle the user must be able to click.
+        //
+        // This is load-bearing on Linux in a way it is not elsewhere. When the player runs
+        // inside the presenter's own compositor its window is not on the user's screen at
+        // all, so the overlay is the only surface they can reach: whatever is left out of
+        // this rectangle is not merely click-through, it is unreachable. The toolbar has to
+        // be in it, and anything modal takes the whole screen.
+        int x = 0, y = 0, w = 0, h = 0;
+        if (SymptomInfoOpenHint)
         {
-            _lastPanelHash = hash;
-            if (SymptomInfoOpenHint) SetInteractiveRect(0, 0, _w, _h);
-            else SetInteractiveRect(0, 0, 0, 0);
+            w = _w; h = _h;
         }
+        else if (TryGetToolbarRect(out int tx, out int ty, out int tw, out int th))
+        {
+            x = tx; y = ty; w = tw; h = th;
+        }
+
+        if (x != _rect[0] || y != _rect[1] || w != _rect[2] || h != _rect[3])
+        {
+            _rect[0] = x; _rect[1] = y; _rect[2] = w; _rect[3] = h;
+            SetInteractiveRect(x, y, w, h);
+        }
+    }
+
+    /// <summary>
+    /// The toolbar's screen rectangle, in the compositor's coordinates.
+    ///
+    /// Unity's screen origin is bottom-left and Wayland's is top-left, so the vertical axis
+    /// is flipped here. Getting that wrong puts the clickable region exactly as far from the
+    /// toolbar as the toolbar is from the other edge -- which reads as "clicks land in the
+    /// wrong place" rather than as an axis convention.
+    /// </summary>
+    private bool TryGetToolbarRect(out int x, out int y, out int w, out int h)
+    {
+        x = y = w = h = 0;
+
+        if (_window == null)
+            _window = FindAnyObjectByType<TransparentWindow>(FindObjectsInactive.Include);
+        var rt = _window != null ? _window.panelRectTransform : null;
+        if (rt == null || !rt.gameObject.activeInHierarchy) return false;
+
+        rt.GetWorldCorners(_corners);
+        float left = _corners[0].x, bottom = _corners[0].y;
+        float right = _corners[2].x, top = _corners[2].y;
+
+        x = Mathf.RoundToInt(left);
+        y = Mathf.RoundToInt(_h - top);
+        w = Mathf.RoundToInt(right - left);
+        h = Mathf.RoundToInt(top - bottom);
+        return w > 0 && h > 0;
     }
 
     /// <summary>
