@@ -2,6 +2,7 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using Newtonsoft.Json; // Für JSON (installiere NewtonSoft.Json aus dem Unity Asset Store oder per NuGet)
+using Newtonsoft.Json.Linq;
 using System.Reflection;
 using MathNet.Numerics.Interpolation;
 using System.Threading.Tasks;
@@ -106,17 +107,57 @@ public class SettingsManager : MonoBehaviour
     // Lädt Einstellungen aus einer JSON-Datei
     private void LoadSettings(string path)
     {
-        if (File.Exists(path))
-        {
-            string json = File.ReadAllText(path);
-            appSettings = JsonConvert.DeserializeObject<AppSettings>(json);
-            ApplySettings(); // Übernimmt die Einstellungen ins Spiel
-            Debug.Log("Settings loaded from: " + path);
-        }
-        else
+        if (!File.Exists(path))
         {
             Debug.LogError("File not found: " + path);
+            return;
         }
+
+        string json = File.ReadAllText(path);
+
+        // Check the file is the shape we expect before applying any of it.
+        //
+        // Newtonsoft ignores properties it does not recognise, so a JSON file with entirely
+        // different keys deserializes without error into an AppSettings whose every field is
+        // the C# default. UpdatePublicFields then assigns those defaults unconditionally to
+        // all eighteen effects and every light in the scene -- so loading the wrong file did
+        // not fail, it silently reset the whole simulation to zero and logged success. A
+        // condition profile is exactly such a file: it nests its values under "filters",
+        // and shares not one top-level key with AppSettings.
+        JObject probe;
+        try
+        {
+            probe = JObject.Parse(json);
+        }
+        catch (JsonException e)
+        {
+            Debug.LogError($"[SettingsManager] {Path.GetFileName(path)} is not valid JSON: {e.Message}");
+            return;
+        }
+
+        if (probe["filters"] != null || probe["table4_mapping"] != null)
+        {
+            Debug.LogError($"[SettingsManager] {Path.GetFileName(path)} is a condition profile, " +
+                           "not a saved settings file. Those describe each effect separately " +
+                           "under \"filters\" and cannot be loaded here yet. Nothing was changed.");
+            return;
+        }
+
+        int known = 0;
+        foreach (var prop in probe.Properties())
+            if (typeof(AppSettings).GetField(prop.Name) != null) known++;
+
+        if (known == 0)
+        {
+            Debug.LogError($"[SettingsManager] {Path.GetFileName(path)} has no setting this " +
+                           "version recognises, so loading it would reset every effect to zero. " +
+                           "Nothing was changed.");
+            return;
+        }
+
+        appSettings = JsonConvert.DeserializeObject<AppSettings>(json);
+        ApplySettings();
+        Debug.Log($"[SettingsManager] loaded {known} settings from {path}");
     }
 
     // Übernimmt die geladenen Einstellungen und aktualisiert alle relevanten Public Variablen in anderen Skripten
