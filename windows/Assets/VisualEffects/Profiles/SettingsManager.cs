@@ -96,12 +96,19 @@ public class SettingsManager : MonoBehaviour
     private async void SaveSettings()
     {
         string path = await SaveFilePanelAsync();
-        if (!string.IsNullOrEmpty(path))
-        {
-            string json = JsonConvert.SerializeObject(appSettings, Formatting.Indented);
-            File.WriteAllText(path, json);
-            Debug.Log("Settings saved to: " + path);
-        }
+        if (string.IsNullOrEmpty(path)) return;
+
+        // Written as a condition profile: which effects are on, and their parameters in the
+        // effects' own units. That is the format the Load button reads back, so a profile
+        // saved here reloads exactly, and it is the same shape as the authored profiles --
+        // which is what lets this application be used to tune one rather than only to view
+        // it. Nothing writes a severity: severity belongs to the pipeline the authored
+        // profiles came from, and this end knows the concrete values.
+        var profile = ProfileBinder.Capture(this, Path.GetFileNameWithoutExtension(path), "");
+        File.WriteAllText(path, profile.ToString(Formatting.Indented));
+
+        int count = (profile["filters"] as JArray)?.Count ?? 0;
+        Debug.Log($"[SettingsManager] saved a profile with {count} active effect(s) to {path}");
     }
 
     // Lädt Einstellungen aus einer JSON-Datei
@@ -135,11 +142,25 @@ public class SettingsManager : MonoBehaviour
             return;
         }
 
-        if (probe["filters"] != null || probe["table4_mapping"] != null)
+        // A condition profile: which effects, with parameters per effect. Applied through
+        // ProfileBinder, which reports by name everything it could not honour -- these
+        // profiles were authored against a different filter pipeline and describe more than
+        // this build can draw, and the difference should never be something the user has to
+        // infer from the picture.
+        if (probe["filters"] != null)
         {
-            Debug.LogError($"[SettingsManager] {Path.GetFileName(path)} is a condition profile, " +
-                           "not a saved settings file. Those describe each effect separately " +
-                           "under \"filters\" and cannot be loaded here yet. Nothing was changed.");
+            string why;
+            var profile = ConditionProfile.Parse(probe, out why);
+            if (profile == null)
+            {
+                Debug.LogError($"[SettingsManager] {Path.GetFileName(path)}: {why}. Nothing was changed.");
+                return;
+            }
+
+            var report = ProfileBinder.Apply(this, profile);
+            Debug.Log(report.Summary(profile.Id));
+            if (!string.IsNullOrEmpty(profile.Caveat))
+                Debug.LogWarning($"[ConditionProfile] {profile.Id} says of itself: {profile.Caveat}");
             return;
         }
 
