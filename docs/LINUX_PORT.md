@@ -299,11 +299,17 @@ What is left of the original order:
 1. ~~**Server-side decorations and exact sizing.**~~ Done, and for free: the host owns the
    output the player sizes itself from, and advertising the decoration manager keeps
    libdecor out. Measured: `window geometry 0,0 1280x720`, no offset.
-2. **An input path from the overlay back to the player.** Still outstanding, and now the
-   whole remaining task: the host's `wl_seat` advertises no capabilities, so nothing in
-   VIP-Sim is clickable when it runs this way. It is ours to do rather than a protocol
-   problem -- the seat is our own, and the overlay already knows which rectangle should
-   catch the mouse.
+2. ~~**An input path from the overlay back to the player.**~~ Done. The presenter binds the
+   real compositor's seat and hands what arrives at the layer surface to the host's own
+   seat, which has no hardware behind it and reports only what it is given. Coordinates need
+   no translation, because the layer surface covers the output and the player's window is
+   exactly that size. The keymap is forwarded verbatim rather than rebuilt, so the player
+   agrees with the rest of the desktop about what the keys mean. Measured: sway's cursor set
+   to (1196,12), the player reporting `mouse (1196,707)` -- the same point in its own
+   bottom-left coordinates -- and a click there opening the symptom reference panel.
+
+   The overlay publishes the rectangle that must catch the mouse, from the toolbar's own
+   RectTransform. Anything outside it is not merely click-through now, it is unreachable.
 3. ~~**Hiding the player's window.**~~ Moot. `wp_alpha_modifier_v1.set_multiplier(0)` makes
    a surface invisible while frame callbacks keep flowing, which minimising and unmapping do
    not: sway ignores `set_minimized` outright, and Mutter and KWin stop frame callbacks for

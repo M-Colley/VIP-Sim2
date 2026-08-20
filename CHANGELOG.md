@@ -106,6 +106,14 @@ that can be handed to someone who was not in the room when it was written.
   Supporting them needs a native plugin per platform. VIP-Sim is currently usable with low
   vision and not usable non-visually; see `docs/ACCESSIBILITY.md`.
 
+- **On Linux the player runs inside VIP-Sim's own compositor.** The presenter serves a
+  Wayland socket, starts the player against it, composites the player's buffer onto its
+  layer surface, and forwards the user's pointer and keyboard back the other way. The
+  player's window therefore never appears on the user's desktop at all -- which is what
+  removes the duplicated interface, the window decorations and the size mismatch, none of
+  which could be fixed while it was there. Needs a compositor with `zwlr_layer_shell_v1`:
+  Sway, KWin, Hyprland, labwc and niri have it, GNOME does not.
+
 - **Linux is verified in a nested compositor, not yet on a real desktop.** Overlay,
   transport and screen capture all work end-to-end under Sway with a real portal stack,
   including pixel-verified frames. Confirmation against KWin and a real GPU is still
