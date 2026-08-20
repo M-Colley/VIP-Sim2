@@ -24,6 +24,8 @@
 
 #include <errno.h>
 #include <poll.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -577,9 +579,19 @@ int main(int argc, char **argv)
     setvbuf(stdout, NULL, _IOLBF, 0);
 
     bool host_mode = false;
+    const char *exec_player = NULL;
+    char **player_argv = NULL;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--test")) g_force_test_pattern = true;
         if (!strcmp(argv[i], "--host")) host_mode = true;
+        // Everything after --exec belongs to the player, so a -logFile or a -screen-width
+        // reaches it unchanged.
+        if (!strcmp(argv[i], "--exec") && i + 1 < argc) {
+            exec_player = argv[i + 1];
+            player_argv = &argv[i + 1];
+            host_mode = true;
+            break;
+        }
     }
 
     struct wl_display *display = wl_display_connect(NULL);
@@ -633,6 +645,38 @@ int main(int argc, char **argv)
     if (host_mode) {
         if (!vipsim_host_start()) return 1;
         if (!vipsim_host_selftest()) return 1;
+    }
+
+    // Start the player ourselves, once there is a compositor for it to connect to.
+    //
+    // This is the right way round. The player cannot start the presenter and then move into
+    // its world -- by the time it could ask, its window already exists in the user's
+    // compositor and its role is fixed. So the presenter is the parent: it knows its own
+    // socket name, which is the one thing the player needs and cannot discover.
+    if (exec_player) {
+        pid_t pid = fork();
+        if (pid == 0) {
+            setenv("WAYLAND_DISPLAY", vipsim_host_socket(), 1);
+            setenv("VIPSIM_HOSTED", "1", 1);
+
+            // Only while the host offers shm and nothing else. Mesa would otherwise climb a
+            // three-rung retry ladder to reach the software path anyway, printing four
+            // alarming warnings on the way that mean nothing on a machine with no GPU.
+            setenv("LIBGL_ALWAYS_SOFTWARE", "1", 1);
+
+            // Belt and braces with the decoration manager: neither libdecor nor a titlebar.
+            setenv("SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR", "0", 1);
+
+            execv(exec_player, player_argv);
+            fprintf(stderr, "[presenter] could not start '%s'. If it is not executable: "
+                            "chmod +x '%s'\n", exec_player, exec_player);
+            _exit(127);
+        }
+        if (pid < 0) {
+            fprintf(stderr, "[presenter] could not fork to start the player.\n");
+            return 1;
+        }
+        printf("[presenter] started %s (pid %d) in our compositor.\n", exec_player, (int)pid);
     }
 
     printf("[presenter] waiting for configure...\n");

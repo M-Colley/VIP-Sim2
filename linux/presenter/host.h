@@ -30,6 +30,9 @@
 /// The name is what the player must see in WAYLAND_DISPLAY.
 const char *vipsim_host_start(void);
 
+/// The socket name clients must use, or NULL before the host has started.
+const char *vipsim_host_socket(void);
+
 /// The file descriptor to poll. Readable means there is work for vipsim_host_dispatch.
 int vipsim_host_fd(void);
 

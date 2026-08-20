@@ -43,6 +43,7 @@ public class LinuxPresenter : MonoBehaviour
     private readonly int[] _rect = { -1, -1, -1, -1 };
     private readonly Vector3[] _corners = new Vector3[4];
     private TransparentWindow _window;
+    private bool _hosted;
     private byte[] _staging;
     private GCHandle _pin;
     private bool _flip;
@@ -61,7 +62,15 @@ public class LinuxPresenter : MonoBehaviour
         _w = Screen.width;
         _h = Screen.height;
 
-        StartPresenterProcess();
+        // Already inside the presenter's own compositor?
+        //
+        // Then it started us, not the other way round, and our window IS the frame: it is
+        // composited onto the layer surface directly. Reading it back off the GPU, copying
+        // it through shared memory and flipping it on the way would be three copies of work
+        // whose result is thrown away. The segment is still opened, because it is how the
+        // rectangle that should catch the mouse gets published.
+        _hosted = Environment.GetEnvironmentVariable("VIPSIM_HOSTED") == "1";
+        if (!_hosted) StartPresenterProcess();
 
         try
         {
@@ -94,15 +103,21 @@ public class LinuxPresenter : MonoBehaviour
         // assumption about the graphics API, and assumptions should be visible when someone
         // runs this under Vulkan and sees it upside down.
         _flip = !SystemInfo.graphicsUVStartsAtTop;
-        Debug.Log($"[LinuxPresenter] {SystemInfo.graphicsDeviceType}, texture origin " +
-                  $"{(SystemInfo.graphicsUVStartsAtTop ? "top-left" : "bottom-left")}; " +
-                  $"{(_flip ? "flipping" : "not flipping")} each frame.");
 
-        _rt = new RenderTexture(_w, _h, 0, RenderTextureFormat.ARGB32) { name = "VipSimPresent" };
-        _rt.Create();
         _open = true;
         Active = true;
-        StartCoroutine(PresentLoop());
+
+        if (_hosted)
+        {
+            Debug.Log("[LinuxPresenter] running inside the presenter's compositor; the window " +
+                      "is the frame, so no readback is needed.");
+        }
+        else
+        {
+            _rt = new RenderTexture(_w, _h, 0, RenderTextureFormat.ARGB32) { name = "VipSimPresent" };
+            _rt.Create();
+            StartCoroutine(PresentLoop());
+        }
         Debug.Log($"[LinuxPresenter] presenting {_w}x{_h} to the Wayland layer surface.");
     }
 

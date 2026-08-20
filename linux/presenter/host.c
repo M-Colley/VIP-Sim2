@@ -610,6 +610,11 @@ const char *vipsim_host_start(void)
     return name;
 }
 
+const char *vipsim_host_socket(void)
+{
+    return H.socket;
+}
+
 int vipsim_host_fd(void)
 {
     return H.loop ? wl_event_loop_get_fd(H.loop) : -1;

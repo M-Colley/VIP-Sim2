@@ -67,14 +67,16 @@ namespace VipSim.EditorTools
             sb.Append("#!/bin/sh\n");
             sb.Append("# Start VIP-Sim.\n");
             sb.Append("#\n");
-            sb.Append("# The hint below has to be set before the player starts. SDL reads it when it creates\n");
-            sb.Append("# the window, which happens before VIP-Sim's own code runs, and it is what stops SDL\n");
-            sb.Append("# declaring the whole window opaque. Without it the compositor ignores the transparency\n");
-            sb.Append("# VIP-Sim renders and the overlay is a black rectangle over your desktop. Run this\n");
-            sb.Append("# script rather than the binary directly.\n");
-            sb.Append("export SDL_VIDEO_EGL_ALLOW_TRANSPARENCY=1\n");
+            sb.Append("# The presenter is started first and starts the player itself, because it is the only\n");
+            sb.Append("# one that knows the name of the socket it is serving -- and that is the one thing the\n");
+            sb.Append("# player needs and cannot discover. Started the other way round, the player's window\n");
+            sb.Append("# already exists in your compositor by the time anything could ask it to move, and a\n");
+            sb.Append("# Wayland surface's role cannot be changed after it is created.\n");
+            sb.Append("#\n");
+            sb.Append("# The presenter needs a compositor with zwlr_layer_shell_v1. Sway, KWin, Hyprland,\n");
+            sb.Append("# labwc and niri have it; GNOME does not.\n");
             sb.Append("cd \"$(dirname \"$0\")\" || exit 1\n");
-            sb.Append("exec ./").Append(exe).Append(" \"$@\"\n");
+            sb.Append("exec ./vipsim-presenter --host --exec ./").Append(exe).Append(" \"$@\"\n");
 
             string path = Path.Combine(dir, exe + ".sh");
             File.WriteAllText(path, sb.ToString());
