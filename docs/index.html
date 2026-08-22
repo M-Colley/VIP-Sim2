@@ -201,12 +201,18 @@
       <a class="btn btn-primary"
          href="https://github.com/M-Colley/VIP-Sim2/releases/latest/download/VIP-Sim-macOS-universal.zip">
          Download for macOS</a>
+      <a class="btn btn-primary"
+         href="https://github.com/M-Colley/VIP-Sim2/releases/latest/download/VIP-Sim-Linux-x64.tar.gz">
+         Download for Linux</a>
       <a class="btn btn-ghost" href="https://doi.org/10.1145/3746059.3747704">Read the paper</a>
     </div>
     <p class="note">
       A Zefwih product. Free and open source. Not a medical device.
       <a href="https://github.com/M-Colley/VIP-Sim2/releases">All releases and checksums</a> &middot;
-      <a href="#updates">Get notified of updates</a>
+      <a href="#updates">Get notified of updates</a><br>
+      Linux needs a Wayland compositor with layer-shell &mdash; Sway, KWin, Hyprland, labwc
+      or niri. <strong>GNOME does not support it</strong>, and VIP-Sim says so and exits
+      rather than pretending; on GNOME, use the Windows or macOS build.
     </p>
   </div>
 </header>
@@ -334,11 +340,15 @@
         <tbody>
           <tr><td>Windows 10 / 11</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
           <tr><td>macOS 12+</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-          <tr><td>Linux (Wayland)</td><td class="no">In development</td><td class="no">In development</td><td class="no">Not yet</td></tr>
+          <tr><td>Linux (Wayland, not GNOME)</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">Webcam only</td></tr>
         </tbody>
       </table>
     </div>
     <p class="note">
+      On Linux, capture goes through your desktop's screen-sharing dialogue; Sway and other
+      wlroots compositors can only share a whole screen, so give VIP-Sim a different monitor
+      from the one it is overlaying. Mouse-following cannot work there — Wayland does not
+      let an application read the pointer position — so gaze uses the webcam.
       macOS asks for Screen Recording permission on first launch, and Camera only if you
       enable eye tracking. Builds are not yet code-signed, so the first launch needs an
       extra confirmation — the steps are in the README that ships with the download.
