@@ -423,6 +423,23 @@ GROUPS = [
                         "status line. Nine controls in the footer alone, and the reference the "
                         "panel exists for was the hardest thing on it to read.",
             },
+            {
+                "id": "E8",
+                "title": "There is no manual window-size dialog",
+                "plat": [WIN, MAC],
+                "do": "Select a window and look at the toolbar.",
+                "expect": "Load, Save, gaze source, symptoms, calibrate, minimise, exit. No gear.",
+                "fail": "A Settings dialog offered X-Offset, Y-Offset and Zoom, for when the "
+                        "automatic detection of the window size was unsuccessful. It outlived "
+                        "the problem, and did damage while it did: settingsOpen was set when the "
+                        "dialog opened and cleared only by Abort, so after one Apply it rewrote "
+                        "the capture plane's position and size ten times a second for the rest "
+                        "of the session, from fields nobody could see. One user log showed a "
+                        "stale -1.28 world-unit offset -- 1280 pixels -- still being applied. "
+                        "Removing the dialog and its toolbar button had to be a single act: the "
+                        "button suppressed click-through and only the dialog restored it, so "
+                        "removing either alone locks the desktop.",
+            },
         ],
     },
     {
@@ -512,6 +529,34 @@ GROUPS = [
                 "do": "Run F1 to F7 again on the Mac.",
                 "expect": "Identical behaviour.",
                 "fail": "See A5 — the macOS build shipped once with none of this in it.",
+            },
+            {
+                "id": "F9",
+                "title": "A loaded profile switches its symptoms on",
+                "plat": ALL,
+                "do": "With a window captured and the master Enable on, load p1.json. Watch the "
+                      "effect list and the log.",
+                "expect": "The eight symptoms p1 names light up in the list and the simulation "
+                          "changes. The log agrees with itself: ROWS ... 8 shown on, and "
+                          "enabled(8) naming the same effects.",
+                "fail": "Nothing switched on. The binder called SetActive on the object it found "
+                        "in the menu -- but a menu row is a bare RectTransform with two buttons, "
+                        "and every effect is a MonoBehaviour on the camera rig, where "
+                        "Behaviour.enabled is the only switch that makes anything render. So the "
+                        "profile's parameters were written to effects that stayed dark, and the "
+                        "load reported success.",
+            },
+            {
+                "id": "F10",
+                "title": "A loaded profile leaves every other symptom in the list",
+                "plat": ALL,
+                "do": "Count the rows in the effect list before and after loading a profile.",
+                "expect": "Eighteen, both times. A profile decides what is switched ON, never "
+                          "what is available.",
+                "fail": "The list shrank to the profile's own symptoms. SetActive(false) on the "
+                        "rows the profile did not mention deleted them from the interface, so "
+                        "after loading p1 there was no way to reach the other ten symptoms at "
+                        "all without restarting.",
             },
         ],
     },
@@ -846,7 +891,9 @@ def render_markdown():
       "to separate them before writing the report:\n\n")
     w("1. **No `CAPTURE` line in the log.** No window has been selected. Nothing is wrong.\n")
     w("2. **`enabled(0)` in the `ALPHA` line.** No effect is switched on — the fault is in the "
-      "interface, not the simulation.\n")
+      "interface, not the simulation. Compare it with the `ROWS` line: if the list says a "
+      "symptom is on and `enabled` does not name it, the interface and the simulation "
+      "disagree, and that disagreement is itself the bug.\n")
     w("3. **Effects enabled, and `opaque` around 20–25%.** The overlay is drawing only its own "
       "panel: the captured image is empty. This is a capture fault — read `mode=` on the "
       "`CAPTURE` line and see C1.\n")
@@ -972,7 +1019,10 @@ def render_html():
     w('    <li><b>No <code>CAPTURE</code> line at all.</b> No window has been selected. Nothing '
       'is wrong.</li>\n')
     w('    <li><b><code>enabled(0)</code> in the <code>ALPHA</code> line.</b> No effect is '
-      'switched on — the fault is in the interface, not the simulation.</li>\n')
+      'switched on — the fault is in the interface, not the simulation. Compare it with the '
+      '<code>ROWS</code> line: if the list says a symptom is on and <code>enabled</code> does '
+      'not name it, the interface and the simulation disagree, and that disagreement is '
+      'itself the bug.</li>\n')
     w('    <li><b>Effects enabled, <code>opaque</code> around 20–25%.</b> The overlay is drawing '
       'only its own panel, so the captured image is empty. A capture fault: read <code>mode=</code> '
       'and go to C1.</li>\n')

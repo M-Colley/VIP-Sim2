@@ -5,6 +5,56 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **The capture is placed on the screen the overlay is actually on.** Window rectangles
+  arrive from Windows in global desktop coordinates; the placement made them local by
+  subtracting `Screen.mainWindowPosition`, which is measured from the display the overlay
+  is on and is therefore `(0,0)` on every monitor. On one display the two spaces coincide
+  and everything was correct. On two, every capture was drawn the distance between the
+  monitors away from where it belonged — so a window on the other screen showed nothing,
+  and a window near the desktop origin appeared at the wrong size. It now asks Windows
+  where the overlay is, in the coordinates the capture plugin uses.
+- **A window on another screen says so**, instead of correctly drawing nothing. It cannot
+  be shown over a screen it is not on without misplacing every click relative to the
+  content, so the overlay names the window and points at F3.
+- **A minimised window no longer drags the capture off screen.** Windows parks minimised
+  windows at (-32000,-32000) and the placement followed them there.
+- **Loading a profile switches its symptoms on.** The binder set the menu row's active
+  state, which is not what makes an effect run — every effect is a component on the camera
+  rig, and `enabled` is the only switch. Parameters were applied to effects that stayed
+  dark, and the load reported success.
+- **Loading a profile no longer removes the other symptoms from the list.** Switching an
+  effect off deactivated its row, so a profile deleted every symptom it did not mention
+  from the interface. A profile decides what is switched on, never what is available.
+- **Toggling an effect on a hidden list no longer logs an error**, and switched-off effects
+  no longer log a warning each for being switched off.
+- **The settings labels get the font they were meant to have** — the lookup asked
+  `Resources` for a path that has never existed.
+
+### Removed
+
+- **The manual window-size dialog** (X-Offset, Y-Offset, Zoom). It existed for when
+  "the automatic detection of the window size was unsuccessful", which the 1:1 placement
+  work settled. It was also actively harmful: after a single Apply it rewrote the capture
+  plane's position and size ten times a second for the rest of the session, from fields
+  that were no longer on screen, overwriting every automatic placement.
+
+### Changed
+
+- **The F1 panel is three sections** — Symptoms, Display & text, Help & updates — instead
+  of all of it at once with nine controls in the footer.
+- **Hover help waits** about six tenths of a second, so crossing the toolbar no longer
+  flashes every button's description.
+- **The diagnostics report what the effect list claims** (`ROWS`) alongside what is
+  actually running (`ALPHA ... enabled(n)`), and the effect count now covers every effect
+  the application manages rather than the subset sharing one base class. It undercounted by
+  four, and that undercount was twice read as evidence of a bug that did not exist.
+
+---
+
 ## [2.0.0] — 2026-08-18
 
 The modernisation release. VIP-Sim moves from a working research prototype to something

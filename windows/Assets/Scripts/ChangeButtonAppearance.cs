@@ -178,6 +178,46 @@ public class ChangeButtonAppearance : MonoBehaviour
         isSprite1Active = true;
     }
 
+    /// <summary>
+    /// Force this button to a known state, without toggling and without opening anything.
+    ///
+    /// PerformSwap flips, which is only correct when a human pressed the button. Loading a
+    /// profile sets state that was decided elsewhere, and it sets several at once -- so it
+    /// needs to say "this row is on" rather than "flip this row", and it must not fire the
+    /// gear the way a click does, or six effects in a profile would each try to open their
+    /// parameters and the last one would win.
+    ///
+    /// isSprite1Active is inverted by construction: sprite1 is the OFF background.
+    /// </summary>
+    public void SetState(bool on)
+    {
+        if (buttonImage == null) buttonImage = GetComponent<Image>();
+        if (buttonImage == null) return;
+
+        buttonImage.sprite = on ? sprite2 : sprite1;
+        buttonImage.color = on ? imageColor2 : imageColor1;
+        if (buttonText != null) buttonText.color = on ? color2 : color1;
+        isSprite1Active = !on;
+    }
+
+    /// <summary>
+    /// Close whichever effect's parameters are on screen, whatever they are.
+    ///
+    /// For use after a bulk change of state, where the panel may now be showing the
+    /// parameters of an effect that has just been switched off -- the exact thing the
+    /// _openGear bookkeeping exists to prevent when a single effect is toggled. This is
+    /// unconditional rather than selective, so it cannot reintroduce either of the two
+    /// bugs that logic was written for: it never leaves a dead effect's parameters up, and
+    /// it never has to decide which of several rows owns the panel.
+    /// </summary>
+    public static void CloseOpenSettings()
+    {
+        if (_openGear == null) return;
+        _openGear.ResetToIdle();
+        _openGear = null;
+        SetSettingsPanel(false);
+    }
+
     private static HideImpairmentSelection _settingsPanel;
 
     /// <summary>

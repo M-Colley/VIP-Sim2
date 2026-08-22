@@ -266,6 +266,7 @@ public class VipSimDiagnostics : MonoBehaviour
             // when a window is genuinely being captured.
             LogCapturePlacement();
             LogCameras();
+            LogEffectRows();
 
             // Alpha in the periodic report as well as on F8. Alpha decides whether the
             // overlay is visible at all, and the hotkey only fires when the overlay holds
@@ -300,6 +301,43 @@ public class VipSimDiagnostics : MonoBehaviour
                   $"-> expected pixel=({norm.x * Screen.width:F0},{norm.y * Screen.height:F0})");
 
         LogCapturePlacement();
+    }
+
+    /// <summary>
+    /// What the effect list SAYS is switched on, as distinct from what is running.
+    ///
+    /// Those are two different records and they have disagreed. A row's Enable button keeps
+    /// its own flag, the effect keeps its own flag, and nothing reconciles them -- so a
+    /// profile load could switch eight effects on and leave the list showing something
+    /// else, and the only way to tell was to photograph the screen and count. Worse, the
+    /// list's sprite is not merely decorative: the master switch reads it to decide which
+    /// effects to turn off, so a list that lies makes the master switch wrong too.
+    ///
+    /// Printed next to the ALPHA line, which reports the other half. If the two lists
+    /// differ, that difference is the bug.
+    /// </summary>
+    private void LogEffectRows()
+    {
+        var menu = GameObject.Find("VerticalMenu");
+        if (menu == null) return;
+
+        var on = new System.Collections.Generic.List<string>();
+        int total = 0;
+        foreach (Transform row in menu.transform)
+        {
+            var enableButton = row.Find("Enable");
+            if (enableButton == null) continue;
+            var appearance = enableButton.GetComponent<ChangeButtonAppearance>();
+            if (appearance == null) continue;
+
+            total++;
+            // isSprite1Active is inverted: sprite1 is the OFF background.
+            if (!appearance.isSprite1Active) on.Add(row.name);
+        }
+
+        on.Sort();
+        Debug.Log($"[VipSimDiagnostics] ROWS {total} listed, {on.Count} shown on: " +
+                  $"{(on.Count == 0 ? "-" : string.Join(",", on))}");
     }
 
     /// <summary>
@@ -480,10 +518,42 @@ public class VipSimDiagnostics : MonoBehaviour
         Destroy(tex);
 
         double n = px.Length;
-        var effects = FindObjectsByType<VisSim.LinkableBaseEffect>(FindObjectsInactive.Exclude);
+        // Every effect the application manages, not just the ones that happen to share a
+        // base class.
+        //
+        // This counted LinkableBaseEffect alone, and four of the eighteen effects --
+        // VortexEffect, FovealDarkness, FlickeringStars, PixelationEffect -- are plain
+        // MonoBehaviours that never inherited from it. They were invisible here however
+        // hard they were running, so a profile that switched on fifteen symptoms reported
+        // six, and this line was read twice as evidence of a bug that did not exist. A
+        // diagnostic that undercounts is worse than none: it is believed.
+        //
+        // The set of effects is taken from SettingsManager's own wiring, which is the same
+        // place the profile binder gets it, so the two can no longer disagree.
         var on = new System.Collections.Generic.List<string>();
-        foreach (var e in effects)
-            if (e.enabled) on.Add(e.GetType().Name + (e.gameObject.tag == "LeftEye" ? "(L)" : "(R)"));
+        var seen = new System.Collections.Generic.HashSet<string>();
+
+        foreach (var e in FindObjectsByType<VisSim.LinkableBaseEffect>(FindObjectsInactive.Exclude))
+            if (e.enabled && seen.Add(e.GetType().Name))
+                on.Add(e.GetType().Name + (e.gameObject.tag == "LeftEye" ? "(L)" : "(R)"));
+
+        var manager = FindAnyObjectByType<SettingsManager>(FindObjectsInactive.Include);
+        if (manager != null)
+        {
+            foreach (var field in manager.GetType().GetFields(
+                         System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            {
+                // Skip the interface: SettingsManager also holds the Load and Save buttons,
+                // and a Button is a Behaviour too.
+                if (typeof(UnityEngine.EventSystems.UIBehaviour).IsAssignableFrom(field.FieldType)) continue;
+                if (!typeof(Behaviour).IsAssignableFrom(field.FieldType)) continue;
+
+                var effect = field.GetValue(manager) as Behaviour;
+                if (effect == null || !effect.enabled || !effect.gameObject.activeInHierarchy) continue;
+                if (seen.Add(effect.GetType().Name))
+                    on.Add(effect.GetType().Name + (effect.gameObject.tag == "LeftEye" ? "(L)" : "(R)"));
+            }
+        }
         on.Sort();
 
         Debug.Log($"[VipSimDiagnostics] ALPHA {w}x{h} mean={alphaSum / n / 255.0:F3} " +

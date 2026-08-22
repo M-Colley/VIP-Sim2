@@ -1,6 +1,6 @@
 # VIP-Sim regression checklist
 
-Every test below is a fault that has actually happened at least once, in this project, on a real machine. None of them is hypothetical, and every one of them shipped or nearly shipped. There are 64 of them.
+Every test below is a fault that has actually happened at least once, in this project, on a real machine. None of them is hypothetical, and every one of them shipped or nearly shipped. There are 67 of them.
 
 Work through them on the packaged download rather than on a build made locally: two of the faults here only existed in the archive.
 
@@ -29,7 +29,7 @@ Three lines matter:
 Four different faults produce the same sentence — *the effects do not work*. This is how to separate them before writing the report:
 
 1. **No `CAPTURE` line in the log.** No window has been selected. Nothing is wrong.
-2. **`enabled(0)` in the `ALPHA` line.** No effect is switched on — the fault is in the interface, not the simulation.
+2. **`enabled(0)` in the `ALPHA` line.** No effect is switched on — the fault is in the interface, not the simulation. Compare it with the `ROWS` line: if the list says a symptom is on and `enabled` does not name it, the interface and the simulation disagree, and that disagreement is itself the bug.
 3. **Effects enabled, and `opaque` around 20–25%.** The overlay is drawing only its own panel: the captured image is empty. This is a capture fault — read `mode=` on the `CAPTURE` line and see C1.
 4. **The whole screen washed grey or black.** An alpha fault in an effect shader; see D3.
 
@@ -329,6 +329,14 @@ The toolbar is six unlabelled glyphs. Everything that explains it has broken at 
 - **Expect:** Three sections -- Symptoms, Display & text, Help & updates -- one at a time, and a single Close button under them.
 - **Has failed as:** All of it at once: an eighteen-entry symptom reference, a paper link, four navigation buttons, two rows of accessibility controls with their own paragraph of keyboard help, three support buttons and an update status line. Nine controls in the footer alone, and the reference the panel exists for was the hardest thing on it to read.
 
+### E8. There is no manual window-size dialog
+
+*Windows · macOS*
+
+- **Do:** Select a window and look at the toolbar.
+- **Expect:** Load, Save, gaze source, symptoms, calibrate, minimise, exit. No gear.
+- **Has failed as:** A Settings dialog offered X-Offset, Y-Offset and Zoom, for when the automatic detection of the window size was unsuccessful. It outlived the problem, and did damage while it did: settingsOpen was set when the dialog opened and cleared only by Abort, so after one Apply it rewrote the capture plane's position and size ten times a second for the rest of the session, from fields nobody could see. One user log showed a stale -1.28 world-unit offset -- 1280 pixels -- still being applied. Removing the dialog and its toolbar button had to be a single act: the button suppressed click-through and only the dialog restored it, so removing either alone locks the desktop.
+
 ## F — Profiles
 
 The condition profiles (p1.json to p7.json) are not in the download — get them separately and put them somewhere you can navigate to. Two of the three faults below made the profiles look like they did not exist.
@@ -396,6 +404,22 @@ The condition profiles (p1.json to p7.json) are not in the download — get them
 - **Do:** Run F1 to F7 again on the Mac.
 - **Expect:** Identical behaviour.
 - **Has failed as:** See A5 — the macOS build shipped once with none of this in it.
+
+### F9. A loaded profile switches its symptoms on
+
+*All platforms*
+
+- **Do:** With a window captured and the master Enable on, load p1.json. Watch the effect list and the log.
+- **Expect:** The eight symptoms p1 names light up in the list and the simulation changes. The log agrees with itself: ROWS ... 8 shown on, and enabled(8) naming the same effects.
+- **Has failed as:** Nothing switched on. The binder called SetActive on the object it found in the menu -- but a menu row is a bare RectTransform with two buttons, and every effect is a MonoBehaviour on the camera rig, where Behaviour.enabled is the only switch that makes anything render. So the profile's parameters were written to effects that stayed dark, and the load reported success.
+
+### F10. A loaded profile leaves every other symptom in the list
+
+*All platforms*
+
+- **Do:** Count the rows in the effect list before and after loading a profile.
+- **Expect:** Eighteen, both times. A profile decides what is switched ON, never what is available.
+- **Has failed as:** The list shrank to the profile's own symptoms. SetActive(false) on the rows the profile did not mention deleted them from the interface, so after loading p1 there was no way to reach the other ten symptoms at all without restarting.
 
 ## G — More than one monitor
 

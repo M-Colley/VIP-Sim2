@@ -71,23 +71,31 @@ public class MacScale : MonoBehaviour
     }
 
 
+    /// <summary>
+    /// A number from an input field that may no longer exist. Absent means no offset.
+    /// </summary>
+    private static float ParseOffset(TMP_InputField field)
+    {
+        if (field == null) return 0f;
+        return float.TryParse(field.text, out float value) ? value : 0f;
+    }
+
     private Vector3 lastSetting;
     void Update()
     {
         
-        float.TryParse(width.text, out settingsWidthOffset);
-        float.TryParse(height.text, out settingsHeightOffset);
-        float.TryParse(xOffset.text, out settingsXOffset);
-        float.TryParse(yOffset.text, out settingsYOffset);
-
-        // Get the full screen resolution
-        int screenWidth = Screen.width;
-        int screenHeight = Screen.height;
-
-        //aspectRatio = screenWidth / screenHeight;
-
-        // Since the height of the plane is fixed to 1, calculate the required width based on the aspect ratio
-        float requiredWidth = screenHeight * aspectRatio;
+        // The four fields belonged to the manual window-size dialog, which has been
+        // removed: automatic detection is no longer unreliable, so a manual override for it
+        // was a workaround for a fault that no longer exists. This component stays because
+        // it does a second, unrelated job -- it is what gives the capture plane its
+        // negative x scale, and without that every macOS capture would be a mirror image.
+        //
+        // With the dialog gone the references are null, so the offsets are simply zero.
+        // Read once here rather than guarded at four separate call sites below.
+        settingsWidthOffset = ParseOffset(width);
+        settingsHeightOffset = ParseOffset(height);
+        settingsXOffset = ParseOffset(xOffset);
+        settingsYOffset = ParseOffset(yOffset);
 
         // Scale the plane's x value based on the required width
         Vector3 scale = transform.localScale;
@@ -97,9 +105,9 @@ public class MacScale : MonoBehaviour
 
         transform.position = lastSetting + new Vector3(settingsXOffset, settingsYOffset, 0);
 
-        // Log the results for debugging
-        Debug.Log($"Screen Resolution: {screenWidth}x{screenHeight}");
-        Debug.Log($"Calculated Required Width: {requiredWidth}");
+        // No logging here. This runs in Update, so it wrote two lines per frame -- 120 a
+        // second into a player log whose whole purpose is to make a user's fault report
+        // readable.
     }
 
     public void CheckForUnsavedAndClose()

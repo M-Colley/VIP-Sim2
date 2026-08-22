@@ -168,7 +168,7 @@ public static class ProfileBinder
                 continue;
             }
 
-            SetEffectActive(sm, bind.EffectObject, true);
+            SetEffectActive(sm, bind, true);
 
             foreach (var prop in f.Parameters.Properties())
             {
@@ -204,7 +204,12 @@ public static class ProfileBinder
         }
 
         foreach (var b in Table)
-            if (!mentioned.Contains(b.Filter)) SetEffectActive(sm, b.EffectObject, false);
+            if (!mentioned.Contains(b.Filter)) SetEffectActive(sm, b, false);
+
+        // The parameters on screen may now belong to an effect this profile just switched
+        // off. Closing them is the only honest thing to do after a bulk change: leaving
+        // them up is how a user ends up adjusting something that is not running.
+        ChangeButtonAppearance.CloseOpenSettings();
 
         return report;
     }
@@ -223,7 +228,7 @@ public static class ProfileBinder
 
         foreach (var b in Table)
         {
-            if (!IsEffectActive(sm, b.EffectObject)) continue;
+            if (!IsEffectActive(sm, b)) continue;
             object target = b.Get(sm);
             if (target == null) continue;
 
@@ -363,17 +368,56 @@ public static class ProfileBinder
         return GameObject.Find(name);
     }
 
-    private static void SetEffectActive(SettingsManager sm, string name, bool active)
+    /// <summary>
+    /// Switch an effect on or off, and make the list say so.
+    ///
+    /// This used to call SetActive on the object it found in the menu, which was wrong in
+    /// both directions and produced two separate complaints from one profile load.
+    ///
+    /// Those menu objects are not the effects. A row under VerticalMenu is a bare
+    /// RectTransform with an Enable button and a gear on it; every one of the eighteen
+    /// effects is a MonoBehaviour on the camera rig, which is always active, so
+    /// Behaviour.enabled is the only switch that decides whether an effect renders -- and
+    /// it is exactly what the diagnostics count. So SetActive(true) turned nothing on, and
+    /// SetActive(false) did not turn anything off either: it DELETED THE ROW FROM THE LIST.
+    /// Loading a profile therefore applied its parameters to effects that stayed dark, and
+    /// removed every symptom the profile did not mention from the interface entirely.
+    ///
+    /// Now it drives the effect, and then tells the row what to look like. The row is only
+    /// ever a display of the state; it is never the state, and it is never hidden.
+    /// </summary>
+    private static void SetEffectActive(SettingsManager sm, Bind bind, bool active)
     {
-        var go = FindEffect(sm, name);
-        if (go != null && go.activeSelf != active) go.SetActive(active);
+        var behaviour = bind.Get(sm) as Behaviour;
+        if (behaviour != null && behaviour.enabled != active) behaviour.enabled = active;
+
+        SetRowAppearance(bind.EffectObject, active);
     }
 
-    private static bool IsEffectActive(SettingsManager sm, string name)
+    private static bool IsEffectActive(SettingsManager sm, Bind bind)
     {
-        if (string.IsNullOrEmpty(name)) return false;
-        var go = FindEffect(sm, name);
-        return go != null && go.activeInHierarchy;
+        var behaviour = bind.Get(sm) as Behaviour;
+        return behaviour != null && behaviour.enabled;
+    }
+
+    /// <summary>
+    /// Make one row of the effect list show the state its effect is actually in.
+    ///
+    /// Without this the profile switched effects on and the list went on showing them off,
+    /// which is worse than not switching them on at all: the master switch reads the row's
+    /// sprite to decide what is running, so the interface and the simulation disagreed
+    /// about which symptoms were enabled.
+    /// </summary>
+    private static void SetRowAppearance(string rowName, bool on)
+    {
+        var row = FindEffect(null, rowName);
+        if (row == null) return;
+
+        var enableButton = row.transform.Find("Enable");
+        if (enableButton == null) return;
+
+        var appearance = enableButton.GetComponent<ChangeButtonAppearance>();
+        if (appearance != null) appearance.SetState(on);
     }
 
     public static IEnumerable<string> KnownFilters
