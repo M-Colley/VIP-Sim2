@@ -221,6 +221,47 @@ GROUPS = [
                         "to be re-applied every time — the first version of that fix set it "
                         "only at startup, when there was nothing yet to set it on.",
             },
+            {
+                "id": "C7",
+                "title": "A window on the other monitor",
+                "plat": [WIN],
+                "do": "With two displays, put a browser on the screen VIP-Sim is NOT overlaying "
+                      "and capture it.",
+                "expect": "VIP-Sim says the window is on another screen and points at F3. Move it "
+                          "there, and the capture appears.",
+                "fail": "Nothing at all -- and worse, nothing consistent. Windows reports every "
+                        "window in global desktop coordinates, where a monitor arranged above the "
+                        "primary has negative y; the placement subtracted Unity's "
+                        "Screen.mainWindowPosition, which is relative to the display the overlay "
+                        "is on and so is (0,0) on every monitor. The subtraction did nothing, and "
+                        "the capture was drawn the distance between the two monitors away from "
+                        "where it belonged. A window on the other screen landed off the edge and "
+                        "showed nothing; a window that happened to sit near the desktop origin "
+                        "landed roughly centred and appeared, at the wrong size. Reported as "
+                        "'for Discord it worked but was distorted, for Claude and Outlook again "
+                        "nothing' -- which reads as a per-application fault and is not one.",
+            },
+            {
+                "id": "C8",
+                "title": "A minimised window",
+                "plat": [WIN],
+                "do": "Capture a window, then minimise it, then restore it.",
+                "expect": "The image holds while it is minimised, and comes back when it does.",
+                "fail": "Windows parks a minimised window at (-32000,-32000) and keeps reporting "
+                        "that as its position. The placement followed it there, throwing the "
+                        "capture 32000px off screen -- indistinguishable from the capture dying.",
+            },
+            {
+                "id": "C9",
+                "title": "A window larger than the screen VIP-Sim is on",
+                "plat": [WIN],
+                "do": "With two displays of different sizes, maximise a window on the larger one "
+                      "and capture it from the smaller one.",
+                "expect": "The same notice as C7 -- the window is not on this screen.",
+                "fail": "It was drawn at 1:1, which is correct and useless: a 3200x1880 window on "
+                        "a 2560x1440 screen shows its middle and nothing else, which reads as a "
+                        "zoomed, distorted capture rather than as a window that does not fit.",
+            },
         ],
     },
     {
@@ -286,6 +327,19 @@ GROUPS = [
                 "expect": "Every control is reachable.",
                 "fail": "The controls overflowed the panel and the last ones could not be "
                         "reached at all.",
+            },
+            {
+                "id": "D7",
+                "title": "Toggling effects leaves nothing in the error log",
+                "plat": ALL,
+                "do": "Apply a preset or a profile, switch several effects on and off, then read "
+                      "vipsim-errors.log next to Player.log.",
+                "expect": "Empty.",
+                "fail": "\"Coroutine couldn't be started because the game object 'EnableToggle' "
+                        "is inactive!\" -- something sets the toggles while the list they belong "
+                        "to is hidden, and Unity logs an error rather than ignoring it. The same "
+                        "action also wrote one warning per switched-off effect, seventeen at a "
+                        "time, for what is simply the normal state of most of them.",
             },
         ],
     },
@@ -355,6 +409,19 @@ GROUPS = [
                 "expect": "Focus moves, and where it is is visible.",
                 "fail": "Nothing in the interface could be reached from the keyboard at all — a "
                         "gap worth naming in a tool about vision impairment.",
+            },
+            {
+                "id": "E7",
+                "title": "The F1 panel is readable",
+                "plat": ALL,
+                "do": "Press F1 and look at how much is on screen at once.",
+                "expect": "Three sections -- Symptoms, Display & text, Help & updates -- one at a "
+                          "time, and a single Close button under them.",
+                "fail": "All of it at once: an eighteen-entry symptom reference, a paper link, "
+                        "four navigation buttons, two rows of accessibility controls with their "
+                        "own paragraph of keyboard help, three support buttons and an update "
+                        "status line. Nine controls in the footer alone, and the reference the "
+                        "panel exists for was the hardest thing on it to read.",
             },
         ],
     },
@@ -713,9 +780,10 @@ GROUPS = [
 ]
 
 UNPROVEN = [
-    ("C1 on a machine where it failed", "The capture fix has been confirmed to select Windows "
-     "Graphics Capture, but nobody has yet watched a browser window appear on the laptop where "
-     "it came out black. That is the one result that closes the report."),
+    ("C7 on two monitors", "The placement fix was derived from a user's log and verified not "
+     "to change anything on a single display, where the two coordinate spaces coincide. The "
+     "machine here has one monitor, so the case the fix exists for has not been run. Capturing "
+     "a window on each screen in turn is the result that closes it."),
     ("The whole macOS column", "The macOS build has been compiled and packaged but never run — "
      "there is no Mac here. Treat every MAC test as untested rather than as a regression check."),
     ("Linux on KWin", "Developed and verified on sway under WSL. KWin implements the same "

@@ -183,6 +183,9 @@ public class VipSimDiagnostics : MonoBehaviour
     private IEnumerator DumpButtonRectsOnce()
     {
         yield return new WaitForSeconds(3f);
+
+        LogGeometry();
+
         var sb = new StringBuilder("[VipSimDiagnostics] button rects (Unity px, origin bottom-left, " +
                                    $"screen {Screen.width}x{Screen.height}):\n");
         var corners = new Vector3[4];
@@ -300,6 +303,35 @@ public class VipSimDiagnostics : MonoBehaviour
     }
 
     /// <summary>
+    /// The overlay's position in both of the coordinate spaces that describe it.
+    ///
+    /// These two disagree, and the disagreement is invisible on one monitor. Windows
+    /// reports every window -- ours and the captured one -- in global desktop coordinates
+    /// with the primary display at the origin, so a monitor arranged above the primary has
+    /// negative y. Unity's Screen.mainWindowPosition is relative to the display the window
+    /// is on, which for a full-screen overlay is (0,0) on every monitor. Placing a captured
+    /// window with the second when the window arrived in the first is an error of exactly
+    /// the offset between the monitors.
+    ///
+    /// Printed once at startup because reading it off a user's log is the only way to tell
+    /// a two-monitor placement fault from a broken capture, and the last time it happened
+    /// the log contained both numbers and no way to know they were measured differently.
+    /// </summary>
+    private void LogGeometry()
+    {
+        string overlay = "unavailable";
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        if (OverlayScreen.TryGetRect(out RectInt ov))
+            overlay = $"({ov.xMin},{ov.yMin},{ov.width}x{ov.height})";
+#endif
+        var here = Screen.mainWindowDisplayInfo;
+        Debug.Log($"[VipSimDiagnostics] GEOMETRY overlay(global)={overlay} " +
+                  $"mainWindowPosition={Screen.mainWindowPosition} " +
+                  $"display='{here.name}' {here.width}x{here.height} workArea={here.workArea} " +
+                  $"screen={Screen.width}x{Screen.height} of {DisplaySwitcher.DisplayCount} display(s)");
+    }
+
+    /// <summary>
     /// Report every number the 1:1 capture placement depends on.
     ///
     /// The capture is drawn at the right SIZE but in the wrong PLACE, which narrows the
@@ -317,8 +349,27 @@ public class VipSimDiagnostics : MonoBehaviour
             if (w == null) continue;
 
             float upp = t.scalePer1000Pixel / 1000f;
-            float dx = (w.x + w.width * 0.5f) - Screen.width * 0.5f;
-            float dy = Screen.height * 0.5f - (w.y + w.height * 0.5f);
+
+            // The overlay's own rectangle, in the same global desktop coordinates the
+            // capture plugin reports windows in. Without it this line was unreadable on a
+            // multi-monitor machine: it printed a window at y=-1456 next to a screen of
+            // 2560x1440 and there was no way to tell, from the log alone, that the two
+            // numbers were measured from different origins. That cost a whole round trip.
+            string origin = "overlay=unknown";
+            float lx = w.x, ly = w.y;
+            float onScreen = -1f;
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            if (OverlayScreen.TryGetRect(out RectInt ov))
+            {
+                origin = $"overlay=({ov.xMin},{ov.yMin},{ov.width}x{ov.height})";
+                lx -= ov.xMin;
+                ly -= ov.yMin;
+                onScreen = OverlayScreen.FractionOnScreen(ov, w.x, w.y, w.width, w.height);
+            }
+#endif
+
+            float dx = (lx + w.width * 0.5f) - Screen.width * 0.5f;
+            float dy = Screen.height * 0.5f - (ly + w.height * 0.5f);
 
             // The capture method belongs on this line more than any of the geometry does.
             // PrintWindow and BitBlt read what an application draws through GDI, so a
@@ -327,6 +378,7 @@ public class VipSimDiagnostics : MonoBehaviour
             // report of "the effects do nothing" and a report of "the window came out
             // black" are then the same log, and there was no way to tell them apart.
             Debug.Log($"[VipSimDiagnostics] CAPTURE '{w.title}' rect=({w.x},{w.y},{w.width}x{w.height}) " +
+                      $"{origin} local=({lx:F0},{ly:F0}) onScreen={onScreen:P0} " +
                       $"screen={Screen.width}x{Screen.height} unitsPerPixel={upp:F5} " +
                       $"deltaPx=({dx:F0},{dy:F0}) planeWorld={t.transform.position} " +
                       $"planeScale={t.transform.lossyScale} camOrtho={Camera.main?.orthographicSize:F3} " +

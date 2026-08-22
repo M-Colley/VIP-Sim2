@@ -41,7 +41,16 @@ public class DropdownManager : MonoBehaviour
         {
             if (liberationSansFont == null)
             {
-                liberationSansFont = Resources.Load<TMP_FontAsset>("LiberationSans SDF");
+                // "Fonts & Materials/" is where TMP keeps it. The bare name is not a
+                // Resources path at all, so this lookup returned null on every run -- which
+                // is why the warning arrived in batches in the player log rather than once,
+                // and why these controls were drawn in whatever font TMP fell back to
+                // rather than the one the rest of the interface uses.
+                liberationSansFont = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+                if (liberationSansFont == null)
+                    liberationSansFont = Resources.Load<TMP_FontAsset>("LiberationSans SDF");
+                if (liberationSansFont == null)
+                    liberationSansFont = TMP_Settings.defaultFontAsset;
 
                 if (liberationSansFont == null)
                 {

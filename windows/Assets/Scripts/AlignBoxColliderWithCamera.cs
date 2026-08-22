@@ -115,6 +115,12 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         // that was already correct.
         if (texture == null || win == null || win.width <= 0 || win.height <= 0) return;
 
+        // A minimised window keeps reporting a rectangle, and Windows parks it at
+        // (-32000,-32000). Following it there throws the capture 32000px off screen and
+        // leaves the last good image nowhere to be seen; holding position instead means
+        // restoring the window puts it straight back where it was.
+        if (win.isMinimized) return;
+
         // World units per captured pixel, taken from uWindowCapture's own scale so this
         // stays correct if scalePer1000Pixel is ever changed in the inspector.
         float unitsPerPixel = texture.scalePer1000Pixel / 1000f;
@@ -141,13 +147,33 @@ public class AlignBoxColliderWithCamera : MonoBehaviour
         }
 
         // Window coordinates arrive in GLOBAL desktop space, y-down from the primary
-        // monitor's top-left -- but the overlay itself may no longer sit at that origin
-        // now that DisplaySwitcher can move it to another monitor. Everything below is
-        // therefore made relative to the overlay window's own top-left. On the primary
-        // display mainWindowPosition is (0,0) and this is exactly the old arithmetic.
+        // monitor's top-left, so a monitor arranged above the primary reports negative y.
+        // The overlay may be on any of those monitors, so the rectangle has to be made
+        // relative to the overlay's own top-left before it means anything here.
+        //
+        // NOT Screen.mainWindowPosition, which is what this used to subtract. That is
+        // relative to the display the window is on, so for a full-screen overlay it is
+        // (0,0) on every monitor -- the subtraction did nothing, and the capture was placed
+        // as though the window's global coordinates were local to whichever screen the
+        // overlay was on. The error is then exactly the offset between the monitors: a
+        // window on the other screen lands entirely outside the overlay and the simulation
+        // shows nothing, while a window near the desktop origin lands roughly centred and
+        // looks as though it works. Both came back from the same session.
+        //
+        // Ask Windows instead, in the same coordinates the capture plugin reports.
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        if (!OverlayScreen.TryGetRect(out RectInt overlay)) return;
+        CaptureNotice.Report(win.title, OverlayScreen.FractionOnScreen(overlay, wx, wy, ww, wh));
+        wx -= overlay.xMin;
+        wy -= overlay.yMin;
+#else
+        // The Windows project also builds the Linux player, where there is no Win32 window
+        // to ask and no uWindowCapture window to place -- this path never runs, but it has
+        // to compile.
         var winPos = Screen.mainWindowPosition;
         wx -= winPos.x;
         wy -= winPos.y;
+#endif
 
         // Screen coordinates are y-down from the top-left; world space is y-up from the
         // camera's centre. Offsets are computed relative to the camera's own position,

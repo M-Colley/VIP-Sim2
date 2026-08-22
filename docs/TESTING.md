@@ -1,6 +1,6 @@
 # VIP-Sim regression checklist
 
-Every test below is a fault that has actually happened at least once, in this project, on a real machine. None of them is hypothetical, and every one of them shipped or nearly shipped. There are 59 of them.
+Every test below is a fault that has actually happened at least once, in this project, on a real machine. None of them is hypothetical, and every one of them shipped or nearly shipped. There are 64 of them.
 
 Work through them on the packaged download rather than on a build made locally: two of the faults here only existed in the archive.
 
@@ -185,6 +185,30 @@ This is where the most expensive fault in the project lives, and it depends enti
 - **Expect:** The simulation follows to the new window, still with the effects on.
 - **Has failed as:** The capture surface is created when a window is picked, so anything configured once at startup is not applied to it. The capture method has to be re-applied every time — the first version of that fix set it only at startup, when there was nothing yet to set it on.
 
+### C7. A window on the other monitor
+
+*Windows*
+
+- **Do:** With two displays, put a browser on the screen VIP-Sim is NOT overlaying and capture it.
+- **Expect:** VIP-Sim says the window is on another screen and points at F3. Move it there, and the capture appears.
+- **Has failed as:** Nothing at all -- and worse, nothing consistent. Windows reports every window in global desktop coordinates, where a monitor arranged above the primary has negative y; the placement subtracted Unity's Screen.mainWindowPosition, which is relative to the display the overlay is on and so is (0,0) on every monitor. The subtraction did nothing, and the capture was drawn the distance between the two monitors away from where it belonged. A window on the other screen landed off the edge and showed nothing; a window that happened to sit near the desktop origin landed roughly centred and appeared, at the wrong size. Reported as 'for Discord it worked but was distorted, for Claude and Outlook again nothing' -- which reads as a per-application fault and is not one.
+
+### C8. A minimised window
+
+*Windows*
+
+- **Do:** Capture a window, then minimise it, then restore it.
+- **Expect:** The image holds while it is minimised, and comes back when it does.
+- **Has failed as:** Windows parks a minimised window at (-32000,-32000) and keeps reporting that as its position. The placement followed it there, throwing the capture 32000px off screen -- indistinguishable from the capture dying.
+
+### C9. A window larger than the screen VIP-Sim is on
+
+*Windows*
+
+- **Do:** With two displays of different sizes, maximise a window on the larger one and capture it from the smaller one.
+- **Expect:** The same notice as C7 -- the window is not on this screen.
+- **Has failed as:** It was drawn at 1:1, which is correct and useless: a 3200x1880 window on a 2560x1440 screen shows its middle and nothing else, which reads as a zoomed, distorted capture rather than as a window that does not fit.
+
 ## D — The effects themselves
 
 Read the ALPHA line in the log alongside these — it names every effect that is actually enabled, which settles most arguments about whether an effect ran.
@@ -237,6 +261,14 @@ Read the ALPHA line in the log alongside these — it names every effect that is
 - **Expect:** Every control is reachable.
 - **Has failed as:** The controls overflowed the panel and the last ones could not be reached at all.
 
+### D7. Toggling effects leaves nothing in the error log
+
+*All platforms*
+
+- **Do:** Apply a preset or a profile, switch several effects on and off, then read vipsim-errors.log next to Player.log.
+- **Expect:** Empty.
+- **Has failed as:** "Coroutine couldn't be started because the game object 'EnableToggle' is inactive!" -- something sets the toggles while the list they belong to is hidden, and Unity logs an error rather than ignoring it. The same action also wrote one warning per switched-off effect, seventeen at a time, for what is simply the normal state of most of them.
+
 ## E — Toolbar, panels and accessibility
 
 The toolbar is six unlabelled glyphs. Everything that explains it has broken at some point.
@@ -288,6 +320,14 @@ The toolbar is six unlabelled glyphs. Everything that explains it has broken at 
 - **Do:** Use Tab and the arrow keys to move through the controls.
 - **Expect:** Focus moves, and where it is is visible.
 - **Has failed as:** Nothing in the interface could be reached from the keyboard at all — a gap worth naming in a tool about vision impairment.
+
+### E7. The F1 panel is readable
+
+*All platforms*
+
+- **Do:** Press F1 and look at how much is on screen at once.
+- **Expect:** Three sections -- Symptoms, Display & text, Help & updates -- one at a time, and a single Close button under them.
+- **Has failed as:** All of it at once: an eighteen-entry symptom reference, a paper link, four navigation buttons, two rows of accessibility controls with their own paragraph of keyboard help, three support buttons and an update status line. Nine controls in the footer alone, and the reference the panel exists for was the hardest thing on it to read.
 
 ## F — Profiles
 
@@ -553,7 +593,7 @@ Needs a Wayland compositor with layer-shell — sway, KWin, Hyprland, labwc or n
 
 Start here if your time is limited. These are the parts of the list nobody has been able to check:
 
-- **C1 on a machine where it failed.** The capture fix has been confirmed to select Windows Graphics Capture, but nobody has yet watched a browser window appear on the laptop where it came out black. That is the one result that closes the report.
+- **C7 on two monitors.** The placement fix was derived from a user's log and verified not to change anything on a single display, where the two coordinate spaces coincide. The machine here has one monitor, so the case the fix exists for has not been run. Capturing a window on each screen in turn is the result that closes it.
 - **The whole macOS column.** The macOS build has been compiled and packaged but never run — there is no Mac here. Treat every MAC test as untested rather than as a regression check.
 - **Linux on KWin.** Developed and verified on sway under WSL. KWin implements the same protocols and should work; it has not been tried.
 - **Linux on GNOME (J2).** The refusal path has never been seen on real GNOME.

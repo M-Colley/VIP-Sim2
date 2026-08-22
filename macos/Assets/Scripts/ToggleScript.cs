@@ -107,10 +107,10 @@ public class ToggleScript : MonoBehaviour
                     Debug.LogWarning($"No Button component found on {obj.name}");
                 }
             }
-            else
-            {
-                Debug.LogWarning($"No Image component found or the sprite doesn't match on {obj.name}");
-            }
+            // No else. This branch is every effect that is currently switched OFF, which
+            // is the normal state of most of them -- it warned seventeen times per toggle
+            // and buried the one real error in the same log.
+
         }
     }
 

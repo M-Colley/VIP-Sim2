@@ -115,6 +115,19 @@ namespace Christina.UI
             if (_animateSliderCoroutine != null)
                 StopCoroutine(_animateSliderCoroutine);
 
+            // A coroutine cannot be started on an inactive object, and Unity logs an error
+            // rather than ignoring it. Something sets these toggles while the list they
+            // belong to is hidden -- applying a profile, or the window list rebuilding --
+            // so the errors arrived in batches, named a control the user had not touched,
+            // and were the only entries in the crash report from an otherwise clean run.
+            // A switch nobody can see has nothing to animate: just set it.
+            if (!isActiveAndEnabled)
+            {
+                if (_slider != null) _slider.value = CurrentValue ? 1 : 0;
+                _animateSliderCoroutine = null;
+                return;
+            }
+
             _animateSliderCoroutine = StartCoroutine(AnimateSlider());
         }
 

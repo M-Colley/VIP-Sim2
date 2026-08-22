@@ -103,18 +103,56 @@ public class SymptomInfo : MonoBehaviour
         if (_open && Input.GetKeyDown(KeyCode.Escape)) _open = false;
     }
 
+    /// <summary>
+    /// Which section of the panel is showing.
+    ///
+    /// This panel had accumulated everything that had nowhere else to go: a reference to
+    /// eighteen symptoms, a paper link, four navigation buttons, two rows of accessibility
+    /// controls with their own paragraph of keyboard help, three support buttons and an
+    /// update status line -- all on one screen at once. The reference the panel exists for
+    /// was the hardest thing on it to read, and the footer alone held nine controls.
+    ///
+    /// Three sections, one purpose each, and a footer with one button in it. Nothing was
+    /// removed; it is the simultaneity that was the problem.
+    /// </summary>
+    private enum Tab { Symptoms, Display, Help }
+
+    private Tab _tab = Tab.Symptoms;
+    private Tab _pendingTab = Tab.Symptoms;
+
+    // Read once per frame, during the layout pass, and used for the rest of it.
+    //
+    // IMGUI runs OnGUI several times per frame -- once to lay out, again to handle the
+    // event, again to paint -- and every pass must produce the SAME set of controls. A
+    // value that can change in between (the tab the user just clicked, whether an update
+    // has finished downloading, whether a monitor was just plugged in) would add or remove
+    // a control mid-frame and throw a mismatched-layout-group error, which takes the whole
+    // panel down rather than just misdrawing it. Latching them at Layout is what makes the
+    // passes agree.
+    private bool _updateAvailable;
+    private int _displays = 1;
+
+    // One scroll position per section, so leaving a section and coming back does not
+    // silently return the reader to the top of it.
+    private readonly Vector2[] _scrolls = new Vector2[3];
+
     private void OnGUI()
     {
         if (!_open) return;
 
         VipSimSkin.Ensure();
         float s = VipSimSkin.Scale;
+        float bh = VipSimSkin.ControlHeight;
+
+        if (Event.current.type == EventType.Layout)
+        {
+            _tab = _pendingTab;
+            _updateAvailable = UpdateChecker.UpdateAvailable;
+            _displays = DisplaySwitcher.DisplayCount;
+        }
 
         // Sized as a share of the screen rather than in pixels: VIP-Sim runs full-screen on
         // whatever the display is, and this is read on 4K panels as often as 1080p ones.
-        // 72% rather than 55%, and a higher pixel ceiling. At the old width the title was
-        // being clipped -- "VIP-Sim" did not fit -- and the two-column entries wrapped hard
-        // enough that the clinical term ran onto its own line.
         float w = Mathf.Min(Screen.width * 0.72f, 1600f);
         float h = Screen.height * 0.82f;
         var panel = new Rect((Screen.width - w) * 0.5f, (Screen.height - h) * 0.5f, w, h);
@@ -128,18 +166,69 @@ public class SymptomInfo : MonoBehaviour
         GUILayout.BeginArea(new Rect(panel.x + 34 * s, panel.y + 30 * s,
                                      panel.width - 68 * s, panel.height - 60 * s));
 
-        GUILayout.Label($"<color=#{VipSimSkin.AccentHex}>REFERENCE</color>", VipSimSkin.Body);
+        GUILayout.Label($"<color=#{VipSimSkin.AccentHex}>VIP-SIM</color>", VipSimSkin.Body);
         GUILayout.Space(4 * s);
-        GUILayout.Label("Vision symptoms", VipSimSkin.Title);
-        GUILayout.Space(8 * s);
-        GUILayout.Label("Each effect approximates <b>one symptom</b>, not a whole diagnosis. Real " +
-                        "conditions combine several, vary enormously between individuals, and " +
-                        "change over time.", VipSimSkin.Body);
-        GUILayout.Space(14 * s);
+        GUILayout.Label(TitleFor(_tab), VipSimSkin.Title);
+        GUILayout.Space(12 * s);
+
+        GUILayout.BeginHorizontal();
+        TabButton(Tab.Symptoms, "Symptoms", bh);
+        TabButton(Tab.Display, "Display & text", bh);
+        TabButton(Tab.Help, "Help & updates", bh);
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(12 * s);
         VipSimSkin.Separator(0f);
         GUILayout.Space(10 * s);
 
-        _scroll = GUILayout.BeginScrollView(_scroll);
+        int i = (int)_tab;
+        _scrolls[i] = GUILayout.BeginScrollView(_scrolls[i]);
+        switch (_tab)
+        {
+            case Tab.Display: DrawDisplaySection(s, bh); break;
+            case Tab.Help: DrawHelpSection(s, bh); break;
+            default: DrawSymptomsSection(s); break;
+        }
+        GUILayout.EndScrollView();
+
+        GUILayout.Space(14 * s);
+        VipSimSkin.Separator(0f);
+        GUILayout.Space(14 * s);
+
+        // One button. Everything else that used to live down here belongs to a section and
+        // is now inside it.
+        if (GUILayout.Button("Close  (Esc)", VipSimSkin.Primary, GUILayout.Height(bh))) SetOpen(false);
+
+        GUILayout.EndArea();
+    }
+
+    private static string TitleFor(Tab tab)
+    {
+        switch (tab)
+        {
+            case Tab.Display: return "Display and text";
+            case Tab.Help: return "Help and updates";
+            default: return "Vision symptoms";
+        }
+    }
+
+    /// <summary>
+    /// A tab. The current one is drawn in the primary style, so which section you are in is
+    /// visible without relying on position or colour alone.
+    /// </summary>
+    private void TabButton(Tab tab, string label, float bh)
+    {
+        var style = _tab == tab ? VipSimSkin.Primary : VipSimSkin.Secondary;
+        if (GUILayout.Button(label, style, GUILayout.Height(bh))) _pendingTab = tab;
+    }
+
+    private void DrawSymptomsSection(float s)
+    {
+        GUILayout.Label("Each effect approximates <b>one symptom</b>, not a whole diagnosis. Real " +
+                        "conditions combine several, vary enormously between individuals, and " +
+                        "change over time.", VipSimSkin.Body);
+        GUILayout.Space(12 * s);
+
         foreach (var entry in Entries)
         {
             if (entry.isGroup)
@@ -152,123 +241,47 @@ public class SymptomInfo : MonoBehaviour
             GUILayout.Label(entry.description, VipSimSkin.Body);
             GUILayout.Space(10 * s);
         }
-            GUILayout.Space(18 * s);
-            GUILayout.Label("FURTHER READING", VipSimSkin.Heading);
-            GUILayout.Label("VIP-Sim is described in the UIST'25 paper. The paper covers how " +
-                            "the symptoms were chosen, how the simulation was built with and " +
-                            "for people with visual impairments, and what it was evaluated on.",
-                            VipSimSkin.Body);
-            GUILayout.Space(8 * s);
+    }
 
-            // A link, not just a printed DOI: nobody types a DOI by hand. Rendered as a
-            // button so it is obviously clickable, since IMGUI has no anchor element.
-            var linkStyle = new GUIStyle(VipSimSkin.Body) { normal = { textColor = new Color(0.45f, 0.72f, 1f) } };
-            if (GUILayout.Button(PaperUrl, linkStyle))
-            {
-                // Opens in the user's browser. Works while the overlay is topmost because
-                // the browser takes focus in front of it.
-                Application.OpenURL(PaperUrl);
-            }
+    /// <summary>
+    /// Which screen the overlay is on, and how big its own text is.
+    ///
+    /// These two belong together: both answer "I cannot see this properly", which is the
+    /// only reason anyone opens this section. The display control lives here as well as on
+    /// F3 because this panel forces the overlay interactive, so the button ALWAYS works --
+    /// F3, like every hotkey on a click-through overlay, only fires while VIP-Sim happens
+    /// to hold keyboard focus, which is rarely.
+    /// </summary>
+    private void DrawDisplaySection(float s, float bh)
+    {
+        GUILayout.Label("WHICH SCREEN", VipSimSkin.Heading);
+        GUILayout.Space(6 * s);
 
-        GUILayout.EndScrollView();
-
-        GUILayout.Space(14 * s);
-        VipSimSkin.Separator(0f);
-        GUILayout.Space(14 * s);
-        float bh = VipSimSkin.ControlHeight;
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Open the paper", VipSimSkin.Secondary, GUILayout.Height(bh)))
-            Application.OpenURL(PaperUrl);
-
-        // Lives here as well as on F3 because this panel forces the overlay interactive
-        // (infoState), so this button ALWAYS works -- F3, like every hotkey on a
-        // click-through overlay, only fires while VIP-Sim happens to hold focus.
-        //
-        // Both values are read into locals first. IMGUI runs this method once to lay out
-        // and again to paint; a control that appears in one pass and not the other throws
-        // a mismatched-layout-group error and takes the whole panel down with it.
-        int displays = DisplaySwitcher.DisplayCount;
-        if (displays > 1)
+        if (_displays > 1)
         {
-            string where = DisplaySwitcher.Summary;
-            if (GUILayout.Button($"Move to next display  ({where})", VipSimSkin.Secondary, GUILayout.Height(bh)))
+            GUILayout.Label($"VIP-Sim is on {DisplaySwitcher.Summary}. It simulates the screen it " +
+                            "is on, so a window on another screen will not appear.", VipSimSkin.Body);
+            GUILayout.Space(8 * s);
+            if (GUILayout.Button("Move to the next screen  (F3)", VipSimSkin.Secondary, GUILayout.Height(bh)))
                 DisplaySwitcher.MoveToNext();
         }
-
-        // Close this panel first: both are modal IMGUI surfaces and would stack.
-        if (GUILayout.Button("Show tutorial", VipSimSkin.Secondary, GUILayout.Height(bh)))
+        else
         {
-            SetOpen(false);
-            FirstRunTutorial.Open();
+            GUILayout.Label("One screen is connected, so there is nowhere else to move to.",
+                            VipSimSkin.Body);
         }
 
-        if (GUILayout.Button("Close  (Esc)", VipSimSkin.Primary, GUILayout.Height(bh))) SetOpen(false);
-        GUILayout.EndHorizontal();
-
-        DrawAccessibilityRow(s, bh);
-        DrawSupportRow(s, bh);
-
-        GUILayout.EndArea();
-    }
-
-
-    /// <summary>
-    /// Support and update row.
-    ///
-    /// A paid tool needs an answer to "something is wrong, now what" that is not "email
-    /// the author and hope". These three give it: where to report, the diagnostics file
-    /// to attach, and whether the build is current -- which is the first question any
-    /// support reply would have asked anyway.
-    /// </summary>
-    private void DrawSupportRow(float s, float bh)
-    {
-        GUILayout.Space(10 * s);
-        GUILayout.BeginHorizontal();
-
-        if (GUILayout.Button("Report a problem", VipSimSkin.Secondary, GUILayout.Height(bh)))
-            Application.OpenURL(UpdateChecker.SupportUrl);
-
-        // Copies rather than opens: the folder differs per platform, and a path on the
-        // clipboard is what a user can paste into a bug report.
-        if (GUILayout.Button("Copy diagnostics path", VipSimSkin.Secondary, GUILayout.Height(bh)))
-        {
-            GUIUtility.systemCopyBuffer = Application.persistentDataPath;
-            Debug.Log($"[SymptomInfo] Diagnostics path copied: {Application.persistentDataPath}");
-        }
-
-        if (UpdateChecker.UpdateAvailable &&
-            GUILayout.Button("Get the update", VipSimSkin.Primary, GUILayout.Height(bh)))
-            Application.OpenURL(UpdateChecker.ReleasesUrl);
-
-        GUILayout.EndHorizontal();
-
-        GUILayout.Space(8 * s);
-        GUILayout.BeginHorizontal();
-        GUILayout.Label(UpdateChecker.Status, VipSimSkin.Muted);
-        GUILayout.EndHorizontal();
-    }
-
-
-    /// <summary>
-    /// Accessibility controls.
-    ///
-    /// Deliberately in the panel rather than behind a preferences dialog nobody opens: a
-    /// user who needs larger text needs it before they can comfortably read their way to a
-    /// settings screen. Both settings persist.
-    /// </summary>
-    private void DrawAccessibilityRow(float s, float bh)
-    {
-        GUILayout.Space(12 * s);
+        GUILayout.Space(16 * s);
         VipSimSkin.Separator(0f);
-        GUILayout.Space(12 * s);
+        GUILayout.Space(16 * s);
 
-        // Two rows, and no fixed widths on the controls.
-        //
-        // The first version put all four controls on one line with fixed pixel widths, and
-        // it overflowed the panel at 120% text -- clipping the last button off the right
-        // edge. A control row that breaks when the text is enlarged is precisely the defect
-        // this feature exists to prevent, so the layout has to survive its own setting at
-        // every step up to the 250% maximum.
+        GUILayout.Label("TEXT AND CONTRAST", VipSimSkin.Heading);
+        GUILayout.Space(6 * s);
+
+        // No fixed widths on the controls. The first version put all four on one line with
+        // fixed pixel widths and it overflowed the panel at 120% text, clipping the last
+        // button off the right edge -- a control row that breaks when the text is enlarged
+        // is precisely the defect this feature exists to prevent.
         GUILayout.BeginHorizontal();
         GUILayout.Label($"Text size  {Mathf.RoundToInt(VipSimSkin.UserScale * 100f)}%", VipSimSkin.Term);
         GUILayout.FlexibleSpace();
@@ -295,11 +308,72 @@ public class SymptomInfo : MonoBehaviour
 
         GUILayout.EndHorizontal();
 
-        GUILayout.Space(6 * s);
+        GUILayout.Space(8 * s);
         GUILayout.Label("Tab and Shift+Tab move between controls; arrow keys move within them; " +
                         "Enter activates. VIP-Sim must have keyboard focus first -- click its " +
                         "panel once. Screen readers are not yet supported; see ACCESSIBILITY.md.",
                         VipSimSkin.Body);
+    }
+
+    /// <summary>
+    /// The paper, the tutorial, and the answer to "something is wrong, now what" that is
+    /// not "email the author and hope": where to report, which file to attach, and whether
+    /// the build is current -- the first question any support reply would have asked.
+    /// </summary>
+    private void DrawHelpSection(float s, float bh)
+    {
+        GUILayout.Label("ABOUT VIP-SIM", VipSimSkin.Heading);
+        GUILayout.Space(6 * s);
+        GUILayout.Label("VIP-Sim is described in the UIST'25 paper, which covers how the symptoms " +
+                        "were chosen, how the simulation was built with and for people with " +
+                        "visual impairments, and what it was evaluated on.", VipSimSkin.Body);
+        GUILayout.Space(8 * s);
+
+        // A link, not just a printed DOI: nobody types a DOI by hand. Rendered as a button
+        // so it is obviously clickable, since IMGUI has no anchor element.
+        var linkStyle = new GUIStyle(VipSimSkin.Body) { normal = { textColor = new Color(0.45f, 0.72f, 1f) } };
+        if (GUILayout.Button(PaperUrl, linkStyle)) Application.OpenURL(PaperUrl);
+
+        GUILayout.Space(10 * s);
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Open the paper", VipSimSkin.Secondary, GUILayout.Height(bh)))
+            Application.OpenURL(PaperUrl);
+
+        // Close this panel first: both are modal IMGUI surfaces and would stack.
+        if (GUILayout.Button("Show the tutorial", VipSimSkin.Secondary, GUILayout.Height(bh)))
+        {
+            SetOpen(false);
+            FirstRunTutorial.Open();
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(16 * s);
+        VipSimSkin.Separator(0f);
+        GUILayout.Space(16 * s);
+
+        GUILayout.Label("IF SOMETHING IS WRONG", VipSimSkin.Heading);
+        GUILayout.Space(6 * s);
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Report a problem", VipSimSkin.Secondary, GUILayout.Height(bh)))
+            Application.OpenURL(UpdateChecker.SupportUrl);
+
+        // Copies rather than opens: the folder differs per platform, and a path on the
+        // clipboard is what a user can paste into a bug report.
+        if (GUILayout.Button("Copy diagnostics path", VipSimSkin.Secondary, GUILayout.Height(bh)))
+        {
+            GUIUtility.systemCopyBuffer = Application.persistentDataPath;
+            Debug.Log($"[SymptomInfo] Diagnostics path copied: {Application.persistentDataPath}");
+        }
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(14 * s);
+        GUILayout.Label(UpdateChecker.Status, VipSimSkin.Muted);
+        if (_updateAvailable)
+        {
+            GUILayout.Space(8 * s);
+            if (GUILayout.Button("Get the update", VipSimSkin.Primary, GUILayout.Height(bh)))
+                Application.OpenURL(UpdateChecker.ReleasesUrl);
+        }
     }
 
     private struct Entry

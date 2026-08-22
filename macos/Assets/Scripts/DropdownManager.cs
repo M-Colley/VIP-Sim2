@@ -221,7 +221,10 @@ public class DropdownManager : MonoBehaviour
             GameObject labelObject = new GameObject(field.Name + "Label");
             labelObject.transform.SetParent(uiContainer, false);
             TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
-            label.font = Resources.Load<TMP_FontAsset>("LiberationSans SDF");
+            // "Fonts & Materials/" is where TMP keeps it; the bare name is not a Resources
+            // path at all, so this returned null and the label was left without a font.
+            label.font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF")
+                         ?? TMP_Settings.defaultFontAsset;
             label.text = renameToReadableParameter(field.Name);
             label.fontSize = fontSize;
             label.color = labelColor;

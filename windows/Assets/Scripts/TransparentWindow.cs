@@ -40,6 +40,21 @@ using UnityEngine.EventSystems;
 /// </summary>
 public class TransparentWindow : MonoBehaviour {
 
+    /// <summary>
+    /// The overlay's own window handle, for the code that has to ask Windows where the
+    /// overlay is rather than where Unity thinks it is. Zero until it has been acquired --
+    /// callers must check, because acquisition takes a few frames and can happen again if
+    /// the window is recreated by a resolution change.
+    ///
+    /// Declared outside the platform blocks on purpose. It is only ever set on Windows, but
+    /// the Editor compiles this file with the ACTIVE BUILD TARGET's symbols while the code
+    /// that reads it is compiled for the editor's own platform -- so with the target left
+    /// on Linux after a Linux build, a Windows-guarded declaration vanishes while its
+    /// callers remain, and the project stops compiling for reasons that have nothing to do
+    /// with what changed.
+    /// </summary>
+    public static IntPtr OwnWindow { get; private set; }
+
 #if UNITY_STANDALONE_WIN
     [DllImport("user32.dll")]
     public static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
@@ -398,6 +413,7 @@ public class TransparentWindow : MonoBehaviour {
         {
             Debug.LogWarning("TransparentWindow: the window was recreated; re-acquiring its handle.");
             hWnd = IntPtr.Zero;
+            OwnWindow = IntPtr.Zero;
             _appliedOnce = false;
         }
 
@@ -413,6 +429,8 @@ public class TransparentWindow : MonoBehaviour {
         // passed 0,0,0,0 with no flags, which asks Windows to move the window to
         // the origin and resize it to nothing.
         SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+        OwnWindow = hWnd;
 
         Debug.Log($"TransparentWindow: window 0x{hWnd.ToInt64():X} acquired after {_acquireAttempts} " +
                   $"retries (ex-style 0x{GetWindowLong(hWnd, GWL_EXSTYLE):X}); clickthrough is active.");
