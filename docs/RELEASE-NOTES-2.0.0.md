@@ -8,8 +8,8 @@ using that application normally.
 
 | File | Platform | Size |
 |---|---|---|
-| `VIP-Sim-2.0.0-Windows-x64.zip` | Windows 10 / 11, 64-bit | 146 MB |
-| `VIP-Sim-2.0.0-macOS-universal.zip` | macOS 12+, Apple silicon and Intel | 160 MB |
+| `VIP-Sim-Windows-x64.zip` | Windows 10 / 11, 64-bit | 147 MB |
+| `VIP-Sim-macOS-universal.zip` | macOS 12+, Apple silicon and Intel | 161 MB |
 
 Each archive contains the application, a `READ-ME-FIRST.md` with the first-launch steps
 for that platform, the licence, third-party notices, and the changelog.
