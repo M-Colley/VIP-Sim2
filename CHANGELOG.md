@@ -5,7 +5,7 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ---
 
-## [Unreleased]
+## [2.0.1] — 2026-08-22
 
 ### Fixed
 

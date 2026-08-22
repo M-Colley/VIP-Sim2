@@ -12,7 +12,7 @@
 > convenience and support, that is a licensing decision to take first, with every
 > rights-holder's agreement — and it cannot retract what has already been published.
 
-**Product:** VIP-Sim 2.0.0
+**Product:** VIP-Sim 2.0.1
 **Licensor:** Mark Colley and Max Rädler
 66–72 Gower Street, London WC1E 6EA, United Kingdom — m.colley@ucl.ac.uk
 

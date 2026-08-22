@@ -4,7 +4,7 @@
 > against the source, so that a lawyer can finish it quickly and a reviewer can check
 > every claim against the code. Have it reviewed before publishing.
 
-**Applies to:** VIP-Sim 2.0.0 (Windows, macOS) and the VIP-Sim website
+**Applies to:** VIP-Sim 2.0.1 (Windows, macOS, Linux) and the VIP-Sim website
 **Last updated:** 19 August 2026
 
 ### Who is responsible for what
@@ -69,6 +69,7 @@ mouse until you switch it on.
 ### Where the local files are
 
 - **Windows:** `%USERPROFILE%\AppData\LocalLow\Zefwih\VIP-Sim\`
+- **Linux:** `~/.config/unity3d/Zefwih/VIP-Sim/`
 - **macOS:** `~/Library/Logs/Zefwih/VIP-Sim/` and `~/Library/Application Support/`
 
 The **Copy diagnostics path** button in the F1 panel puts this location on your clipboard.
