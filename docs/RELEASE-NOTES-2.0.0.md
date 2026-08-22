@@ -10,9 +10,16 @@ using that application normally.
 |---|---|---|
 | `VIP-Sim-Windows-x64.zip` | Windows 10 / 11, 64-bit | 147 MB |
 | `VIP-Sim-macOS-universal.zip` | macOS 12+, Apple silicon and Intel | 161 MB |
+| `VIP-Sim-Linux-x64.tar.gz` | Linux, Wayland with layer-shell (not GNOME) | 147 MB |
 
 Each archive contains the application, a `READ-ME-FIRST.md` with the first-launch steps
 for that platform, the licence, third-party notices, and the changelog.
+
+The Linux build needs a Wayland compositor that implements `zwlr_layer_shell_v1` -- Sway,
+KWin, Hyprland, labwc and niri do; GNOME does not, and VIP-Sim says so and exits rather
+than pretending. Run `VIP-Sim.sh` rather than the binary: the overlay is a second program,
+because Wayland fixes a window's role when it is created and an always-on-top
+click-through overlay is not a role Unity's window can take.
 
 ## Before you run it
 

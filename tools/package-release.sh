@@ -48,8 +48,32 @@ cp "$ROOT/docs/ACCESSIBILITY.md" "$ROOT/CHANGELOG.md" "$ROOT/LICENSE" \
 chmod +x "$STAGE/mac/VIP-Sim.app/Contents/MacOS/VIP-Sim" "$STAGE/mac/setup.sh"
 ( cd "$STAGE/mac" && zip -q -r -y "$OUT/VIP-Sim-macOS-universal.zip" . )
 
+# ---- Linux: a tarball, and only if both halves are built.
+#
+# Two binaries, not one. The overlay has to own a layer surface and Unity's window cannot be
+# one, so the presenter is a separate program that hosts the player -- and it is the thing
+# the launcher starts. A tarball rather than a zip because the execute bit on three files is
+# load-bearing and tar keeps it without ceremony.
+LIN_BUILD="$ROOT/windows/Build/StandaloneLinux64"
+PRESENTER="$ROOT/linux/presenter/build/vipsim-presenter"
+if [ -f "$LIN_BUILD/VIP-Sim" ] && [ -f "$PRESENTER" ]; then
+    mkdir -p "$STAGE/lin/VIP-Sim"
+    cp -r "$LIN_BUILD/." "$STAGE/lin/VIP-Sim/"
+    rm -rf "$STAGE/lin/VIP-Sim/"*_BurstDebugInformation_DoNotShip
+    cp "$PRESENTER" "$STAGE/lin/VIP-Sim/"
+    mkdir -p "$STAGE/lin/VIP-Sim/VIP-Sim_Data/Plugins/x86_64"
+    cp "$ROOT/linux/presenter/build/libvipsim_present.so"        "$ROOT/linux/presenter/build/libvipsim_capture.so"        "$STAGE/lin/VIP-Sim/VIP-Sim_Data/Plugins/x86_64/" 2>/dev/null || true
+    cp "$ROOT/docs/LINUX_README.md" "$STAGE/lin/VIP-Sim/READ-ME-FIRST.md"
+    cp "$ROOT/docs/ACCESSIBILITY.md" "$ROOT/CHANGELOG.md" "$ROOT/LICENSE"        "$ROOT/THIRD-PARTY-NOTICES.md" "$STAGE/lin/VIP-Sim/"
+    chmod +x "$STAGE/lin/VIP-Sim/VIP-Sim" "$STAGE/lin/VIP-Sim/vipsim-presenter"              "$STAGE/lin/VIP-Sim/VIP-Sim.sh" 2>/dev/null || true
+    ( cd "$STAGE/lin" && tar czf "$OUT/VIP-Sim-Linux-x64.tar.gz" VIP-Sim )
+    echo "included a Linux tarball"
+else
+    echo "no Linux archive: needs both a player and linux/presenter/build.sh output"
+fi
+
 # ---- Checksums, so a truncated download can be told from a broken build.
-( cd "$OUT" && sha256sum VIP-Sim-Windows-x64.zip VIP-Sim-macOS-universal.zip > SHA256SUMS.txt )
+( cd "$OUT" && sha256sum VIP-Sim-*.zip VIP-Sim-*.tar.gz 2>/dev/null > SHA256SUMS.txt )
 
 echo
 ls -lh "$OUT"
