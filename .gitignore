@@ -116,3 +116,14 @@ linux/presenter/build/
 # extension: a stray p8.json is the same mistake as p1.json.
 /profiles/
 *.vipsim-profiles
+
+# Unity Performance Testing run artifacts.
+#
+# The package writes these into Assets/Resources, and everything in a Resources folder is
+# baked into the player -- so a test run leaves files that ship to users. The fields include
+# device name, processor and GPU, which are empty here only because the run never populated
+# them. Not wanted in the repository and not wanted in a build.
+windows/Assets/Resources/PerformanceTestRun*.json
+windows/Assets/Resources/PerformanceTestRun*.json.meta
+macos/Assets/Resources/PerformanceTestRun*.json
+macos/Assets/Resources/PerformanceTestRun*.json.meta
