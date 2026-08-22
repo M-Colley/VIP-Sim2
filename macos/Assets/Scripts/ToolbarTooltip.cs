@@ -64,20 +64,60 @@ public class ToolbarTooltip : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         }
     }
 
+    /// <summary>
+    /// How long the pointer must rest on a control before its description appears.
+    ///
+    /// Appearing instantly is worse than it sounds on a toolbar this dense: crossing it to
+    /// reach one button flashes the description of every button on the way. Waiting means
+    /// the text only ever appears when someone has actually stopped to ask what something
+    /// is, which is the only moment it helps.
+    /// </summary>
+    [Tooltip("Seconds the pointer must rest on a control before its description appears.")]
+    public float hoverDelaySeconds = 0.6f;
+
+    private Coroutine _pending;
+
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (_label == null || string.IsNullOrEmpty(message)) return;
+        if (_pending != null) StopCoroutine(_pending);
+        _pending = StartCoroutine(ShowAfterDelay());
+    }
+
+    private System.Collections.IEnumerator ShowAfterDelay()
+    {
+        // Unscaled, because VIP-Sim can be paused or slowed while an effect is demonstrated
+        // and the help text should still behave like part of the interface rather than like
+        // part of the simulation.
+        if (hoverDelaySeconds > 0f)
+            yield return new WaitForSecondsRealtime(hoverDelaySeconds);
+
+        _pending = null;
+        if (_label == null) yield break;
         _label.text = message;
         if (_labelRoot != null) _labelRoot.SetActive(true);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        if (_labelRoot != null) _labelRoot.SetActive(false);
+        Hide();
     }
 
     private void OnDisable()
     {
+        Hide();
+    }
+
+    private void Hide()
+    {
+        // The pending show has to be cancelled as well as the label hidden: leaving it to
+        // run means the description of a control appears after the pointer has already left
+        // it, which is how a tooltip ends up describing the wrong thing.
+        if (_pending != null)
+        {
+            StopCoroutine(_pending);
+            _pending = null;
+        }
         if (_labelRoot != null) _labelRoot.SetActive(false);
     }
 }

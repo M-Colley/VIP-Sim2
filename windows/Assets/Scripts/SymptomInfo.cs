@@ -77,6 +77,13 @@ public class SymptomInfo : MonoBehaviour
 
         UpdateChecker.Install(gameObject);
         VipSimAccessibility.Install(gameObject);
+        DisplayNotice.Install(gameObject);
+
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        // Ask the capture plugin for a method that can see a GPU-rendered window; its
+        // default cannot, and the failure looks exactly like the simulation being off.
+        WindowCaptureMode.Install(gameObject);
+#endif
 
 #if UNITY_STANDALONE_LINUX && !UNITY_EDITOR
         // Linux gets its overlay from a separate presenter process and its capture from

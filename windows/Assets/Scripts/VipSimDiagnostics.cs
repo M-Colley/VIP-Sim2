@@ -320,10 +320,17 @@ public class VipSimDiagnostics : MonoBehaviour
             float dx = (w.x + w.width * 0.5f) - Screen.width * 0.5f;
             float dy = Screen.height * 0.5f - (w.y + w.height * 0.5f);
 
+            // The capture method belongs on this line more than any of the geometry does.
+            // PrintWindow and BitBlt read what an application draws through GDI, so a
+            // GPU-rendered window -- a browser, anything on Electron, recent Explorer --
+            // captures as black while every other number here stays perfectly correct. A
+            // report of "the effects do nothing" and a report of "the window came out
+            // black" are then the same log, and there was no way to tell them apart.
             Debug.Log($"[VipSimDiagnostics] CAPTURE '{w.title}' rect=({w.x},{w.y},{w.width}x{w.height}) " +
                       $"screen={Screen.width}x{Screen.height} unitsPerPixel={upp:F5} " +
                       $"deltaPx=({dx:F0},{dy:F0}) planeWorld={t.transform.position} " +
-                      $"planeScale={t.transform.lossyScale} camOrtho={Camera.main?.orthographicSize:F3}");
+                      $"planeScale={t.transform.lossyScale} camOrtho={Camera.main?.orthographicSize:F3} " +
+                      $"mode={t.captureMode}");
         }
     }
 

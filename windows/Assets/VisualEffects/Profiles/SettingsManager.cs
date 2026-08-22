@@ -83,20 +83,62 @@ public class SettingsManager : MonoBehaviour
     }
 
     // Öffnet einen Dateibrowser, um die Datei zu laden
-    private async void OpenFileBrowser()
+    //
+    // The callback form, which is the one that works. WaitForLoadDialog returns an
+    // IEnumerator that has to be driven as a coroutine; called from an async method that
+    // never awaited it, it was simply discarded -- so the dialog never appeared, the stale
+    // FileBrowser.Success was read, and the Load button did nothing at all. It is the same
+    // call the macOS project already makes.
+    private void OpenFileBrowser()
     {
-        string path = await OpenFilePanelAsync();
-        if (!string.IsNullOrEmpty(path))
-        {
-            LoadSettings(path);
-        }
+        SetProfileFilters();
+        FileBrowser.ShowLoadDialog(
+            (paths) =>
+            {
+                if (paths != null && paths.Length > 0 && !string.IsNullOrEmpty(paths[0]))
+                    LoadSettings(paths[0]);
+            },
+            () => { Debug.Log("[SettingsManager] file selection cancelled"); },
+            FileBrowser.PickMode.Files,
+            false, null, null,
+            "Load a profile or settings file", "Load");
+    }
+
+    /// <summary>
+    /// Both kinds of file this build can read.
+    ///
+    /// Condition profiles are .json; the older settings files are .profile. Filtering to
+    /// .profile alone -- which is what this did -- shows the user an empty folder when they
+    /// navigate to their profiles, which is indistinguishable from the profiles not being
+    /// there.
+    /// </summary>
+    private static void SetProfileFilters()
+    {
+        FileBrowser.SetFilters(true,
+            new FileBrowser.Filter("Profiles and settings", ".json", ".profile"),
+            new FileBrowser.Filter("Condition profiles", ".json"),
+            new FileBrowser.Filter("Settings files", ".profile"));
+        FileBrowser.SetDefaultFilter(".json");
     }
 
     // Speichert die aktuellen Einstellungen in eine Datei
-    private async void SaveSettings()
+    private void SaveSettings()
     {
-        string path = await SaveFilePanelAsync();
-        if (string.IsNullOrEmpty(path)) return;
+        SetProfileFilters();
+        FileBrowser.ShowSaveDialog(
+            (paths) =>
+            {
+                if (paths != null && paths.Length > 0 && !string.IsNullOrEmpty(paths[0]))
+                    WriteProfile(paths[0]);
+            },
+            () => { Debug.Log("[SettingsManager] save cancelled"); },
+            FileBrowser.PickMode.Files,
+            false, null, "profile.json",
+            "Save this simulation as a profile", "Save");
+    }
+
+    private void WriteProfile(string path)
+    {
 
         // Written as a condition profile: which effects are on, and their parameters in the
         // effects' own units. That is the format the Load button reads back, so a profile
@@ -358,37 +400,6 @@ public class SettingsManager : MonoBehaviour
     }
     */
 
-    public async Task<string> OpenFilePanelAsync()
-    {
-        FileBrowser.SetFilters(true, new FileBrowser.Filter("Profile Files", ".profile"));
-        FileBrowser.SetDefaultFilter(".profile");
-
-        FileBrowser.WaitForLoadDialog(
-            FileBrowser.PickMode.Files,
-            false,
-            null,
-            null,
-            "Select a Settings File",
-            "Select");
-
-        return (FileBrowser.Success && FileBrowser.Result.Length > 0) ? FileBrowser.Result[0] : null;
-    }
-
-    public async Task<string> SaveFilePanelAsync()
-    {
-        FileBrowser.SetFilters(true, new FileBrowser.Filter("Profile Files", ".profile"));
-        FileBrowser.SetDefaultFilter(".profile");
-
-        FileBrowser.WaitForSaveDialog(
-            FileBrowser.PickMode.Files,
-            false,
-            null,
-            "settings.profile",
-            "Save Settings File",
-            "Save");
-
-        return FileBrowser.Success ? FileBrowser.Result[0] : null;
-    }
 }
 
 // Klasse, die alle Einstellungen enthält

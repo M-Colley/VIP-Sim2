@@ -77,6 +77,7 @@ public class SymptomInfo : MonoBehaviour
 
         UpdateChecker.Install(gameObject);
         VipSimAccessibility.Install(gameObject);
+        DisplayNotice.Install(gameObject);
 
 #if UNITY_STANDALONE_LINUX && !UNITY_EDITOR
         // Linux gets its overlay from a separate presenter process and its capture from

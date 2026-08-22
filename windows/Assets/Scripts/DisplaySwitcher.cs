@@ -73,6 +73,10 @@ public static class DisplaySwitcher
         if (from < 0) from = _indexHint >= 0 && _indexHint < _displays.Count ? _indexHint : 0;
 
         MoveTo((from + 1) % _displays.Count);
+
+        // Say where it went. A fullscreen overlay moving between screens is
+        // otherwise silent, and on the wrong screen it looks like it vanished.
+        DisplayNotice.Show();
     }
 
     /// <summary>

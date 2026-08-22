@@ -82,7 +82,14 @@ private void Start()
 
     private void OpenFileBrowser()
     {
-        FileBrowser.SetFilters(true, new FileBrowser.Filter("Profile Files", ".profile"));
+        // Both kinds this build reads: condition profiles are .json, the older settings
+        // files are .profile. Filtering to .profile alone shows an empty folder to anyone
+        // who navigates to their profiles.
+        FileBrowser.SetFilters(true,
+            new FileBrowser.Filter("Profiles and settings", ".json", ".profile"),
+            new FileBrowser.Filter("Condition profiles", ".json"),
+            new FileBrowser.Filter("Settings files", ".profile"));
+        FileBrowser.SetDefaultFilter(".json");
         FileBrowser.ShowLoadDialog((paths) =>
         {
             if (paths != null && paths.Length > 0 && !string.IsNullOrEmpty(paths[0]))
