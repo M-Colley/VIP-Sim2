@@ -1290,17 +1290,21 @@ JS = r"""
 
 
 def main():
-    root = r"C:\Users\localadmin\Desktop\VIP-Sim2"
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     md = render_markdown()
-    with io.open(os.path.join(root, "docs", "TESTING.md"), "w", encoding="utf-8", newline="\n") as f:
+    with io.open(os.path.join(root, "docs", "TESTING.md"), "w",
+                 encoding="utf-8", newline="\n") as f:
         f.write(md)
+    print("docs/TESTING.md: %d bytes, %d tests"
+          % (len(md), sum(len(g["tests"]) for g in GROUPS)))
 
+    # The shareable HTML page is not a repository file -- it is published as an artifact
+    # and would only rot here. Set VIPSIM_HTML_OUT to regenerate it.
     out = os.environ.get("VIPSIM_HTML_OUT")
-    with io.open(out, "w", encoding="utf-8", newline="\n") as f:
-        f.write(render_html())
-
-    print("markdown %d bytes" % len(md))
-    print("tests: %d" % sum(len(g["tests"]) for g in GROUPS))
+    if out:
+        with io.open(out, "w", encoding="utf-8", newline="\n") as f:
+            f.write(render_html())
+        print("%s written" % out)
 
 
 if __name__ == "__main__":
