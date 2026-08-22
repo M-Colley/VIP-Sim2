@@ -57,6 +57,34 @@ namespace VipSim.EditorTools
         [MenuItem("VIP-Sim/Build/Linux (x64, experimental)")]
         public static void BuildLinux() => Build(BuildTarget.StandaloneLinux64, "VIP-Sim");
 
+        /// <summary>
+        /// Empty the output directory when the scripting backend has changed since it was
+        /// last built into.
+        ///
+        /// Unity refuses outright -- "Build path contains a project previously built with
+        /// the Mono2x scripting backend, the current setting is for IL2CPP" -- and the two
+        /// leave incompatible layouts behind, Mono a Managed folder of assemblies and IL2CPP
+        /// a GameAssembly. Left to the caller this is a build that fails for a reason having
+        /// nothing to do with the code, on the day someone first tries to cut a release with
+        /// the faster backend.
+        /// </summary>
+        private static void ClearIfBackendChanged(string outDir, ScriptingImplementation backend)
+        {
+            string marker = Path.Combine(outDir, ".vipsim-backend");
+            string want = backend.ToString();
+
+            if (!Directory.Exists(outDir)) return;
+            if (File.Exists(marker) && File.ReadAllText(marker).Trim() == want) return;
+
+            if (Directory.GetFileSystemEntries(outDir).Length != 0)
+            {
+                Debug.Log($"[VipSimBuild] output was built with a different backend; clearing {outDir}");
+                Directory.Delete(outDir, true);
+            }
+            Directory.CreateDirectory(outDir);
+            File.WriteAllText(marker, want);
+        }
+
         private static string[] EnabledScenes()
         {
             var scenes = EditorBuildSettings.scenes
@@ -157,6 +185,8 @@ namespace VipSim.EditorTools
 
             Debug.Log($"[VipSimBuild] {target} -> {options.locationPathName} " +
                       $"({options.scenes.Length} scene(s), backend={backend})");
+
+            ClearIfBackendChanged(outDir, backend);
 
             var report = BuildPipeline.BuildPlayer(options);
             var s = report.summary;

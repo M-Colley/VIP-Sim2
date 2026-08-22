@@ -50,6 +50,35 @@ namespace VipSim.EditorTools
         public static void BuildLinux() => Build(BuildTarget.StandaloneLinux64, "VIP-Sim");
 
         /// <summary>
+        /// Empty the output directory when the scripting backend has changed since it was
+        /// last built into.
+        ///
+        /// Unity refuses outright -- "Build path contains a project previously built with
+        /// the Mono2x scripting backend, the current setting is for IL2CPP" -- and the two
+        /// leave incompatible layouts behind, Mono a Managed folder of assemblies and IL2CPP
+        /// a GameAssembly. Left to the caller this is a build that fails for a reason having
+        /// nothing to do with the code, on the day someone first tries to cut a release with
+        /// the faster backend.
+        /// </summary>
+        private static void ClearIfBackendChanged(string outDir, ScriptingImplementation backend)
+        {
+            string marker = Path.Combine(outDir, ".vipsim-backend");
+            string want = backend.ToString();
+
+            if (!Directory.Exists(outDir)) return;
+            if (File.Exists(marker) && File.ReadAllText(marker).Trim() == want) return;
+
+            bool empty = Directory.GetFileSystemEntries(outDir).Length == 0;
+            if (!empty)
+            {
+                Debug.Log($"[VipSimBuild] output was built with a different backend; clearing {outDir}");
+                Directory.Delete(outDir, true);
+            }
+            Directory.CreateDirectory(outDir);
+            File.WriteAllText(marker, want);
+        }
+
+        /// <summary>
         /// Write the launcher that Linux needs, beside the player.
         ///
         /// SDL decides whether the window can be transparent when it creates it, which is
@@ -181,6 +210,34 @@ namespace VipSim.EditorTools
 
             Debug.Log($"[VipSimBuild] {target} -> {options.locationPathName} " +
                       $"({options.scenes.Length} scene(s), backend={backend})");
+
+            // IL2CPP's generated C++ can be produced two ways, and the choice is not only
+            // about speed. "Faster runtime" instantiates generics per type, which makes
+            // enormous translation units -- enough that MSVC 14.44 falls over compiling
+            // Unity's own bundled sparsehash with an internal compiler error. Shared
+            // generics produce far smaller code that the compiler survives, and still run
+            // as native code rather than through a JIT. Selectable, because which one works
+            // depends on the compiler installed rather than on anything in this project.
+            if (backend == ScriptingImplementation.IL2CPP)
+            {
+                var codegen = ArgValue("-il2cppCodegen", "speed").ToLowerInvariant() == "size"
+                    ? Il2CppCodeGeneration.OptimizeSize
+                    : Il2CppCodeGeneration.OptimizeSpeed;
+                PlayerSettings.SetIl2CppCodeGeneration(NamedBuildTarget.Standalone, codegen);
+
+                // And how hard the C++ compiler is asked to optimise. Release is right for a
+                // shipped build; Debug exists here because an internal compiler error is
+                // almost always a fault in the optimiser, so this is the switch that says
+                // whether a toolchain can produce an IL2CPP build at all.
+                var cfg = ArgValue("-il2cppConfig", "release").ToLowerInvariant();
+                var config = cfg == "debug"  ? Il2CppCompilerConfiguration.Debug
+                           : cfg == "master" ? Il2CppCompilerConfiguration.Master
+                                             : Il2CppCompilerConfiguration.Release;
+                PlayerSettings.SetIl2CppCompilerConfiguration(NamedBuildTarget.Standalone, config);
+                Debug.Log($"[VipSimBuild] IL2CPP code generation: {codegen}, compiler: {config}");
+            }
+
+            ClearIfBackendChanged(outDir, backend);
 
             var report = BuildPipeline.BuildPlayer(options);
             var s = report.summary;
