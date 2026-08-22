@@ -1,7 +1,8 @@
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
-using Newtonsoft.Json; // Für JSON (installiere NewtonSoft.Json aus dem Unity Asset Store oder per NuGet)
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq; // Für JSON (installiere NewtonSoft.Json aus dem Unity Asset Store oder per NuGet)
 using SimpleFileBrowser; // UnitySimpleFileBrowser
 using System.Reflection;
 using MathNet.Numerics.Interpolation;
@@ -99,9 +100,16 @@ private void Start()
         {
             if (paths != null && paths.Length > 0 && !string.IsNullOrEmpty(paths[0]))
             {
-                string json = JsonConvert.SerializeObject(appSettings, Formatting.Indented);
-                File.WriteAllText(paths[0], json);
-                Debug.Log("Settings saved to: " + paths[0]);
+                // Written as a condition profile: which effects are on, and their
+                // parameters in the effects' own units. That is what the Load button reads
+                // back, so a profile saved here reloads exactly, and it is the same shape
+                // as the authored profiles -- which is what lets this application be used
+                // to tune one rather than only to view it.
+                var profile = ProfileBinder.Capture(this, Path.GetFileNameWithoutExtension(paths[0]), "");
+                File.WriteAllText(paths[0], profile.ToString(Formatting.Indented));
+
+                int count = (profile["filters"] as JArray)?.Count ?? 0;
+                Debug.Log($"[SettingsManager] saved a profile with {count} active effect(s) to {paths[0]}");
             }
         },
         () => { Debug.Log("Save file dialog canceled"); },
@@ -111,17 +119,68 @@ private void Start()
 
     private void LoadSettings(string path)
     {
-        if (File.Exists(path))
-        {
-            string json = File.ReadAllText(path);
-            appSettings = JsonConvert.DeserializeObject<AppSettings>(json);
-            UpdatePublicFields();
-            Debug.Log("Settings loaded from: " + path);
-        }
-        else
+        if (!File.Exists(path))
         {
             Debug.LogError("File not found: " + path);
+            return;
         }
+
+        string json = File.ReadAllText(path);
+
+        // Check the file is the shape we expect before applying any of it.
+        //
+        // Newtonsoft ignores properties it does not recognise, so a JSON file with entirely
+        // different keys deserializes without error into an AppSettings whose every field is
+        // the C# default. UpdatePublicFields then assigns those defaults unconditionally to
+        // every effect -- so loading the wrong file did not fail, it silently reset the whole
+        // simulation to zero and logged success.
+        JObject probe;
+        try
+        {
+            probe = JObject.Parse(json);
+        }
+        catch (JsonException e)
+        {
+            Debug.LogError($"[SettingsManager] {Path.GetFileName(path)} is not valid JSON: {e.Message}");
+            return;
+        }
+
+        // A condition profile: which effects, with parameters per effect. Applied through
+        // ProfileBinder, which names everything it could not honour -- these profiles were
+        // authored against a different filter pipeline and describe more than this build can
+        // draw, and that difference should never be left for the user to infer.
+        if (probe["filters"] != null)
+        {
+            string why;
+            var profile = ConditionProfile.Parse(probe, out why);
+            if (profile == null)
+            {
+                Debug.LogError($"[SettingsManager] {Path.GetFileName(path)}: {why}. Nothing was changed.");
+                return;
+            }
+
+            var report = ProfileBinder.Apply(this, profile);
+            Debug.Log(report.Summary(profile.Id));
+            if (!string.IsNullOrEmpty(profile.Caveat))
+                Debug.LogWarning($"[ConditionProfile] {profile.Id} says of itself: {profile.Caveat}");
+            return;
+        }
+
+        int known = 0;
+        foreach (var prop in probe.Properties())
+            if (typeof(AppSettings).GetField(prop.Name) != null) known++;
+
+        if (known == 0)
+        {
+            Debug.LogError($"[SettingsManager] {Path.GetFileName(path)} has no setting this " +
+                           "version recognises, so loading it would reset every effect to zero. " +
+                           "Nothing was changed.");
+            return;
+        }
+
+        appSettings = JsonConvert.DeserializeObject<AppSettings>(json);
+        UpdatePublicFields();
+        Debug.Log($"[SettingsManager] loaded {known} settings from {path}");
     }
 
     // Aktualisiert die Public Variablen eines MonoBehaviour anhand der aktuellen AppSettings
