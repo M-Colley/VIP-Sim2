@@ -7,6 +7,16 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ## [Unreleased]
 
+### Added
+
+- **Save an image of the simulation.** A camera button in the toolbar writes what you are
+  looking at — the captured window with the symptoms applied, cropped to that window and
+  with none of VIP-Sim's own interface in the frame — to `Pictures/VIP-Sim`. A profile is
+  written beside it under the same name, so the image shows what it looked like and the
+  `.json` loads back in to reproduce it. Until now the only way to get a picture out was a
+  developer hotkey behind `-vipsim-dev`, which captures the whole screen including the
+  toolbar: a diagnostic, not something to put in a design review.
+
 ### Fixed
 
 - **Switching a symptom off no longer switches the whole simulation off.** The per-effect

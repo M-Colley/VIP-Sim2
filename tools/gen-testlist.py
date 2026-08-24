@@ -879,6 +879,9 @@ UNPROVEN = [
 ]
 
 ALSO_WORTH = [
+    "The save-image button. The PNG should contain the simulation -- blurred, hazed, whatever "
+    "is switched on -- and none of VIP-Sim's own interface, cropped to the window being "
+    "captured. The .json written beside it should load back and reproduce the same state.",
     "Unplug one of two displays between runs, so the remembered display no longer exists.",
     "The first-run tutorial: it should appear once, and 'Show tutorial' in the F1 panel should "
     "bring it back.",
