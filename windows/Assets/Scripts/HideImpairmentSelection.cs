@@ -8,20 +8,39 @@ public class HideImpairmentSelection : MonoBehaviour
     [SerializeField] Slider enableToggle;
 
     /// <summary>
-    /// Show or hide the per-effect settings panel.
+    /// Whether an effect's parameters are currently on display.
     ///
-    /// Drives the slider rather than the panel object directly, because Update re-applies
-    /// the slider's value every frame and would undo a SetActive immediately.
+    /// This is its own piece of state, and that is the entire point of the field. It used to
+    /// be stored in the master Enable slider -- SetSettingsOpen wrote enableToggle.value
+    /// directly -- and that slider is what gates BOTH of this component's instances: one
+    /// shows the per-effect parameter panel, the other shows the whole effect list. So
+    /// closing one effect's parameters set the master switch to zero and took the entire
+    /// list with it.
     ///
-    /// Must be driven in BOTH directions. An earlier version only ever cleared it, when an
-    /// effect was switched off, and nothing set it back -- so after the first time any
-    /// effect was disabled the settings panel stayed empty for every effect thereafter.
-    /// Opening a gear now sets it, closing the open effect clears it.
+    /// From the outside that is exactly what was reported: Enable still lit, and no symptoms
+    /// on screen. The switch even looked half-thrown, because its fill colour is set by the
+    /// toggle's own on/off events -- which never fired -- while its knob follows the slider
+    /// value, which had been moved behind its back.
+    ///
+    /// Static because there is only ever one parameter panel, and because a caller should
+    /// not have to pick the right one of two identical components to talk to.
     /// </summary>
-    public void SetSettingsOpen(bool open)
+    public static bool SettingsOpen { get; private set; }
+
+    /// <summary>
+    /// Show or hide the per-effect parameter panel. Must be driven in BOTH directions: an
+    /// earlier version only ever cleared it, so after the first time any effect was switched
+    /// off the panel stayed empty for every effect after that.
+    /// </summary>
+    public static void SetSettingsOpen(bool open)
     {
-        if (enableToggle != null) enableToggle.value = open ? 1f : 0f;
+        SettingsOpen = open;
     }
+
+    [Tooltip("True on the instance that shows an effect's PARAMETERS, false on the one that " +
+             "shows the effect list. Only the parameter panel answers to SettingsOpen.")]
+    [SerializeField] private bool gatesSettingsPanel;
+
     [SerializeField] Image settingWheel;
 
     void Update()
@@ -46,8 +65,14 @@ public class HideImpairmentSelection : MonoBehaviour
         // ChangeButtonAppearance.HasOpenSettings is still the right piece of state for
         // deciding whether an effect's PARAMETERS should show, and it is used for that where
         // an effect is switched off. It is simply not what gates this object.
-        bool desiredActive = hasActiveWindow &&
-                             (VipSimDiagnostics.ForceMenusVisible || enableToggle.value > 0.9f);
+        bool master = VipSimDiagnostics.ForceMenusVisible || enableToggle.value > 0.9f;
+
+        // The parameter panel carries a second condition of its own -- an effect's
+        // parameters are only worth showing while one is selected. The effect list has no
+        // such condition, which is precisely why the two must not share a variable.
+        bool mine = !gatesSettingsPanel || SettingsOpen || VipSimDiagnostics.ForceMenusVisible;
+
+        bool desiredActive = hasActiveWindow && master && mine;
 
         if (targetGameObject.activeSelf != desiredActive)
         {

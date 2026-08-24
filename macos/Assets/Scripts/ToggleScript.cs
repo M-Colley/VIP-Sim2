@@ -92,7 +92,30 @@ public class ToggleScript : MonoBehaviour
             // Get the Image component from the GameObject
             Image image = obj.GetComponent<Image>();
 
-            if (image != null && image.sprite == enableOnBGSprite)
+            // Both records must agree before this presses anything.
+            //
+            // The sprite alone used to decide it, and the sprite is only one of two places a
+            // row's state lives -- ChangeButtonAppearance.isSprite1Active is the other, and
+            // Start() forces the sprite without touching the flag, so there is a window in
+            // which they disagree. Pressing a row in that state switched on a symptom the
+            // user never chose: a fresh session, one click to pick a window, and the log
+            // showed enabled(1) myFieldLoss with the row lit and its parameters open.
+            //
+            // Acting only on agreement makes a half-state inert instead of destructive, and
+            // says so, which is what a report of "the state machine gets confused" needs.
+            var appearance = obj.GetComponent<ChangeButtonAppearance>();
+            bool spriteSaysOn = image != null && image.sprite == enableOnBGSprite;
+            bool flagSaysOn = appearance != null && !appearance.isSprite1Active;
+
+            if (spriteSaysOn != flagSaysOn)
+            {
+                Debug.LogWarning($"[ToggleScript] {obj.name} is in a half-state " +
+                                 $"(sprite says {(spriteSaysOn ? "on" : "off")}, flag says " +
+                                 $"{(flagSaysOn ? "on" : "off")}); leaving it alone.");
+                continue;
+            }
+
+            if (spriteSaysOn && flagSaysOn)
             {
                 // Get the Button component from the GameObject
                 Button button = obj.GetComponent<Button>();

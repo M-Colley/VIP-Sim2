@@ -5,6 +5,37 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **Switching a symptom off no longer switches the whole simulation off.** The per-effect
+  parameter panel stored its open/closed state in the master Enable slider, and that
+  slider is what gates both the panel and the effect list. So closing one effect's
+  parameters set the master switch to zero and took every symptom off the screen with it.
+  The switch was left looking half-thrown, because its fill colour is set by its own
+  on/off events — which never fired — while its knob follows the slider value, which had
+  been moved behind its back. The panel now has state of its own.
+- **Picking a window no longer switches a symptom on by itself.** A row's state lives in
+  two places: the sprite the master switch reads, and a flag the gear logic reads. `Start`
+  set the sprite and left the flag alone, so there was a window in which they disagreed —
+  and the master switch, cycling as a window is selected, pressed a row in that state. One
+  click to pick a window was enough to end up with an effect running. `Start` now sets
+  both, and the master switch refuses to act on a row whose two records disagree, saying
+  so in the log instead.
+- **A profile loaded before the effect list has ever been shown now reaches it.** The
+  binder looked the list up with `GameObject.Find`, which skips inactive objects, so
+  loading a profile with the list hidden updated no rows at all.
+
+### Changed
+
+- **The diagnostics report the effect list's own state** — `ROWS list=shown|HIDDEN
+  paramsPanel=open|closed` — next to what is actually running. Every fault in this entry
+  is a disagreement between two records of the same thing, and this is what makes such a
+  disagreement visible in a user's log rather than only on their screen.
+
+---
+
 ## [2.0.1] — 2026-08-22
 
 ### Fixed

@@ -341,6 +341,50 @@ GROUPS = [
                         "action also wrote one warning per switched-off effect, seventeen at a "
                         "time, for what is simply the normal state of most of them.",
             },
+            {
+                "id": "D8",
+                "title": "Closing an effect's parameters leaves the effect list alone",
+                "plat": ALL,
+                "do": "Switch a symptom on (its parameters appear), then switch the same symptom "
+                      "off again. Watch the list and the master Enable switch.",
+                "expect": "The parameters close. The list still shows all eighteen symptoms and "
+                          "the Enable switch is untouched.",
+                "fail": "The entire effect list vanished and the simulation switched itself off. "
+                        "The parameter panel stored its open/closed state IN the master Enable "
+                        "slider, and that slider is what gates both the panel and the list -- so "
+                        "closing one effect's parameters set the master switch to zero. The "
+                        "switch was left looking half-thrown: its fill colour is set by the "
+                        "toggle's own events, which never fired, while its knob follows the "
+                        "slider value, which had been moved behind its back. Reported as "
+                        "'enable is selected but no symptoms are shown'.",
+            },
+            {
+                "id": "D9",
+                "title": "Picking a window does not switch a symptom on",
+                "plat": [WIN, MAC],
+                "do": "Start fresh, pick a window from the list, and read the log before touching "
+                      "anything else.",
+                "expect": "ROWS ... 0 shown on, and enabled(0). Nothing is running until you say so.",
+                "fail": "A fresh session, one click to pick a window, and the log showed "
+                        "enabled(1) myFieldLoss with that row lit and its parameters open. "
+                        "Selecting a window cycles the master switch, and the master switch "
+                        "decides which effects are on by comparing each row's SPRITE -- while "
+                        "the gear logic reads a separate flag on the same row. Start() set the "
+                        "sprite and left the flag alone, so there was a window in which the two "
+                        "disagreed, and the switch pressed a row in that state.",
+            },
+            {
+                "id": "D10",
+                "title": "A profile loaded before the list is shown still takes effect",
+                "plat": ALL,
+                "do": "Pick a window but leave the master Enable off, so the effect list is "
+                      "hidden. Load p1.json. Now switch Enable on.",
+                "expect": "The list appears with p1's eight symptoms already lit.",
+                "fail": "The binder looked the list up with GameObject.Find, which skips inactive "
+                        "objects, so a profile loaded while the list was hidden updated no rows "
+                        "at all -- and revealing the list afterwards showed every symptom off "
+                        "while the effects were running.",
+            },
         ],
     },
     {

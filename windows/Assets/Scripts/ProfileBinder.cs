@@ -357,8 +357,18 @@ public static class ProfileBinder
         if (string.IsNullOrEmpty(name)) return null;
         if (_menu == null)
         {
-            var go = GameObject.Find("VerticalMenu");
-            _menu = go != null ? go.transform : null;
+            // Found including inactive objects. GameObject.Find skips them, and the effect
+            // list is hidden until a window is picked and the simulation switched on -- while
+            // the Load button works throughout. So a profile loaded before the list was ever
+            // shown updated no rows at all, and the list appeared later still saying nothing
+            // was on.
+            foreach (var t in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsInactive.Include,
+                                                                              FindObjectsSortMode.None))
+            {
+                if (t.name != "VerticalMenu") continue;
+                _menu = t;
+                break;
+            }
         }
         if (_menu != null)
         {

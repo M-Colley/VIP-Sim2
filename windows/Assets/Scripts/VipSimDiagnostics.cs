@@ -318,12 +318,25 @@ public class VipSimDiagnostics : MonoBehaviour
     /// </summary>
     private void LogEffectRows()
     {
-        var menu = GameObject.Find("VerticalMenu");
+        // Found including inactive objects on purpose. GameObject.Find skips inactive ones,
+        // so when the list was hidden this reported nothing at all -- and "the list is
+        // hidden" is the single most useful thing this line can say, because that is the
+        // fault that gets reported as "Enable is on and no symptoms are shown".
+        Transform menu = null;
+        foreach (var t in FindObjectsByType<Transform>(FindObjectsInactive.Include,
+                                                       FindObjectsSortMode.None))
+        {
+            if (t.name != "VerticalMenu") continue;
+            menu = t;
+            break;
+        }
         if (menu == null) return;
+
+        bool listVisible = menu.gameObject.activeInHierarchy;
 
         var on = new System.Collections.Generic.List<string>();
         int total = 0;
-        foreach (Transform row in menu.transform)
+        foreach (Transform row in menu)
         {
             var enableButton = row.Find("Enable");
             if (enableButton == null) continue;
@@ -336,7 +349,9 @@ public class VipSimDiagnostics : MonoBehaviour
         }
 
         on.Sort();
-        Debug.Log($"[VipSimDiagnostics] ROWS {total} listed, {on.Count} shown on: " +
+        Debug.Log($"[VipSimDiagnostics] ROWS list={(listVisible ? "shown" : "HIDDEN")} " +
+                  $"paramsPanel={(HideImpairmentSelection.SettingsOpen ? "open" : "closed")} " +
+                  $"{total} listed, {on.Count} shown on: " +
                   $"{(on.Count == 0 ? "-" : string.Join(",", on))}");
     }
 

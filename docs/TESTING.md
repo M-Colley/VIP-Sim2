@@ -1,6 +1,6 @@
 # VIP-Sim regression checklist
 
-Every test below is a fault that has actually happened at least once, in this project, on a real machine. None of them is hypothetical, and every one of them shipped or nearly shipped. There are 67 of them.
+Every test below is a fault that has actually happened at least once, in this project, on a real machine. None of them is hypothetical, and every one of them shipped or nearly shipped. There are 70 of them.
 
 Work through them on the packaged download rather than on a build made locally: two of the faults here only existed in the archive.
 
@@ -268,6 +268,30 @@ Read the ALPHA line in the log alongside these — it names every effect that is
 - **Do:** Apply a preset or a profile, switch several effects on and off, then read vipsim-errors.log next to Player.log.
 - **Expect:** Empty.
 - **Has failed as:** "Coroutine couldn't be started because the game object 'EnableToggle' is inactive!" -- something sets the toggles while the list they belong to is hidden, and Unity logs an error rather than ignoring it. The same action also wrote one warning per switched-off effect, seventeen at a time, for what is simply the normal state of most of them.
+
+### D8. Closing an effect's parameters leaves the effect list alone
+
+*All platforms*
+
+- **Do:** Switch a symptom on (its parameters appear), then switch the same symptom off again. Watch the list and the master Enable switch.
+- **Expect:** The parameters close. The list still shows all eighteen symptoms and the Enable switch is untouched.
+- **Has failed as:** The entire effect list vanished and the simulation switched itself off. The parameter panel stored its open/closed state IN the master Enable slider, and that slider is what gates both the panel and the list -- so closing one effect's parameters set the master switch to zero. The switch was left looking half-thrown: its fill colour is set by the toggle's own events, which never fired, while its knob follows the slider value, which had been moved behind its back. Reported as 'enable is selected but no symptoms are shown'.
+
+### D9. Picking a window does not switch a symptom on
+
+*Windows · macOS*
+
+- **Do:** Start fresh, pick a window from the list, and read the log before touching anything else.
+- **Expect:** ROWS ... 0 shown on, and enabled(0). Nothing is running until you say so.
+- **Has failed as:** A fresh session, one click to pick a window, and the log showed enabled(1) myFieldLoss with that row lit and its parameters open. Selecting a window cycles the master switch, and the master switch decides which effects are on by comparing each row's SPRITE -- while the gear logic reads a separate flag on the same row. Start() set the sprite and left the flag alone, so there was a window in which the two disagreed, and the switch pressed a row in that state.
+
+### D10. A profile loaded before the list is shown still takes effect
+
+*All platforms*
+
+- **Do:** Pick a window but leave the master Enable off, so the effect list is hidden. Load p1.json. Now switch Enable on.
+- **Expect:** The list appears with p1's eight symptoms already lit.
+- **Has failed as:** The binder looked the list up with GameObject.Find, which skips inactive objects, so a profile loaded while the list was hidden updated no rows at all -- and revealing the list afterwards showed every symptom off while the effects were running.
 
 ## E — Toolbar, panels and accessibility
 

@@ -18209,6 +18209,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetGameObject: {fileID: 9194067820635230085}
   enableToggle: {fileID: 6966729982819548936}
+  gatesSettingsPanel: 1
   settingWheel: {fileID: 0}
 --- !u!114 &1708510705
 MonoBehaviour:
@@ -18224,6 +18225,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetGameObject: {fileID: 1829047697}
   enableToggle: {fileID: 6966729982819548936}
+  gatesSettingsPanel: 0
   settingWheel: {fileID: 0}
 --- !u!1 &1754937792
 GameObject:

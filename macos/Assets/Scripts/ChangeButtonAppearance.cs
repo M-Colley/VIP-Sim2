@@ -42,11 +42,23 @@ public class ChangeButtonAppearance : MonoBehaviour
 
 
         // Set the initial sprite and text color
-        buttonImage.sprite = sprite1;
-        buttonImage.color = imageColor1;
-        if (buttonText != null)
-            buttonText.color = color1;
+        // Set BOTH records, not just the sprite.
+        //
+        // This used to assign the sprite and leave isSprite1Active at whatever the scene had
+        // serialized. The two are read by different code -- the master switch reads the
+        // sprite, the gear logic reads the flag -- so a disagreement between them is a state
+        // no part of the UI is written to handle.
+        //
+        // Guarded, because Start runs when the row is FIRST SHOWN, which can be long after a
+        // profile has already set its real state: the effect list is hidden until a window is
+        // picked and the simulation switched on, and the Load button works throughout. Without
+        // the guard, revealing the list would quietly reset every row to off while the effects
+        // it just loaded went on running.
+        if (!_stateSet) SetState(false);
     }
+
+    // Whether anything has told this button its real state yet. See Start.
+    private bool _stateSet;
 
     // Method to be called on button click
     /*
@@ -198,6 +210,7 @@ public class ChangeButtonAppearance : MonoBehaviour
         buttonImage.color = on ? imageColor2 : imageColor1;
         if (buttonText != null) buttonText.color = on ? color2 : color1;
         isSprite1Active = !on;
+        _stateSet = true;
     }
 
     /// <summary>
@@ -218,20 +231,17 @@ public class ChangeButtonAppearance : MonoBehaviour
         SetSettingsPanel(false);
     }
 
-    private static HideImpairmentSelection _settingsPanel;
-
     /// <summary>
-    /// Hide the per-effect settings panel. Its visibility is driven by
-    /// HideImpairmentSelection's enable slider, so that is what has to be cleared --
-    /// deactivating the object directly would be undone on the next frame, since that
-    /// component re-evaluates and re-applies the slider's value in Update.
+    /// Show or hide the panel of parameters for the selected effect.
+    ///
+    /// This used to look up a HideImpairmentSelection and ask it to move a slider. There are
+    /// two of those components and they share one slider -- the master Enable switch -- so
+    /// closing a panel switched the simulation off and hid the effect list. The panel now
+    /// has state of its own and this just sets it.
     /// </summary>
     private static void SetSettingsPanel(bool open)
     {
-        if (_settingsPanel == null)
-            _settingsPanel = FindAnyObjectByType<HideImpairmentSelection>(FindObjectsInactive.Include);
-
-        if (_settingsPanel != null) _settingsPanel.SetSettingsOpen(open);
+        HideImpairmentSelection.SetSettingsOpen(open);
     }
 
     // Helper method to perform the swap
