@@ -641,8 +641,7 @@ Needs a Wayland compositor with layer-shell — sway, KWin, Hyprland, labwc or n
 
 Start here if your time is limited. These are the parts of the list nobody has been able to check:
 
-- **C7 on two monitors.** The placement fix was derived from a user's log and verified not to change anything on a single display, where the two coordinate spaces coincide. The machine here has one monitor, so the case the fix exists for has not been run. Capturing a window on each screen in turn is the result that closes it.
-- **The whole macOS column.** The macOS build has been compiled and packaged but never run — there is no Mac here. Treat every MAC test as untested rather than as a regression check.
+- **D8-D10 on macOS.** macOS has now been run on real hardware and works, which also settles the capture orientation there. Its effect list is gated differently from Windows though - HideImpairmentSelection is not in that scene at all - so the three state-machine checks are the ones worth repeating on a Mac specifically.
 - **Linux on KWin.** Developed and verified on sway under WSL. KWin implements the same protocols and should work; it has not been tried.
 - **Linux on GNOME (J2).** The refusal path has never been seen on real GNOME.
 
