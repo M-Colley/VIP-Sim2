@@ -7,6 +7,19 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ## [Unreleased]
 
+### Fixed
+
+- **Windows whose title mentions VIP-Sim can be captured again.** The window list dropped
+  any window whose title contained "vipsim" — a filter meant to hide our own overlay that
+  also hid a browser showing the VIP-Sim website, the folder the release was unzipped
+  into, and any editor with a VIP-Sim file open. The same filter existed a second time in
+  the click handler, so after the first was removed the window appeared in the list and
+  clicking it did nothing at all. Both now identify our own windows by the owning
+  process's name, which also excludes a second copy of VIP-Sim — a case the pid alone
+  cannot catch, where two instances each offer to capture the other.
+- **Selecting a window no longer risks an exception** where the questionnaire is gated
+  off: its Firestore logger is absent in shipping builds and the call was unguarded.
+
 ### Added
 
 - **Save an image of the simulation.** A camera button in the toolbar writes what you are
