@@ -44,7 +44,7 @@ public class VipSimExport : MonoBehaviour
     {
         try
         {
-            Save();
+            StartCoroutine(Save());
         }
         catch (Exception e)
         {
@@ -55,14 +55,14 @@ public class VipSimExport : MonoBehaviour
         }
     }
 
-    private void Save()
+    private System.Collections.IEnumerator Save()
     {
         var camera = FindEffectCamera();
         if (camera == null)
         {
             Show("Nothing to save yet.");
             Debug.LogWarning("[VipSimExport] no camera to render; nothing saved.");
-            return;
+            yield break;
         }
 
         RectInt crop = CapturedWindowRect();
@@ -70,14 +70,40 @@ public class VipSimExport : MonoBehaviour
         {
             Show("Pick a window first, then save.");
             Debug.LogWarning("[VipSimExport] no window is being captured; nothing saved.");
-            return;
+            yield break;
         }
 
-        var image = Render(camera, crop);
+        // Pin the gaze to the middle of the captured window, then let a WHOLE FRAME run
+        // before rendering.
+        //
+        // The frame is the part that matters. Effects push the gaze into their shaders from
+        // their own Update -- myFieldLoss does exactly this -- so rendering immediately after
+        // setting it renders with LAST frame's value: the pointer, which is on the Save
+        // button in the corner at that moment. That is the reported fault, and setting the
+        // gaze without waiting does not fix it. One frame gives every effect its Update.
+        //
+        // The window, not the screen: the image is cropped to the window, so a screen-centred
+        // gaze still lands off-centre in the file.
+        GazeTracker.Forced = new Vector2(
+            Mathf.Clamp01((crop.x + crop.width * 0.5f) / Mathf.Max(1, Screen.width)),
+            Mathf.Clamp01(1f - (crop.y + crop.height * 0.5f) / Mathf.Max(1, Screen.height)));
+
+        Texture2D image;
+        try
+        {
+            yield return null;
+            image = Render(camera, crop);
+        }
+        finally
+        {
+            // Always, so a failure cannot leave the live overlay staring at one spot.
+            GazeTracker.Forced = null;
+        }
+
         if (image == null)
         {
             Show("VIP-Sim could not save the image. See the log.");
-            return;
+            yield break;
         }
 
         string folder = OutputFolder();
@@ -121,39 +147,9 @@ public class VipSimExport : MonoBehaviour
             int ui = LayerMask.NameToLayer("UI");
             if (ui >= 0) camera.cullingMask &= ~(1 << ui);
 
-            // Centre the gaze for the render.
-            //
-            // Every gaze-following symptom -- central vision loss above all -- is drawn where
-            // the user is looking, and where they are looking at the instant they save is the
-            // Save button, in the top right corner. So the artefact came out with the scotoma
-            // parked in a corner, which is not what they were studying and is not what the
-            // condition looks like.
-            //
-            // The centre is the honest stand-in: it is where a reader's gaze rests, and it is
-            // what the effect's own default is (xy_norm starts at 0.5, 0.5). Restored
-            // immediately afterwards so the live overlay keeps following the pointer.
-            var gaze = GazeTracker.GetInstance;
-            Vector2 previousGaze = Vector2.zero;
-            bool movedGaze = false;
-            if (gaze != null)
-            {
-                previousGaze = gaze.xy_norm;
-
-                // The middle of the WINDOW, not the middle of the screen. The image is
-                // cropped to the window, so a gaze centred on the screen still lands
-                // off-centre in the file -- which is the same complaint in a smaller way.
-                // xy_norm is normalised over the whole screen and measured from the bottom,
-                // hence the flip.
-                gaze.xy_norm = new Vector2(
-                    Mathf.Clamp01((crop.x + crop.width * 0.5f) / w),
-                    Mathf.Clamp01(1f - (crop.y + crop.height * 0.5f) / h));
-                movedGaze = true;
-            }
-
+            // The gaze was pinned by the caller a frame ago; see Save.
             camera.targetTexture = rt;
             camera.Render();
-
-            if (movedGaze) gaze.xy_norm = previousGaze;
 
             RenderTexture.active = rt;
 

@@ -261,7 +261,25 @@ public class GazeTracker : MonoBehaviour
         // wrap or clamp unpredictably outside [0,1].
         xy_norm.x = Mathf.Clamp01(xy_norm.x);
         xy_norm.y = Mathf.Clamp01(xy_norm.y);
+
+        // An override wins, and it is applied HERE -- last, after the source has had its
+        // say -- so it cannot be undone by whichever source is running.
+        //
+        // Saving an image needs this. Effects push the gaze into their shaders from their
+        // own Update, not from OnRenderImage, so rendering a frame by hand uses whatever
+        // the gaze was LAST frame: the pointer, which at that moment is on the Save button
+        // in the corner. Setting xy_norm and rendering immediately changes nothing at all.
+        // The override lets the caller pin the gaze, let one frame run so every effect
+        // picks it up, and then render.
+        if (Forced.HasValue) xy_norm = Forced.Value;
     }
+
+    /// <summary>
+    /// Pin the gaze somewhere regardless of the tracking source, or null to follow it again.
+    /// See the note in Update: this exists so a rendered frame can be given a gaze position
+    /// that the effects have actually had a chance to read.
+    /// </summary>
+    public static Vector2? Forced { get; set; }
 
     private void UpdateFromMouse()
     {
