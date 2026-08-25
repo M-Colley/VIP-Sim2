@@ -83,7 +83,7 @@ namespace VipSim.EditorTools
         // clones of MouseEyeSwitch that had their icon assigned afterwards.
         private static readonly string[] GlyphOnRootButtons =
         {
-            "CalibrateGazeButton", "SymptomInfoButton",
+            "CalibrateGazeButton", "SymptomInfoButton", "ExportButton",
         };
 
         // Hover help for every toolbar button. Keyed on GameObject name. An icon-only
@@ -98,6 +98,7 @@ namespace VipSim.EditorTools
                 ["MouseEyeSwitch"]       = "Switch between mouse-following and webcam eye tracking",
                 ["CalibrateGazeButton"]  = "Calibrate eye tracking (F9).\nFollow the dot; Escape or right-click aborts.",
                 ["SymptomInfoButton"]    = "What do these symptoms mean? (F1)",
+                ["ExportButton"]         = "Save an image of the simulation, with a profile that reproduces it",
                 ["MinimizeButton"]       = "Minimise VIP-Sim",
                 ["ExitButton"]           = "Quit VIP-Sim (Ctrl+Alt+Q always works)",
             };

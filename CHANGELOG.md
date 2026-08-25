@@ -13,7 +13,10 @@ All notable changes to VIP-Sim are recorded here. Versions follow
   looking at — the captured window with the symptoms applied, cropped to that window and
   with none of VIP-Sim's own interface in the frame — to `Pictures/VIP-Sim`. A profile is
   written beside it under the same name, so the image shows what it looked like and the
-  `.json` loads back in to reproduce it. Until now the only way to get a picture out was a
+  `.json` loads back in to reproduce it. Gaze-following symptoms — central vision loss
+  above all — are rendered at the middle of the captured window rather than wherever the
+  pointer happens to be, because where the pointer happens to be when you press Save is the
+  Save button, and a scotoma parked in the corner is not what you were studying. Until now the only way to get a picture out was a
   developer hotkey behind `-vipsim-dev`, which captures the whole screen including the
   toolbar: a diagnostic, not something to put in a design review.
 

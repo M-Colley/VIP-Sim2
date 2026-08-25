@@ -121,8 +121,39 @@ public class VipSimExport : MonoBehaviour
             int ui = LayerMask.NameToLayer("UI");
             if (ui >= 0) camera.cullingMask &= ~(1 << ui);
 
+            // Centre the gaze for the render.
+            //
+            // Every gaze-following symptom -- central vision loss above all -- is drawn where
+            // the user is looking, and where they are looking at the instant they save is the
+            // Save button, in the top right corner. So the artefact came out with the scotoma
+            // parked in a corner, which is not what they were studying and is not what the
+            // condition looks like.
+            //
+            // The centre is the honest stand-in: it is where a reader's gaze rests, and it is
+            // what the effect's own default is (xy_norm starts at 0.5, 0.5). Restored
+            // immediately afterwards so the live overlay keeps following the pointer.
+            var gaze = GazeTracker.GetInstance;
+            Vector2 previousGaze = Vector2.zero;
+            bool movedGaze = false;
+            if (gaze != null)
+            {
+                previousGaze = gaze.xy_norm;
+
+                // The middle of the WINDOW, not the middle of the screen. The image is
+                // cropped to the window, so a gaze centred on the screen still lands
+                // off-centre in the file -- which is the same complaint in a smaller way.
+                // xy_norm is normalised over the whole screen and measured from the bottom,
+                // hence the flip.
+                gaze.xy_norm = new Vector2(
+                    Mathf.Clamp01((crop.x + crop.width * 0.5f) / w),
+                    Mathf.Clamp01(1f - (crop.y + crop.height * 0.5f) / h));
+                movedGaze = true;
+            }
+
             camera.targetTexture = rt;
             camera.Render();
+
+            if (movedGaze) gaze.xy_norm = previousGaze;
 
             RenderTexture.active = rt;
 

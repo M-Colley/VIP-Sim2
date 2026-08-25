@@ -28,7 +28,10 @@ namespace VipSim.EditorTools
         private const string ScenePath = "Assets/Scenes/VIP_SIM.unity";
         private const string ButtonName = "ExportButton";
         private const string TemplateName = "MouseEyeSwitch";
-        private const float ButtonWidth = 60f;
+        // 48, not 60. The toolbar was tuned to exactly this -- UiRefreshSetup's own
+        // comment reads "60 -> 48. This alone is what makes eight buttons fit" -- and adding
+        // a ninth at 60 took 108px from the title, clipping the VIP-Sim wordmark.
+        private const float ButtonWidth = 48f;
 
         [MenuItem("VIP-Sim/Add the save-image button")]
         public static void Setup()
@@ -75,8 +78,28 @@ namespace VipSim.EditorTools
             foreach (var tmp in clone.GetComponentsInChildren<TMP_Text>(true)) tmp.text = "";
             foreach (var txt in clone.GetComponentsInChildren<Text>(true)) txt.text = "";
 
-            var img = clone.GetComponent<Image>();
-            if (img != null) img.sprite = GetOrCreateCameraIcon();
+            // Onto the Glyph child if there is one, not the root.
+            //
+            // The root Image is the button BACKGROUND, and on this template it has already
+            // been cleared to alpha 0 by the toolbar refresh, which moved the glyph to a
+            // child. Writing the icon to an invisible graphic is why the first version of
+            // this button shipped completely blank: the sprite was assigned, and nothing
+            // drew it. MouseEyeSwitch's own glyph is assigned at runtime by SwitchInput,
+            // which this clone strips, so the inherited child is empty too.
+            var glyphHolder = clone.transform.Find("Glyph");
+            var img = glyphHolder != null ? glyphHolder.GetComponent<Image>()
+                                          : clone.GetComponent<Image>();
+            if (img != null)
+            {
+                img.sprite = GetOrCreateCameraIcon();
+                img.color = new Color(img.color.r, img.color.g, img.color.b, 1f);
+                img.enabled = true;
+                EditorUtility.SetDirty(img);
+
+                // So the hover tint darkens the glyph, the way it does on every sibling.
+                var b = clone.GetComponent<Button>();
+                if (b != null && glyphHolder != null) b.targetGraphic = img;
+            }
 
             var button = clone.GetComponent<Button>() ?? clone.GetComponentInChildren<Button>(true);
             if (button == null)
@@ -187,15 +210,26 @@ namespace VipSim.EditorTools
             Directory.CreateDirectory(Path.GetDirectoryName(IconPath));
             File.WriteAllBytes(IconPath, tex.EncodeToPNG());
             Object.DestroyImmediate(tex);
-            AssetDatabase.ImportAsset(IconPath);
+            AssetDatabase.ImportAsset(IconPath, ImportAssetOptions.ForceUpdate);
 
-            var importer = (TextureImporter)AssetImporter.GetAtPath(IconPath);
-            importer.textureType = TextureImporterType.Sprite;
-            importer.alphaIsTransparency = true;
-            importer.mipmapEnabled = false;
-            importer.SaveAndReimport();
+            // Sprite, SINGLE mode. Leaving spriteImportMode alone is why this button shipped
+            // blank: the PNG was written and imported perfectly well, and
+            // LoadAssetAtPath<Sprite> still returned null, so a null sprite was assigned to a
+            // real Image. The info icon's generator carries the same note -- it is the trap
+            // the calibration crosshair hit before it.
+            if (AssetImporter.GetAtPath(IconPath) is TextureImporter imp)
+            {
+                imp.textureType = TextureImporterType.Sprite;
+                imp.spriteImportMode = SpriteImportMode.Single;
+                imp.alphaIsTransparency = true;
+                imp.mipmapEnabled = false;
+                imp.SaveAndReimport();
+            }
 
-            return AssetDatabase.LoadAssetAtPath<Sprite>(IconPath);
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(IconPath);
+            Debug.Log($"EXPORT: generated {IconPath} " +
+                      $"({(sprite != null ? "ok" : "FAILED to import as Sprite")}).");
+            return sprite;
         }
     }
 }
