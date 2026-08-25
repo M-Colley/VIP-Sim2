@@ -17,8 +17,14 @@ namespace uWindowCapture
         public static bool thereIsActiveWindow = false;
         public static event Action<bool> OnActiveWindowChanged;
 
+        // Our own process, so our own windows can be recognised without guessing from
+        // their titles. See OnWindowAdded.
+        private int ownProcessId_;
+
         void Start()
         {
+            ownProcessId_ = System.Diagnostics.Process.GetCurrentProcess().Id;
+
             UwcManager.onWindowAdded.AddListener(OnWindowAdded);
             UwcManager.onWindowRemoved.AddListener(OnWindowRemoved);
 
@@ -66,8 +72,17 @@ namespace uWindowCapture
         {
             if (!window.isAltTabWindow || window.isBackground) return;
 
-            if (window.title.ToLower().Replace("-", "").Replace("_", "").Contains("vipsim")) { return; }
-            
+            // Skip our own overlay -- by PROCESS, not by name.
+            //
+            // This used to drop any window whose title contained "vipsim", which is a much
+            // larger set than it sounds: a browser showing the VIP-Sim website, the folder
+            // the release was unzipped into, an editor with a VIP-Sim file open. A designer
+            // who opened our own page to look at it could not select it, and the failure
+            // looked like "Chrome is not supported" rather than a name collision. Windows
+            // belonging to this process are the ones actually worth hiding, and the process
+            // id says so exactly.
+            if (window.processId == ownProcessId_) return;
+
 
             var gameObject = Instantiate(windowListItem, listRoot, false);
             var listItem = gameObject.GetComponent<UwcWindowListItem>();
