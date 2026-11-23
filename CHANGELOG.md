@@ -7,6 +7,15 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ## [Unreleased]
 
+### Changed — dependencies
+
+- **UnitEye's `UnitEyeAPI.cs` matches upstream again.** VIP-Sim's `DisableGaze()` change
+  duplicated upstream: `HomulerGaze.OnDisable` already pauses `FaceMeshSolution` and
+  `WebCamSource` through its gaze provider. `GazeTracker` also deactivates the whole UnitEye
+  rig whenever UnitEye is not the gaze source, so the webcam is still released. The remaining
+  differences from upstream are the licence file, no second cursor, the CSV logger off and
+  the crosshair texture import setting.
+
 ---
 
 ## [2.1.0] — 2026-11-23
