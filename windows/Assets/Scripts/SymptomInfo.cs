@@ -107,8 +107,10 @@ public class SymptomInfo : MonoBehaviour
     {
         if (Input.GetKeyDown(toggleKey)) Toggle();
 
-        // Escape closes, which is what people try first on a modal panel.
-        if (_open && Input.GetKeyDown(KeyCode.Escape)) _open = false;
+        // Escape closes, which is what people try first on a modal panel. Through SetOpen:
+        // clearing the flag alone left the overlay in its non-click-through info state, so
+        // after Esc the whole screen swallowed clicks with nothing visible on it.
+        if (_open && Input.GetKeyDown(KeyCode.Escape)) SetOpen(false);
     }
 
     /// <summary>

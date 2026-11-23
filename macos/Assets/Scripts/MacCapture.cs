@@ -60,11 +60,35 @@ public class MacCapture : MonoBehaviour
     private Vector3 authoredPlaneScale;
     private bool authoredScaleKnown;
 
+    /// <summary>
+    /// Our own overlay, or a second copy of VIP-Sim. The name test stripped only "_", and the
+    /// product is called "VIP-Sim", so "vip-sim" never contained "vipsim": the overlay listed
+    /// itself, and picking it captured the overlay into itself.
+    /// </summary>
+    private static bool IsVipSim(WindowProperty.RunningApplication app)
+    {
+        if (!string.IsNullOrEmpty(app.bundleIdentifier) && app.bundleIdentifier == Application.identifier)
+            return true;
+        var name = (app.applicationName ?? "").ToLowerInvariant()
+                       .Replace("-", "").Replace("_", "").Replace(" ", "");
+        return name.Contains("vipsim");
+    }
+
+    // One instance, made once. Assigning the shared material through .material and then
+    // reading .material back cloned it on every capture start, and nothing freed the clones.
+    private Material captureInstance;
+
+    private void OnDestroy()
+    {
+        if (captureInstance != null) Destroy(captureInstance);
+    }
+
     private void Awake()
     {
         if (planeRenderer != null)
         {
             captureMaterial = planeRenderer.sharedMaterial;
+            if (captureMaterial != null) captureInstance = new Material(captureMaterial);
             authoredPlaneScale = planeRenderer.transform.localScale;
             authoredScaleKnown = true;
         }
@@ -109,7 +133,7 @@ public class MacCapture : MonoBehaviour
             var appName = window.owningApplication.applicationName;
             if (!window.isOnScreen
                 || string.IsNullOrEmpty(appName)
-                || appName.ToLower().Replace("_", "").Contains("vipsim"))
+                || IsVipSim(window.owningApplication))
             {
                 continue;
             }
@@ -173,8 +197,8 @@ public class MacCapture : MonoBehaviour
     // Start capture for a selected window
     private void StartCapture(WindowProperty window)
     {
-        if (planeRenderer != null && captureMaterial != null)
-            planeRenderer.material = captureMaterial;
+        if (planeRenderer != null && captureInstance != null)
+            planeRenderer.sharedMaterial = captureInstance;
 
         currentTexture = null;
         DesktopCapture2.StartCaptureWithWindowID(window.windowID, window.frame.width, window.frame.height, true);
@@ -219,7 +243,7 @@ public class MacCapture : MonoBehaviour
         if (texture == null || ReferenceEquals(texture, currentTexture)) return;
 
         currentTexture = texture;
-        if (planeRenderer != null) planeRenderer.material.mainTexture = texture;
+        if (planeRenderer != null && captureInstance != null) captureInstance.mainTexture = texture;
     }
 
     void OnDisable()
@@ -241,7 +265,7 @@ public class MacCapture : MonoBehaviour
 
         if (planeRenderer != null)
         {
-            if (transparentMaterial != null) planeRenderer.material = transparentMaterial;
+            if (transparentMaterial != null) planeRenderer.sharedMaterial = transparentMaterial;
             planeRenderer.enabled = false;
 
             // Undo the per-capture aspect fit, so the next capture starts from the

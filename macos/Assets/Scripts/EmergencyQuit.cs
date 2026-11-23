@@ -34,9 +34,9 @@ public class EmergencyQuit : MonoBehaviour
     private static extern short GetAsyncKeyState(int vKey);
 
     private const int VK_CONTROL = 0x11;
-    private const int VK_MENU    = 0x12; // Alt
+    private const int VK_LMENU   = 0xA4; // left Alt
+    private const int VK_RMENU   = 0xA5; // right Alt, which is AltGr on many layouts
     private const int VK_Q       = 0x51;
-    private const int VK_F12     = 0x7B;
 
     private static bool GlobalKeyDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
 #endif
@@ -64,14 +64,22 @@ public class EmergencyQuit : MonoBehaviour
 
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
         // Global: works with no focus, which is the whole point.
-        if (GlobalKeyDown(VK_CONTROL) && GlobalKeyDown(VK_MENU) && GlobalKeyDown(VK_Q)) quit = true;
-        if (GlobalKeyDown(VK_F12)) quit = true;
+        //
+        // Left Alt only, and never with right Alt down. Windows reports AltGr as Ctrl+Alt, and
+        // AltGr+Q is how German and Austrian keyboards type "@" -- so typing an email address
+        // into the captured application quit VIP-Sim on the spot.
+        //
+        // F12 is deliberately not read here. It was, which contradicted the "F12 quits when
+        // focused" this class promises, and quit VIP-Sim whenever someone opened DevTools or
+        // pressed Go to Definition in the application being simulated.
+        if (GlobalKeyDown(VK_CONTROL) && GlobalKeyDown(VK_LMENU) && !GlobalKeyDown(VK_RMENU) &&
+            GlobalKeyDown(VK_Q)) quit = true;
 #endif
 
         // Focused fallback, and the path used in the editor and on other platforms.
         if (Input.GetKey(KeyCode.F12)) quit = true;
         if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) &&
-            (Input.GetKey(KeyCode.LeftAlt) || Input.GetKey(KeyCode.RightAlt)) &&
+            Input.GetKey(KeyCode.LeftAlt) && !Input.GetKey(KeyCode.RightAlt) &&
             Input.GetKey(KeyCode.Q)) quit = true;
 
         if (quit) QuitNow("hotkey");

@@ -73,6 +73,18 @@ public class VipSimExport : MonoBehaviour
             yield break;
         }
 
+        // Only the part of the window that is on this screen can be rendered. Clamping one
+        // edge without moving the other saved a region that was not the window -- shifted by
+        // however far it hung off the left or bottom -- and a window entirely on another
+        // screen produced a zero-width texture, which throws.
+        crop = VisibleOnScreen(crop);
+        if (crop.width <= 0 || crop.height <= 0)
+        {
+            Show("The captured window is not on this screen. Press F3 to move VIP-Sim to it.");
+            Debug.LogWarning("[VipSimExport] captured window is off this screen; nothing saved.");
+            yield break;
+        }
+
         // Pin the gaze to the middle of the captured window, then let a WHOLE FRAME run
         // before rendering.
         //
@@ -107,7 +119,6 @@ public class VipSimExport : MonoBehaviour
         }
 
         string folder = OutputFolder();
-        Directory.CreateDirectory(folder);
 
         // Seconds in the name, because a designer comparing two severities saves twice in a
         // row and neither should overwrite the other.
@@ -115,8 +126,23 @@ public class VipSimExport : MonoBehaviour
         string png = Path.Combine(folder, $"VIP-Sim {stamp}.png");
         string json = Path.Combine(folder, $"VIP-Sim {stamp}.json");
 
-        File.WriteAllBytes(png, image.EncodeToPNG());
-        Destroy(image);
+        // Caught here: this runs after a yield, so the caller's try/catch around starting the
+        // coroutine never sees an exception from it, and a failed write was silent.
+        try
+        {
+            Directory.CreateDirectory(folder);
+            File.WriteAllBytes(png, image.EncodeToPNG());
+        }
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+        {
+            Debug.LogError($"[VipSimExport] could not write {png}: {e.Message}");
+            Show("VIP-Sim could not save the image. See the log.");
+            yield break;
+        }
+        finally
+        {
+            Destroy(image);
+        }
 
         string symptoms = WriteProfileBeside(json, stamp);
 
@@ -153,11 +179,10 @@ public class VipSimExport : MonoBehaviour
 
             RenderTexture.active = rt;
 
-            // ReadPixels measures from the BOTTOM-left; window rectangles are top-left.
-            int y = Mathf.Clamp(h - (crop.y + crop.height), 0, h);
-            int x = Mathf.Clamp(crop.x, 0, w);
-            int cw = Mathf.Clamp(crop.width, 1, w - x);
-            int ch = Mathf.Clamp(crop.height, 1, h - y);
+            // ReadPixels measures from the BOTTOM-left; window rectangles are top-left. The
+            // caller has already intersected the crop with the screen.
+            int x = crop.x, cw = crop.width, ch = crop.height;
+            int y = h - (crop.y + crop.height);
 
             // RGB24, so the file is opaque. The overlay's alpha is meaningful on screen and
             // meaningless in a PNG someone opens later -- carrying it through produces an
@@ -174,6 +199,14 @@ public class VipSimExport : MonoBehaviour
             RenderTexture.active = previousActive;
             RenderTexture.ReleaseTemporary(rt);
         }
+    }
+
+    /// <summary>The part of a top-left-origin rectangle that lies on this screen.</summary>
+    private static RectInt VisibleOnScreen(RectInt r)
+    {
+        int l = Mathf.Max(r.xMin, 0), t = Mathf.Max(r.yMin, 0);
+        int rt = Mathf.Min(r.xMax, Screen.width), b = Mathf.Min(r.yMax, Screen.height);
+        return new RectInt(l, t, Mathf.Max(0, rt - l), Mathf.Max(0, b - t));
     }
 
     /// <summary>

@@ -10,11 +10,6 @@ public class MainMenuButton : MonoBehaviour
         
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 
     // This function will be called when the Quit button is clicked
     public void QuitGame()

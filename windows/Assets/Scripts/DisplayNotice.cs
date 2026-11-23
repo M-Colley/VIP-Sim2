@@ -40,6 +40,8 @@ public class DisplayNotice : MonoBehaviour
         else enabled = false;
     }
 
+    private readonly GUIContent _content = new GUIContent();
+
     private void Begin()
     {
         _text = $"VIP-Sim is on {DisplaySwitcher.Summary}.   Press F3 to move it to the next screen.";
@@ -49,7 +51,9 @@ public class DisplayNotice : MonoBehaviour
 
     private void OnGUI()
     {
-        if (Time.unscaledTime > _until) return;
+        // Off once the notice has faded. Left enabled, OnGUI ran for every IMGUI event for the
+        // rest of the session just to return here; Begin() switches it back on.
+        if (Time.unscaledTime > _until) { enabled = false; return; }
 
         if (_style == null)
         {
@@ -62,7 +66,8 @@ public class DisplayNotice : MonoBehaviour
             _style.normal.textColor = Color.white;
         }
 
-        var size = _style.CalcSize(new GUIContent(_text));
+        _content.text = _text;
+        var size = _style.CalcSize(_content);
         float pad = size.y * 0.8f;
         float w = size.x + pad * 2f;
         float h = size.y + pad;

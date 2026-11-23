@@ -84,6 +84,12 @@ public class CamSelection : MonoBehaviour
     /// </summary>
     private static IGazeProvider TryGetProvider()
     {
+        // With the mouse as the gaze source the rig is inactive, and UnitEyeAPI then searches
+        // the scene and throws on every call -- a scene search and a caught exception per
+        // frame, all session long, in the default configuration.
+        var tracker = GazeTracker.GetInstance;
+        if (tracker == null || tracker.gazeSource != GazeTracker.GazeSource.UnitEye) return null;
+
         try
         {
             return UnitEyeAPI.GetGazeReference().Provider;

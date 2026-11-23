@@ -603,7 +603,10 @@ public class TransparentWindow : MonoBehaviour {
     /// Name of the topmost UI element under the cursor from the last hover test,
     /// or "" when nothing was hit. Diagnostics only (shown on the F10 overlay).
     /// </summary>
-    public static string LastUiHit { get; private set; } = "";
+    // The object, not its name: reading .name allocates a new string, and this is set every
+    // frame the pointer is over the interface. The name is only needed by the diagnostics.
+    private static GameObject _lastUiHit;
+    public static string LastUiHit => _lastUiHit != null ? _lastUiHit.name : "";
 
     public bool IsCoordinateOutsidePanel()
     {
@@ -628,11 +631,11 @@ public class TransparentWindow : MonoBehaviour {
             eventSystem.RaycastAll(_pointerData, _raycastResults);
             if (_raycastResults.Count > 0)
             {
-                LastUiHit = _raycastResults[0].gameObject.name;
+                _lastUiHit = _raycastResults[0].gameObject;
                 return false;
             }
         }
-        LastUiHit = "";
+        _lastUiHit = null;
 
         // Fallback: the panel rectangle, counted only while the panel is actually
         // shown. Covers a missing EventSystem; fails towards click-through

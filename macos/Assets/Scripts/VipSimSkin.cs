@@ -291,8 +291,17 @@ public static class VipSimSkin
     /// computed from the distance to the corner circle and smoothed across one pixel,
     /// which is what stops the corners looking like staircases.
     /// </summary>
+    // Keyed by what the texture depends on. Ensure() rebuilds every style on each A+/A-,
+    // high-contrast toggle or move to a screen of another height, and made eight new textures
+    // each time that nothing destroyed; the colours repeat, so the textures can too.
+    private static readonly System.Collections.Generic.Dictionary<(Color, Color, float), Texture2D>
+        _roundedRects = new System.Collections.Generic.Dictionary<(Color, Color, float), Texture2D>();
+
     private static Texture2D RoundedRect(Color fill, Color edge, float edgeWidth)
     {
+        var key = (fill, edge, edgeWidth);
+        if (_roundedRects.TryGetValue(key, out var cached) && cached != null) return cached;
+
         const int Size = 32;
         const float Radius = 14f;
 
@@ -333,6 +342,7 @@ public static class VipSimSkin
 
         tex.SetPixels(px);
         tex.Apply();
+        _roundedRects[key] = tex;
         return tex;
     }
 }

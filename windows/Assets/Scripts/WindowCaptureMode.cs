@@ -61,13 +61,19 @@ public class WindowCaptureMode : MonoBehaviour
               "which cannot see windows that draw with the GPU -- those will appear black.");
     }
 
+    private float _nextApply;
+
     private void LateUpdate()
     {
         if (!_decided) return;
 
-        // Applied continuously rather than once: the textured quad is created when the user
+        // Applied repeatedly rather than once: the textured quad is created when the user
         // picks a window, so there is nothing to configure at startup, and picking another
-        // window replaces it.
+        // window replaces it. Twice a second rather than every frame, which was a full scene
+        // search and an array allocation per frame for a setting that almost never changes.
+        if (Time.unscaledTime < _nextApply) return;
+        _nextApply = Time.unscaledTime + 0.5f;
+
         foreach (var t in FindObjectsByType<UwcWindowTexture>(FindObjectsInactive.Include))
             if (t.captureMode != _wanted) t.captureMode = _wanted;
     }

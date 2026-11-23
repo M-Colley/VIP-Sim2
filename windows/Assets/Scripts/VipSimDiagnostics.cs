@@ -208,6 +208,11 @@ public class VipSimDiagnostics : MonoBehaviour
         Application.logMessageReceived -= OnLogMessage;
     }
 
+    private void OnDestroy()
+    {
+        if (_alphaProbeTex != null) Destroy(_alphaProbeTex);
+    }
+
     private void Update()
     {
         if (Input.GetKeyDown(quitKey))
@@ -500,6 +505,7 @@ public class VipSimDiagnostics : MonoBehaviour
     }
 
     private bool _alphaProbeRunning;
+    private Texture2D _alphaProbeTex;
 
     /// <summary>
     /// Read the finished framebuffer back and report its alpha distribution.
@@ -515,12 +521,19 @@ public class VipSimDiagnostics : MonoBehaviour
         _alphaProbeRunning = true;
         yield return new WaitForEndOfFrame();
 
+        // This runs every logIntervalSeconds in shipping builds, so it reuses one texture and
+        // reads its pixels in place. It used to allocate a full-screen Texture2D, re-upload it
+        // with Apply() although only the CPU copy is read, and copy it out again into a fresh
+        // Color32[] -- 33 MB of garbage at 4K every five seconds. ReadPixels itself stays:
+        // it reads the backbuffer's alpha exactly, which is what this probe exists to measure.
         int w = Screen.width, h = Screen.height;
-        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
-        tex.ReadPixels(new Rect(0, 0, w, h), 0, 0);
-        tex.Apply();
+        if (_alphaProbeTex == null)
+            _alphaProbeTex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        else if (_alphaProbeTex.width != w || _alphaProbeTex.height != h)
+            _alphaProbeTex.Reinitialize(w, h);
+        _alphaProbeTex.ReadPixels(new Rect(0, 0, w, h), 0, 0, false);
 
-        var px = tex.GetPixels32();
+        var px = _alphaProbeTex.GetPixelData<Color32>(0);
         long transparent = 0, partial = 0, opaque = 0, alphaSum = 0;
         for (int i = 0; i < px.Length; i++)
         {
@@ -530,7 +543,6 @@ public class VipSimDiagnostics : MonoBehaviour
             else if (a > 242) opaque++;
             else partial++;
         }
-        Destroy(tex);
 
         double n = px.Length;
         // Every effect the application manages, not just the ones that happen to share a
@@ -586,6 +598,12 @@ public class VipSimDiagnostics : MonoBehaviour
     /// </summary>
     private void SampleGazeRate()
     {
+        // With the mouse as the gaze source the rig is inactive, and UnitEyeAPI then searches
+        // the scene and throws on every call -- a scene search and a caught exception per
+        // frame, all session long, in the default configuration.
+        var tracker = GazeTracker.GetInstance;
+        if (tracker == null || tracker.gazeSource != GazeTracker.GazeSource.UnitEye) return;
+
         double ts;
         try
         {
