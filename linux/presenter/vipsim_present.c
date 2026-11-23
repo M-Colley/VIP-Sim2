@@ -116,7 +116,10 @@ EXPORT int vipsim_present_push_rgba32(const void *src, int src_stride, int flip)
     // lines a session -- the transitions -- rather than a number every frame.
     {
         static int last_pct = -1;
-        {
+        // A full pass over every pixel just to feed a rarely printed line is wasted work at
+        // 4K, and a transition lasts far longer than 64 frames, so sample instead.
+        static unsigned frame_no;
+        if ((frame_no++ & 63u) == 0) {
             size_t clear = 0, opaque = 0, n = (size_t)w * (size_t)h;
             for (uint32_t y = 0; y < h; y++) {
                 const unsigned char *s = (const unsigned char *)src + (size_t)y * (size_t)src_stride;

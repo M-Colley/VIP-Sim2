@@ -30,15 +30,35 @@ cp "$HERE/build/vipsim-presenter" "$PLAYER_DIR/"
 chmod +x "$PLAYER_DIR/vipsim-presenter"
 echo "staged: $(ls "$PLUGDIR" | tr '\n' ' ') and vipsim-presenter"
 
+# A private config home for the nested session, so the portal backend's settings
+# (chooser_type=none) never land in the user's real ~/.config.
+export XDG_CONFIG_HOME="$OUT/config"
+mkdir -p "$XDG_CONFIG_HOME"
+
 # Mark the first-run tutorial as seen. It is modal and waits for a click, and there is
 # nobody here to click it -- so without this the run only ever tests the walkthrough.
-PREFS=~/.config/unity3d/Zefwih/VIP-Sim
-mkdir -p "$PREFS"
-cat > "$PREFS/prefs" <<PREFSEOF
+#
+# Written to the private config home, which Unity is expected to honour, and also to the real prefs
+# path in case this Unity version does not. The real file is backed up first and put back
+# when the script exits, however it exits.
+REAL_PREFS=~/.config/unity3d/Zefwih/VIP-Sim/prefs
+PREFS_BAK="$OUT/prefs.real"
+PREFS_HAD=0
+restore_prefs() {
+    if [ "$PREFS_HAD" = 1 ]; then cp -p "$PREFS_BAK" "$REAL_PREFS"; else rm -f "$REAL_PREFS"; fi
+}
+if [ -f "$REAL_PREFS" ]; then cp -p "$REAL_PREFS" "$PREFS_BAK"; PREFS_HAD=1; fi
+trap restore_prefs EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+for PREFS in "$XDG_CONFIG_HOME/unity3d/Zefwih/VIP-Sim" "$(dirname "$REAL_PREFS")"; do
+    mkdir -p "$PREFS"
+    cat > "$PREFS/prefs" <<PREFSEOF
 <unity_prefs version_major="1" version_minor="1">
   <pref name="vipsim.tutorial.done" type="int">1</pref>
 </unity_prefs>
 PREFSEOF
+done
 
 HOSTSOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/${WAYLAND_DISPLAY:-wayland-0}"
 [ -S "$HOSTSOCK" ] || { echo "no host wayland socket at $HOSTSOCK"; exit 1; }
@@ -49,8 +69,8 @@ WLR=$(ls /usr/libexec/xdg-desktop-portal-wlr /usr/lib/xdg-desktop-portal-wlr \
          /usr/lib/x86_64-linux-gnu/xdg-desktop-portal-wlr 2>/dev/null | head -1)
 [ -n "$PORTAL" ] && [ -n "$WLR" ] || { echo "install xdg-desktop-portal and xdg-desktop-portal-wlr"; exit 1; }
 
-mkdir -p ~/.config/xdg-desktop-portal-wlr
-printf '[screencast]\nchooser_type=none\nmax_fps=30\n' > ~/.config/xdg-desktop-portal-wlr/config
+mkdir -p "$XDG_CONFIG_HOME/xdg-desktop-portal-wlr"
+printf '[screencast]\nchooser_type=none\nmax_fps=30\n' > "$XDG_CONFIG_HOME/xdg-desktop-portal-wlr/config"
 
 INNER="$OUT/inner.sh"
 cat > "$INNER" <<INNEREOF

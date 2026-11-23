@@ -28,7 +28,8 @@ public class LinuxCapture : MonoBehaviour
     [DllImport(Lib)] private static extern int vipsim_capture_state();
     [DllImport(Lib)] private static extern IntPtr vipsim_capture_message();
     [DllImport(Lib)] private static extern int vipsim_capture_frame_size(out int w, out int h);
-    [DllImport(Lib)] private static extern uint vipsim_capture_copy_frame(IntPtr dst, int stride);
+    [DllImport(Lib)] private static extern uint vipsim_capture_copy_frame(IntPtr dst, int stride,
+                                                                          int w, int h, uint lastSeq);
     [DllImport(Lib)] private static extern void vipsim_capture_stop();
 
     public enum State { Idle = 0, WaitingForUser = 1, Streaming = 2, Failed = 3, NoPortal = 4 }
@@ -126,15 +127,22 @@ public class LinuxCapture : MonoBehaviour
         {
             // BGRA32 matches what the portal is asked for, so no per-pixel work is needed
             // on this side at all.
-            Texture = new Texture2D(w, h, TextureFormat.BGRA32, false);
+            // Reinitialised, not replaced: a new Texture2D per size change leaked the old one,
+            // CPU and GPU copies both, once per frame while a source was being resized.
+            if (Texture == null) Texture = new Texture2D(w, h, TextureFormat.BGRA32, false);
+            else Texture.Reinitialize(w, h);
             if (_pin.IsAllocated) _pin.Free();
             _staging = new byte[w * h * 4];
             _pin = GCHandle.Alloc(_staging, GCHandleType.Pinned);
             Debug.Log($"[LinuxCapture] source is {w}x{h}");
         }
 
-        uint seq = vipsim_capture_copy_frame(_pin.AddrOfPinnedObject(), w * 4);
-        if (seq == 0 || seq == _lastSeq) return;   // nothing new; skip the upload
+        // The size is passed back so the native side can refuse a frame that was resized
+        // between the two calls: it has no other way to know how large the buffer is, and
+        // writing the new size into the old buffer corrupted the managed heap. lastSeq lets
+        // it skip the copy entirely when nothing new has arrived.
+        uint seq = vipsim_capture_copy_frame(_pin.AddrOfPinnedObject(), w * 4, w, h, _lastSeq);
+        if (seq == 0 || seq == _lastSeq) return;   // nothing new, or resized; skip the upload
         _lastSeq = seq;
 
         Texture.LoadRawTextureData(_staging);
@@ -146,6 +154,7 @@ public class LinuxCapture : MonoBehaviour
         if (_available) vipsim_capture_stop();
         if (_pin.IsAllocated) _pin.Free();
         _staging = null;
+        if (Texture != null) { Destroy(Texture); Texture = null; }
     }
 }
 #endif

@@ -573,14 +573,24 @@ EXPORT int vipsim_capture_frame_size(int *w, int *h)
     return ok ? 0 : -1;
 }
 
-/// Copy the newest frame out. Returns the sequence number, or 0 if there is nothing yet,
-/// so the caller can skip the upload when nothing has changed.
-EXPORT unsigned vipsim_capture_copy_frame(void *dst, int dst_stride)
+/// Copy the newest frame out. Returns the sequence number, or 0 if there is nothing yet.
+///
+/// w and h are the size the caller sized dst for, from vipsim_capture_frame_size. The two
+/// calls take the lock separately and PipeWire can renegotiate in between, so a frame of a
+/// different size is refused here rather than written into a buffer too small for it.
+/// last_seq is the sequence the caller already has; when it is still current nothing is
+/// copied, which is most frames for a static source.
+EXPORT unsigned vipsim_capture_copy_frame(void *dst, int dst_stride, int w, int h,
+                                          unsigned last_seq)
 {
-    if (!dst) return 0;
+    if (!dst || w <= 0 || h <= 0 || dst_stride < w * 4) return 0;
     pthread_mutex_lock(&C.lock);
     unsigned seq = C.seq;
-    if (C.frame && C.width && C.height) {
+    if (seq == last_seq) {
+        pthread_mutex_unlock(&C.lock);
+        return seq;
+    }
+    if (C.frame && C.width == (uint32_t)w && C.height == (uint32_t)h) {
         uint32_t row = C.width * 4;
         for (uint32_t y = 0; y < C.height; y++)
             memcpy((char *)dst + (size_t)y * (size_t)dst_stride,

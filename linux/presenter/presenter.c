@@ -26,6 +26,7 @@
 #include <poll.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,6 +62,17 @@ static size_t                    g_prod_size;
 static uint32_t                  g_last_seq = 0xFFFFFFFFu;
 static int32_t                   g_panel[4] = {0, 0, 0, 0};
 static bool                      g_panel_valid;
+static ino_t                     g_prod_ino;   // identity of the segment we mapped
+
+// The player we started (hosted mode) or the process that started us (otherwise). If either
+// is gone nobody will ever tell us to quit, and the overlay would sit on the desktop
+// showing the last frame.
+static pid_t g_child;
+static pid_t g_parent;
+
+// Set when a redraw was wanted but could not happen yet (both buffers in flight, or the
+// output was resized). frame_done picks it up, so there is still exactly one callback chain.
+static bool g_need_redraw;
 
 // Double buffering: the compositor may still be reading the previous frame.
 struct buffer {
@@ -70,6 +82,12 @@ struct buffer {
     bool              busy;
 };
 static struct buffer g_buffers[2];
+
+// The mapping and size the buffers were made for. The buffers are only ever as big as the
+// output was at the time, so a later configure with another size has to rebuild them.
+static void  *g_pool_map;
+static size_t g_pool_size;
+static int    g_buf_w, g_buf_h;
 
 // ---------------------------------------------------------------- buffers
 
@@ -111,7 +129,25 @@ static bool make_buffers(int w, int h)
     }
     wl_shm_pool_destroy(pool);
     close(fd);
+    g_pool_map = map;
+    g_pool_size = total;
+    g_buf_w = w;
+    g_buf_h = h;
     return true;
+}
+
+static void destroy_buffers(void)
+{
+    // Destroying a wl_buffer the compositor still holds is allowed; it keeps its own
+    // reference to the pool until it is done with it.
+    for (int i = 0; i < 2; i++) {
+        if (g_buffers[i].wl) wl_buffer_destroy(g_buffers[i].wl);
+        g_buffers[i].wl = NULL;
+        g_buffers[i].data = NULL;
+        g_buffers[i].busy = false;
+    }
+    if (g_pool_map) munmap(g_pool_map, g_pool_size);
+    g_pool_map = NULL;
 }
 
 static struct buffer *free_buffer(void)
@@ -213,7 +249,16 @@ static const struct wl_callback_listener frame_listener = { .done = frame_done }
 static void present(void)
 {
     struct buffer *b = free_buffer();
-    if (!b) return;
+    if (!b) {
+        // Both buffers are with the compositor. Returning silently would end the loop if the
+        // release arrives after the last frame callback, because frame_done is the only
+        // caller. Ask for another callback and try again from there.
+        g_need_redraw = true;
+        struct wl_callback *retry = wl_surface_frame(g_surface);
+        wl_callback_add_listener(retry, &frame_listener, NULL);
+        wl_surface_commit(g_surface);
+        return;
+    }
 
     // The player's own commit, when it is running inside our compositor, in preference to
     // the shared-memory transport. Both paths exist while the host is being brought up; the
@@ -262,6 +307,14 @@ static void frame_done(void *data, struct wl_callback *cb, uint32_t time)
         return;
     }
 
+    // A redraw that present() or a resize could not do yet. present() requests the next
+    // callback itself, whether it draws or not.
+    if (g_need_redraw) {
+        g_need_redraw = false;
+        present();
+        return;
+    }
+
     // Only redraw when there is something new; otherwise ask for the next callback so the
     // loop keeps pace with the compositor rather than spinning.
     unsigned host_seq = vipsim_host_frame(NULL, NULL, NULL, NULL);
@@ -292,6 +345,9 @@ static bool open_producer(void)
     int fd = shm_open(VIPSIM_SHM_NAME, O_RDONLY, 0);
     if (fd < 0) return false;
 
+    struct stat st;
+    if (fstat(fd, &st) != 0) { close(fd); return false; }
+
     struct vipsim_shm_header head;
     if (read(fd, &head, sizeof head) != (ssize_t)sizeof head) { close(fd); return false; }
     if (head.magic != VIPSIM_SHM_MAGIC || head.version != VIPSIM_SHM_VERSION) {
@@ -307,6 +363,7 @@ static bool open_producer(void)
     if (g_prod_map == MAP_FAILED) { g_prod_map = NULL; return false; }
 
     g_prod = (struct vipsim_shm_header *)g_prod_map;
+    g_prod_ino = st.st_ino;
     printf("[presenter] attached to VIP-Sim: %ux%u, stride %u\n",
            g_prod->width, g_prod->height, g_prod->stride);
     return true;
@@ -338,6 +395,12 @@ static void on_configure(void *data, struct zwlr_layer_surface_v1 *s,
         apply_input_region();          // click-through until a producer says otherwise
         g_configured = true;
         present();
+    } else if (g_width != g_buf_w || g_height != g_buf_h) {
+        // The copy functions write g_width*g_height*4 bytes, so buffers made for the old
+        // size would be overrun. The frame callback already in flight redraws.
+        destroy_buffers();
+        if (!make_buffers(g_width, g_height)) { g_running = false; return; }
+        g_need_redraw = true;
     }
 }
 
@@ -680,8 +743,10 @@ int main(int argc, char **argv)
             fprintf(stderr, "[presenter] could not fork to start the player.\n");
             return 1;
         }
+        g_child = pid;
         printf("[presenter] started %s (pid %d) in our compositor.\n", exec_player, (int)pid);
     }
+    g_parent = getppid();
 
     printf("[presenter] waiting for configure...\n");
 
@@ -693,6 +758,7 @@ int main(int argc, char **argv)
     // dispatch would consume events that arrived while the other display was being
     // serviced, and the cancel_read path is what keeps the queue consistent when poll
     // wakes for the other fd.
+    int seg_check = 0;
     while (g_running) {
         while (wl_display_prepare_read(display) != 0)
             wl_display_dispatch_pending(display);
@@ -723,6 +789,38 @@ int main(int argc, char **argv)
 
         // If VIP-Sim starts after the presenter, pick it up without a restart.
         if (!g_prod && !g_force_test_pattern && open_producer()) g_last_seq = 0xFFFFFFFFu;
+
+        // The producer unlinks and recreates its segment on every start, so after a crashed
+        // run we would stay attached to the dead one: no frames, a stale panel rectangle and
+        // a quit flag that is never set. About once a second, compare inodes. A name that is
+        // gone is not a reason to let go; the mapping stays valid.
+        if (g_prod && ++seg_check >= 10) {
+            seg_check = 0;
+            int sfd = shm_open(VIPSIM_SHM_NAME, O_RDONLY, 0);
+            if (sfd >= 0) {
+                struct stat sst;
+                bool replaced = fstat(sfd, &sst) == 0 && sst.st_ino != g_prod_ino;
+                close(sfd);
+                if (replaced) {
+                    printf("[presenter] producer segment was replaced; reattaching.\n");
+                    munmap(g_prod_map, g_prod_size);
+                    g_prod = NULL; g_prod_map = NULL; g_panel_valid = false;
+                    if (open_producer()) g_last_seq = 0xFFFFFFFFu;
+                }
+            }
+        }
+
+        // Nobody is left to tell us to quit if the player (hosted) or the process that
+        // launched us (otherwise) has died, and the overlay would stay on the desktop.
+        if (g_child > 0) {
+            if (waitpid(g_child, NULL, WNOHANG) == g_child) {
+                printf("[presenter] the player exited; closing the overlay.\n");
+                break;
+            }
+        } else if (getppid() != g_parent) {
+            printf("[presenter] the launching process exited; closing the overlay.\n");
+            break;
+        }
     }
 
     vipsim_host_stop();

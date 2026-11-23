@@ -33,10 +33,30 @@ cp "$HERE/build/vipsim-presenter" "$PLAYER_DIR/"
 chmod +x "$PLAYER_DIR/vipsim-presenter" "$PLAYER_DIR/VIP-Sim" "$PLAYER_DIR/VIP-Sim.sh" 2>/dev/null
 fi
 
+# A private config home for the nested session, so the portal backend's settings
+# (chooser_type=none) never land in the user's real ~/.config.
+export XDG_CONFIG_HOME="$OUT/config"
+mkdir -p "$XDG_CONFIG_HOME"
+
 # The first-run walkthrough is modal and waits for a click nobody is here to give.
-PREFS=~/.config/unity3d/Zefwih/VIP-Sim
-mkdir -p "$PREFS"
-printf '<unity_prefs version_major="1" version_minor="1">\n  <pref name="vipsim.tutorial.done" type="int">1</pref>\n</unity_prefs>\n' > "$PREFS/prefs"
+#
+# Written to the private config home, which Unity is expected to honour, and also to the
+# real prefs path in case this Unity version does not. The real file is backed up first and
+# put back when the script exits, however it exits.
+REAL_PREFS=~/.config/unity3d/Zefwih/VIP-Sim/prefs
+PREFS_BAK="$OUT/prefs.real"
+PREFS_HAD=0
+restore_prefs() {
+    if [ "$PREFS_HAD" = 1 ]; then cp -p "$PREFS_BAK" "$REAL_PREFS"; else rm -f "$REAL_PREFS"; fi
+}
+if [ -f "$REAL_PREFS" ]; then cp -p "$REAL_PREFS" "$PREFS_BAK"; PREFS_HAD=1; fi
+trap restore_prefs EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+for PREFS in "$XDG_CONFIG_HOME/unity3d/Zefwih/VIP-Sim" "$(dirname "$REAL_PREFS")"; do
+    mkdir -p "$PREFS"
+    printf '<unity_prefs version_major="1" version_minor="1">\n  <pref name="vipsim.tutorial.done" type="int">1</pref>\n</unity_prefs>\n' > "$PREFS/prefs"
+done
 
 # The desktop portal, which is how VIP-Sim captures the screen on Wayland. Optional:
 # without it the overlay and input still run, and capture reports honestly that no portal
@@ -44,11 +64,8 @@ printf '<unity_prefs version_major="1" version_minor="1">\n  <pref name="vipsim.
 PORTAL=$(ls /usr/libexec/xdg-desktop-portal /usr/lib/xdg-desktop-portal             /usr/lib/x86_64-linux-gnu/xdg-desktop-portal 2>/dev/null | head -1)
 WLR=$(ls /usr/libexec/xdg-desktop-portal-wlr /usr/lib/xdg-desktop-portal-wlr          /usr/lib/x86_64-linux-gnu/xdg-desktop-portal-wlr 2>/dev/null | head -1)
 if [ -n "$PORTAL" ] && [ -n "$WLR" ]; then
-    mkdir -p ~/.config/xdg-desktop-portal-wlr
-    printf '[screencast]
-chooser_type=none
-max_fps=30
-' > ~/.config/xdg-desktop-portal-wlr/config
+    mkdir -p "$XDG_CONFIG_HOME/xdg-desktop-portal-wlr"
+    printf '[screencast]\nchooser_type=none\nmax_fps=30\n' > "$XDG_CONFIG_HOME/xdg-desktop-portal-wlr/config"
     echo "portal: $PORTAL"
 else
     echo "portal: not installed -- capture will report that it cannot run"
@@ -127,12 +144,14 @@ PYEOF
 echo
 echo "=== capture and the effect surface ==="
 PLOG0="$OUT/player.log"
+[ -s "$PLOG0" ] || PLOG0="$XDG_CONFIG_HOME/unity3d/Zefwih/VIP-Sim/Player.log"
 [ -s "$PLOG0" ] || PLOG0=~/.config/unity3d/Zefwih/VIP-Sim/Player.log
 grep -aE "vipsim_capture|CaptureSurface|asking for" "$PLOG0" 2>/dev/null | tail -5
 echo
 echo "=== where does the player think the mouse is? ==="
 # Unity writes to its own location when -logFile does not take; look in both.
 PLOG="$OUT/player.log"
+[ -s "$PLOG" ] || PLOG="$XDG_CONFIG_HOME/unity3d/Zefwih/VIP-Sim/Player.log"
 [ -s "$PLOG" ] || PLOG=~/.config/unity3d/Zefwih/VIP-Sim/Player.log
 grep -aoE "mouse \([0-9]+,[0-9]+\)" "$PLOG" 2>/dev/null | tail -2
 grep -a "running inside the presenter" "$PLOG" 2>/dev/null | head -1

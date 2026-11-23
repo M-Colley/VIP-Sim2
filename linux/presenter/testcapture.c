@@ -18,7 +18,7 @@ int         vipsim_capture_start(void);
 int         vipsim_capture_state(void);
 const char *vipsim_capture_message(void);
 int         vipsim_capture_frame_size(int *w, int *h);
-unsigned    vipsim_capture_copy_frame(void *dst, int stride);
+unsigned    vipsim_capture_copy_frame(void *dst, int stride, int w, int h, unsigned last_seq);
 void        vipsim_capture_stop(void);
 
 static const char *state_name(int s)
@@ -73,7 +73,7 @@ int main(int argc, char **argv)
 
     unsigned last = 0, frames = 0, blank = 0;
     unsigned char *buf = NULL, *keep = NULL;
-    int w = 0, h = 0, have_keep = 0;
+    int w = 0, h = 0, bw = 0, bh = 0, have_keep = 0;
 
     for (int i = 0; i < seconds * 20; i++) {
         struct timespec ts = { 0, 50 * 1000 * 1000 };
@@ -84,9 +84,12 @@ int main(int argc, char **argv)
             buf  = malloc((size_t)w * h * 4);
             keep = malloc((size_t)w * h * 4);
             if (!buf || !keep) return 1;
+            bw = w; bh = h;
             printf("  format settled: %dx%d\n", w, h);
         }
-        unsigned seq = vipsim_capture_copy_frame(buf, w * 4);
+        /* The buffer's own size, not the latest one: a renegotiated frame is refused. */
+        w = bw; h = bh;
+        unsigned seq = vipsim_capture_copy_frame(buf, w * 4, w, h, 0);
         if (seq && seq != last) {
             last = seq;
             frames++;

@@ -38,8 +38,12 @@ echo "portal:      ${PORTAL:-NOT FOUND}"
 echo "wlr backend: ${WLR:-NOT FOUND}"
 [ -n "$PORTAL" ] && [ -n "$WLR" ] || { echo "install xdg-desktop-portal and xdg-desktop-portal-wlr"; exit 1; }
 
-mkdir -p ~/.config/xdg-desktop-portal-wlr
-cat > ~/.config/xdg-desktop-portal-wlr/config <<CFG
+# A private config home for the nested session. The portal backend reads its settings from
+# $XDG_CONFIG_HOME/xdg-desktop-portal-wlr/config, and writing chooser_type=none into the
+# user's real ~/.config would silently change how their own desktop shares its screen.
+export XDG_CONFIG_HOME="$OUT/config"
+mkdir -p "$XDG_CONFIG_HOME/xdg-desktop-portal-wlr"
+cat > "$XDG_CONFIG_HOME/xdg-desktop-portal-wlr/config" <<CFG
 [screencast]
 chooser_type=none
 max_fps=30

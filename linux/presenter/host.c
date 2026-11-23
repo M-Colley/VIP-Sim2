@@ -39,8 +39,6 @@ static struct {
     struct wl_resource *surface;
     struct wl_resource *xdg_surface;
     struct wl_resource *xdg_toplevel;
-    struct wl_resource *pending_buffer;   // attached, not yet committed
-    struct wl_resource *frame_callback;   // owed a done event at the next commit
     unsigned            commits;
 
     // The latest frame, copied out of the player's buffer so the buffer can go straight
@@ -68,14 +66,72 @@ static uint32_t now_ms(void)
 
 // ------------------------------------------------------------------ wl_surface
 
+// Per-surface state. The player makes more than one surface (SDL also creates one for the
+// cursor), and a buffer or frame callback belongs to the surface it was sent on, so a
+// single global slot would let a cursor commit release or overwrite the window's.
+struct surf {
+    struct wl_resource *pending_buffer;   // attached, not yet committed
+    struct wl_resource *frame_callback;   // owed a done event at the next commit
+    struct wl_listener  buffer_destroyed; // clears pending_buffer if the client destroys it
+};
+
+static void buffer_destroyed(struct wl_listener *l, void *data)
+{
+    (void)data;
+    struct surf *s = wl_container_of(l, s, buffer_destroyed);
+    wl_list_remove(&s->buffer_destroyed.link);
+    s->pending_buffer = NULL;
+}
+
+static void surf_drop_buffer(struct surf *s)
+{
+    if (!s->pending_buffer) return;
+    wl_list_remove(&s->buffer_destroyed.link);
+    s->pending_buffer = NULL;
+}
+
+static void callback_destroyed(struct wl_resource *cb)
+{
+    struct surf *s = wl_resource_get_user_data(cb);
+    if (s && s->frame_callback == cb) s->frame_callback = NULL;
+}
+
+// Runs for both an explicit destroy request and a client that simply disconnects.
+static void surface_resource_destroyed(struct wl_resource *r)
+{
+    struct surf *s = wl_resource_get_user_data(r);
+    if (s->frame_callback) wl_resource_destroy(s->frame_callback);   // clears the slot
+    surf_drop_buffer(s);
+    free(s);
+
+    if (H.surface == r) {
+        // Input forwarded after this would be a use-after-free.
+        H.surface = NULL;
+        H.pointer_in = false;
+        H.keyboard_in = false;
+    }
+}
+
+static void xdg_surface_resource_destroyed(struct wl_resource *r)
+{ if (H.xdg_surface == r) H.xdg_surface = NULL; }
+
+static void xdg_toplevel_resource_destroyed(struct wl_resource *r)
+{ if (H.xdg_toplevel == r) H.xdg_toplevel = NULL; }
+
 static void surface_destroy(struct wl_client *c, struct wl_resource *r)
 { (void)c; wl_resource_destroy(r); }
 
 static void surface_attach(struct wl_client *c, struct wl_resource *r,
                            struct wl_resource *buffer, int32_t x, int32_t y)
 {
-    (void)c; (void)r; (void)x; (void)y;
-    H.pending_buffer = buffer;   // double-buffered state: nothing happens until commit
+    (void)c; (void)x; (void)y;
+    struct surf *s = wl_resource_get_user_data(r);
+    surf_drop_buffer(s);
+    s->pending_buffer = buffer;   // double-buffered state: nothing happens until commit
+    if (buffer) {
+        s->buffer_destroyed.notify = buffer_destroyed;
+        wl_resource_add_destroy_listener(buffer, &s->buffer_destroyed);
+    }
 }
 
 static void surface_damage(struct wl_client *c, struct wl_resource *r,
@@ -84,12 +140,13 @@ static void surface_damage(struct wl_client *c, struct wl_resource *r,
 
 static void surface_frame(struct wl_client *c, struct wl_resource *r, uint32_t id)
 {
-    (void)r;
     // The player throttles on this. A callback that is never answered halves its frame
     // rate, and with a non-zero EGL swap interval would stop it dead.
     struct wl_resource *cb = wl_resource_create(c, &wl_callback_interface, 1, id);
     if (!cb) { wl_client_post_no_memory(c); return; }
-    H.frame_callback = cb;
+    struct surf *s = wl_resource_get_user_data(r);
+    wl_resource_set_implementation(cb, NULL, s, callback_destroyed);
+    s->frame_callback = cb;
 }
 
 static void surface_set_opaque_region(struct wl_client *c, struct wl_resource *r,
@@ -102,11 +159,17 @@ static void surface_set_input_region(struct wl_client *c, struct wl_resource *r,
 
 static void surface_commit(struct wl_client *c, struct wl_resource *r)
 {
-    (void)c; (void)r;
+    (void)c;
+    struct surf *s = wl_resource_get_user_data(r);
     H.commits++;
 
-    if (H.pending_buffer) {
-        struct wl_shm_buffer *shm = wl_shm_buffer_get(H.pending_buffer);
+    // Only the window's own surface is the player's frame. Anything else, such as SDL's
+    // cursor surface, still gets its buffer released and its callback answered below, but
+    // must not overwrite the picture.
+    bool player = (r == H.surface);
+
+    if (s->pending_buffer && player) {
+        struct wl_shm_buffer *shm = wl_shm_buffer_get(s->pending_buffer);
         if (shm) {
             int32_t  w      = wl_shm_buffer_get_width(shm);
             int32_t  h      = wl_shm_buffer_get_height(shm);
@@ -120,12 +183,24 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r)
                        w, h, stride, fmt);
             }
 
-            size_t need = (size_t)stride * (size_t)h;
-            if (H.frame_cap < need) {
+            // libwayland only guarantees stride >= width, not stride >= width * 4 for the
+            // 4-byte formats handled below, and the loops and the copy assume it.
+            bool usable = w > 0 && h > 0 && (int64_t)stride >= (int64_t)w * 4;
+            if (!usable) {
+                static bool bad;
+                if (!bad) {
+                    bad = true;
+                    fprintf(stderr, "[host] ignoring a player buffer with unusable geometry: "
+                                    "%dx%d, stride %d.\n", w, h, stride);
+                }
+            }
+
+            size_t need = usable ? (size_t)stride * (size_t)h : 0;
+            if (usable && H.frame_cap < need) {
                 uint8_t *grown = realloc(H.frame, need);
                 if (grown) { H.frame = grown; H.frame_cap = need; }
             }
-            if (H.frame && H.frame_cap >= need) {
+            if (usable && H.frame && H.frame_cap >= need) {
                 // begin_access installs the SIGBUS handler that protects us from a client
                 // which truncates its pool while we are reading it.
                 wl_shm_buffer_begin_access(shm);
@@ -169,17 +244,18 @@ static void surface_commit(struct wl_client *c, struct wl_resource *r)
                                 "Only shared memory is handled today.\n");
             }
         }
-
-        // Released as soon as it has been copied. Holding a client's buffer stalls it on
-        // its own pool, which presents as a frame-rate collapse with no cause attached.
-        wl_buffer_send_release(H.pending_buffer);
-        H.pending_buffer = NULL;
     }
 
-    if (H.frame_callback) {
-        wl_callback_send_done(H.frame_callback, now_ms());
-        wl_resource_destroy(H.frame_callback);
-        H.frame_callback = NULL;
+    if (s->pending_buffer) {
+        // Released as soon as it has been copied. Holding a client's buffer stalls it on
+        // its own pool, which presents as a frame-rate collapse with no cause attached.
+        wl_buffer_send_release(s->pending_buffer);
+        surf_drop_buffer(s);
+    }
+
+    if (s->frame_callback) {
+        wl_callback_send_done(s->frame_callback, now_ms());
+        wl_resource_destroy(s->frame_callback);   // clears the slot
     }
 }
 
@@ -228,7 +304,9 @@ static void compositor_create_surface(struct wl_client *c, struct wl_resource *r
     struct wl_resource *s = wl_resource_create(c, &wl_surface_interface,
                                                wl_resource_get_version(r), id);
     if (!s) { wl_client_post_no_memory(c); return; }
-    wl_resource_set_implementation(s, &surface_impl, NULL, NULL);
+    struct surf *st = calloc(1, sizeof *st);
+    if (!st) { wl_resource_destroy(s); wl_client_post_no_memory(c); return; }
+    wl_resource_set_implementation(s, &surface_impl, st, surface_resource_destroyed);
 }
 
 static void compositor_create_region(struct wl_client *c, struct wl_resource *r, uint32_t id)
@@ -410,7 +488,7 @@ static void xdg_surface_get_toplevel(struct wl_client *c, struct wl_resource *r,
     struct wl_resource *t = wl_resource_create(c, &xdg_toplevel_interface,
                                                wl_resource_get_version(r), id);
     if (!t) { wl_client_post_no_memory(c); return; }
-    wl_resource_set_implementation(t, &toplevel_impl, NULL, NULL);
+    wl_resource_set_implementation(t, &toplevel_impl, NULL, xdg_toplevel_resource_destroyed);
     H.xdg_toplevel = t;
 
     int32_t w = H.out_w > 0 ? H.out_w : 1920;
@@ -480,7 +558,7 @@ static void wm_base_get_xdg_surface(struct wl_client *c, struct wl_resource *r, 
     struct wl_resource *x = wl_resource_create(c, &xdg_surface_interface,
                                                wl_resource_get_version(r), id);
     if (!x) { wl_client_post_no_memory(c); return; }
-    wl_resource_set_implementation(x, &xdg_surface_impl, NULL, NULL);
+    wl_resource_set_implementation(x, &xdg_surface_impl, NULL, xdg_surface_resource_destroyed);
     H.xdg_surface = x;
 
     // The window's surface, identified by the role rather than by being the first one
