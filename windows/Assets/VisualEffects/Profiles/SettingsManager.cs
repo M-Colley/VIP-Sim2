@@ -79,7 +79,6 @@ public class SettingsManager : MonoBehaviour
         // Event Listener für die Buttons hinzufügen
         loadButton.onClick.AddListener(OpenFileBrowser);
         saveButton.onClick.AddListener(SaveSettings);
-        InvokeRepeating("SyncSettings", 5.0f, 5.0f);
     }
 
     // Öffnet einen Dateibrowser, um die Datei zu laden
@@ -147,7 +146,7 @@ public class SettingsManager : MonoBehaviour
         // it. Nothing writes a severity: severity belongs to the pipeline the authored
         // profiles came from, and this end knows the concrete values.
         var profile = ProfileBinder.Capture(this, Path.GetFileNameWithoutExtension(path), "");
-        File.WriteAllText(path, profile.ToString(Formatting.Indented));
+        if (!WriteFileSafely(path, profile.ToString(Formatting.Indented))) return;
 
         int count = (profile["filters"] as JArray)?.Count ?? 0;
         Debug.Log($"[SettingsManager] saved a profile with {count} active effect(s) to {path}");
@@ -162,7 +161,16 @@ public class SettingsManager : MonoBehaviour
             return;
         }
 
-        string json = File.ReadAllText(path);
+        string json;
+        try
+        {
+            json = File.ReadAllText(path);
+        }
+        catch (System.Exception e) when (e is IOException || e is System.UnauthorizedAccessException)
+        {
+            Debug.LogError($"[SettingsManager] could not read {path}: {e.Message}");
+            return;
+        }
 
         // Check the file is the shape we expect before applying any of it.
         //
@@ -218,7 +226,20 @@ public class SettingsManager : MonoBehaviour
             return;
         }
 
-        appSettings = JsonConvert.DeserializeObject<AppSettings>(json);
+        // Populate the current values rather than deserialising a fresh AppSettings. A fresh
+        // object gives every key the file does not carry the C# default of zero, and
+        // UpdatePublicFields then writes those zeros into the effects: a file saved before
+        // FovealDarkness, FlickeringStars and Pixelation existed set their sizes to 0.
+        SyncSettings();
+        try
+        {
+            JsonConvert.PopulateObject(json, appSettings);
+        }
+        catch (JsonException e)
+        {
+            Debug.LogError($"[SettingsManager] {Path.GetFileName(path)}: {e.Message}. Nothing was changed.");
+            return;
+        }
         ApplySettings();
         Debug.Log($"[SettingsManager] loaded {known} settings from {path}");
     }
@@ -229,12 +250,6 @@ public class SettingsManager : MonoBehaviour
         // Aktualisiere die referenzierten Objekte mit Public Variablen
         UpdatePublicFields();
 
-        // Beispiel: wende Licht-Intensität an
-        Light[] lights = FindObjectsByType<Light>();
-        foreach (var light in lights)
-        {
-            light.intensity = appSettings.intensity;
-        }
     }
 
     // Aktualisiert die Public Variablen eines MonoBehaviour anhand der aktuellen AppSettings
@@ -306,6 +321,31 @@ public class SettingsManager : MonoBehaviour
         myPixelationEffect.pixelRadius = appSettings.pixelRadius;
 
 }
+
+    /// <summary>
+    /// Write a file without risking the one already there. WriteAllText truncates the target
+    /// before writing, so a full or locked volume destroyed the previous profile and left
+    /// an empty one; writing beside it and swapping keeps the old file until the new one is
+    /// complete. Failures are logged, because this runs in a file-dialog callback where an
+    /// exception reaches nobody.
+    /// </summary>
+    internal static bool WriteFileSafely(string path, string text)
+    {
+        string tmp = path + ".tmp";
+        try
+        {
+            File.WriteAllText(tmp, text);
+            if (File.Exists(path)) File.Replace(tmp, path, null);
+            else File.Move(tmp, path);
+            return true;
+        }
+        catch (System.Exception e) when (e is IOException || e is System.UnauthorizedAccessException)
+        {
+            Debug.LogError($"[SettingsManager] could not write {path}: {e.Message}");
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch (System.Exception) { }
+            return false;
+        }
+    }
 
     // Synchronisiert die AppSettings, wenn sich eine Public Variable ändert
     public void SyncSettings()

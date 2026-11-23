@@ -47,7 +47,9 @@ public static class ProfileBinder
     private static readonly List<Bind> Table = new List<Bind>
     {
         new Bind { Filter = "blur", EffectObject = "Hyperopia", Get = s => s.myBlur,
-                   SeverityField = "maxCPD", SevMin = 0f, SevMax = 1f, Fields = F() },
+                   // maxCPD's own [Range] is 0..30, the convention stated above. 0..1 was a
+                   // thirtieth of it: severity 1 gave 29 cycles/degree, i.e. almost no blur.
+                   SeverityField = "maxCPD", SevMin = 0f, SevMax = 30f, Fields = F() },
 
         new Bind { Filter = "bcg", EffectObject = "Contrast Sensitivity",
                    Get = s => s.myBrightnessContrastGamma, SeverityField = "Contrast",
@@ -61,11 +63,22 @@ public static class ProfileBinder
         new Bind { Filter = "cataracts", EffectObject = "Cataract", Get = s => s.myCataract,
                    SeverityField = "severityIndex", SevMin = 0f, SevMax = 1f, Fields = F() },
 
-        new Bind { Filter = "detail_loss", EffectObject = "DetailLoss", Get = s => s.myInpainter2,
+        // EffectObject must name the row whose Enable button toggles the component that Get
+        // returns. Four rows were paired by their Table 4 name instead, and the menu's names
+        // do not follow Table 4: the row called "DetailLoss" toggles PixelationEffect, "In-Filling"
+        // toggles myInpainter2, "Distortion" toggles VortexEffect and "Metamorphopsia" toggles
+        // myDistortionMap. A profile with vortex in it therefore ran the vortex, lit the
+        // Metamorphopsia row, and left the vortex's own row dark -- and the master switch,
+        // which presses lit rows, then switched on the effect nobody had asked for.
+        new Bind { Filter = "detail_loss", EffectObject = "In-Filling", Get = s => s.myInpainter2,
                    SeverityField = "threshold", SevMin = 0f, SevMax = 1f, Fields = F() },
 
-        new Bind { Filter = "distortion", EffectObject = "Distortion", Get = s => s.myDistortionMap,
+        new Bind { Filter = "distortion", EffectObject = "Metamorphopsia", Get = s => s.myDistortionMap,
                    SeverityField = null, SevMin = 0f, SevMax = 1f, Fields = F() },
+
+        new Bind { Filter = "wiggle", EffectObject = "Metamorphopsia2", Get = s => s.myWiggle,
+                   SeverityField = null, SevMin = 0f, SevMax = 1f,
+                   Fields = F("amplitude", "Amplitude", "frequency", "Frequency", "speed", "Speed") },
 
         new Bind { Filter = "double_vision", EffectObject = "DoubleVisionEffect",
                    Get = s => s.myDoubleVision, SeverityField = "displacementAmount",
@@ -92,7 +105,7 @@ public static class ProfileBinder
                    Get = s => s.myFovealDarkness, SeverityField = "opacity", SevMin = 0f, SevMax = 1f,
                    Fields = F("radius", "innerCircleRadius", "edge_width", "fadeWidth") },
 
-        new Bind { Filter = "vortex", EffectObject = "Metamorphopsia", Get = s => s.myVortexEffect,
+        new Bind { Filter = "vortex", EffectObject = "Distortion", Get = s => s.myVortexEffect,
                    SeverityField = "suctionStrength", SevMin = 0f, SevMax = 2f,
                    Fields = F("vortex_radius", "vortexRadius", "suction_strength", "suctionStrength",
                               "inner_circle_radius", "innerCircleRadius") },
@@ -101,7 +114,7 @@ public static class ProfileBinder
                    Get = s => s.myFlickeringStars, SeverityField = "starRadius",
                    SevMin = 0f, SevMax = 0.005f, Fields = F("radius", "radius") },
 
-        new Bind { Filter = "pixelation", EffectObject = null, Get = s => s.myPixelationEffect,
+        new Bind { Filter = "pixelation", EffectObject = "DetailLoss", Get = s => s.myPixelationEffect,
                    SeverityField = "pixelRadius", SevMin = 10f, SevMax = 1000f,
                    Fields = F("pixel_size", "pixelRadius") },
 
@@ -147,7 +160,10 @@ public static class ProfileBinder
             // degeneration -- so it is read rather than assumed.
             if (bind.Filter == "field_loss")
             {
-                string ft = ((string)f.Parameters["field_type"] ?? f.Name).ToLowerInvariant();
+                // Read as a JValue: a hand-edited profile with an object or array here threw
+                // from the cast and abandoned the load halfway, with some effects already on.
+                string ft = ((f.Parameters["field_type"] as JValue)?.Value as string ?? f.Name)
+                            .ToLowerInvariant();
                 if (ft.Contains("periph"))
                 {
                     var peripheral = Table.Find(b => b.Filter == "vignette");
@@ -181,7 +197,15 @@ public static class ProfileBinder
                         report.Unsupported.Add($"{f.Name}.severity");
                         continue;
                     }
-                    float sev = Mathf.Clamp01((float)prop.Value);
+                    // TryConvert, not a cast: "severity": null or "high" threw here and
+                    // abandoned the load with half the profile applied and no report.
+                    object sevObj;
+                    if (!TryConvert(prop.Value, typeof(float), out sevObj))
+                    {
+                        report.Unsupported.Add($"{f.Name}.severity");
+                        continue;
+                    }
+                    float sev = Mathf.Clamp01((float)sevObj);
                     float val = Mathf.Lerp(bind.SevMin, bind.SevMax, sev);
                     if (TrySet(target, bind.SeverityField, new JValue(val)))
                         report.Applied.Add($"{f.Name}.severity -> {bind.SeverityField}={val:0.###} (approximate)");
@@ -192,8 +216,14 @@ public static class ProfileBinder
 
                 if (prop.Name == "field_type") continue;   // handled above
 
+                // Capture writes the primary parameter under the component's own field name
+                // ("maxCPD", "amp_deg", ...), so that name has to be accepted here too.
+                // Without this a saved profile did not load back: the value it was saved for
+                // was reported as unsupported and left where it was.
                 string field;
-                if (!bind.Fields.TryGetValue(prop.Name, out field))
+                if (prop.Name == bind.SeverityField)
+                    field = prop.Name;
+                else if (!bind.Fields.TryGetValue(prop.Name, out field))
                 {
                     report.Unsupported.Add($"{f.Name}.{prop.Name}");
                     continue;
@@ -205,6 +235,12 @@ public static class ProfileBinder
 
         foreach (var b in Table)
             if (!mentioned.Contains(b.Filter)) SetEffectActive(sm, b, false);
+
+        // The master switch remembers which rows it switched off so it can press them again.
+        // That memory describes the state before this profile; replayed after it, it added the
+        // previous condition's effects on top of this one.
+        var master = UnityEngine.Object.FindAnyObjectByType<ToggleScript>(FindObjectsInactive.Include);
+        if (master != null) master.ForgetSuspended();
 
         // The parameters on screen may now belong to an effect this profile just switched
         // off. Closing them is the only honest thing to do after a bulk change: leaving

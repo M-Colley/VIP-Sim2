@@ -343,11 +343,10 @@ public class DropdownManager : MonoBehaviour
         Slider slider = sliderObject.AddComponent<Slider>();
         slider.minValue = minValue;
         slider.maxValue = maxValue;
+        // The field's own value, always. A field at its maximum used to be shown at the
+        // minimum -- a workaround for myBlur storing its slider inverted, which it no longer
+        // does -- so the panel disagreed with the running effect and the first nudge jumped it.
         slider.value = Convert.ToSingle(field.GetValue(script));
-        if(slider.value == slider.maxValue)
-        {
-            slider.value = minValue;
-        }
         slider.onValueChanged.AddListener(delegate (float value) { OnSliderValueChanged(field, script, value); });
 
         // Add background image
@@ -521,13 +520,13 @@ public class DropdownManager : MonoBehaviour
 
     void OnSliderValueChanged(FieldInfo field, MonoBehaviour script, float value)
     {
-        logger.OnImpairmentClick(field.ToString(), value);
+        if (logger != null) logger.OnImpairmentClick(ParameterName(field, script), value);
         field.SetValue(script, value);
     }
 
     void OnToggleValueChanged(FieldInfo field, MonoBehaviour script, bool value)
     {
-        logger.OnImpairmentClick(script.name, value ? 1 : 0);
+        if (logger != null) logger.OnImpairmentClick(ParameterName(field, script), value ? 1 : 0);
         field.SetValue(script, value);
     }
 
@@ -535,7 +534,13 @@ public class DropdownManager : MonoBehaviour
     {
         object enumValue = Enum.GetValues(field.FieldType).GetValue(value);
 
-        logger.OnImpairmentClick(script.name, Array.IndexOf(Enum.GetValues(field.FieldType), value));
+        // The chosen index itself. Array.IndexOf searched the enum's values for a boxed int,
+        // never found it, and logged -1 for every choice; script.name is the camera's name,
+        // the same for every effect. Study logs could attribute neither.
+        if (logger != null) logger.OnImpairmentClick(ParameterName(field, script), value);
         field.SetValue(script, enumValue);
     }
+
+    private static string ParameterName(FieldInfo field, MonoBehaviour script)
+        => $"{script.GetType().Name}.{field.Name}";
 }

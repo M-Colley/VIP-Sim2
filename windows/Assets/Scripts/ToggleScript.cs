@@ -13,6 +13,13 @@ public class ToggleScript : MonoBehaviour
     public Sprite enableOnBGSprite;
 
     private List<GameObject> lastObjects = new List<GameObject>();
+
+    /// <summary>
+    /// Forget which rows the master switch turned off. Called when a profile replaces the
+    /// whole set of effects: the remembered rows describe the previous state, and pressing
+    /// them again when the master switch comes back on would add them to the new one.
+    /// </summary>
+    public void ForgetSuspended() => lastObjects.Clear();
     public void Awake()
     {
     }
