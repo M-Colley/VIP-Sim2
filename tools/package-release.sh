@@ -32,7 +32,10 @@ trap 'rm -rf "$STAGE"' EXIT
 # ---- Windows: the player at the root of the archive, with the documents beside it.
 mkdir -p "$STAGE/win"
 cp -r "$WIN_BUILD/." "$STAGE/win/"
-rm -rf "$STAGE/win/"*_BurstDebugInformation_DoNotShip
+# Debug data Unity writes next to the player, not for users: the Burst folder is named
+# *_BurstDebugInformation_DoNotShip before Unity 6.6 and *_BackUpThisFolder_ButDontShipItWithYourGame
+# from 6.6 on. The .vipsim-backend marker is VipSimBuild's own bookkeeping.
+rm -rf "$STAGE/win/"*_BurstDebugInformation_DoNotShip "$STAGE/win/"*_BackUpThisFolder_ButDontShipItWithYourGame "$STAGE/win/.vipsim-backend"
 cp "$ROOT/docs/WINDOWS_README.md"   "$STAGE/win/READ-ME-FIRST.md"
 cp "$ROOT/docs/ACCESSIBILITY.md" "$ROOT/CHANGELOG.md" "$ROOT/LICENSE" \
    "$ROOT/THIRD-PARTY-NOTICES.md" "$STAGE/win/"
@@ -64,7 +67,7 @@ LAUNCHER="$LIN_BUILD/VIP-Sim.sh"
 if [ -f "$LIN_BUILD/VIP-Sim" ] && [ -f "$PRESENTER" ] && [ -f "$PRESENTER_LIB" ] && [ -f "$LAUNCHER" ]; then
     mkdir -p "$STAGE/lin/VIP-Sim"
     cp -r "$LIN_BUILD/." "$STAGE/lin/VIP-Sim/"
-    rm -rf "$STAGE/lin/VIP-Sim/"*_BurstDebugInformation_DoNotShip
+    rm -rf "$STAGE/lin/VIP-Sim/"*_BurstDebugInformation_DoNotShip "$STAGE/lin/VIP-Sim/"*_BackUpThisFolder_ButDontShipItWithYourGame "$STAGE/lin/VIP-Sim/.vipsim-backend"
     cp "$PRESENTER" "$STAGE/lin/VIP-Sim/"
     mkdir -p "$STAGE/lin/VIP-Sim/VIP-Sim_Data/Plugins/x86_64"
     cp "$PRESENTER_LIB" "$STAGE/lin/VIP-Sim/VIP-Sim_Data/Plugins/x86_64/"
