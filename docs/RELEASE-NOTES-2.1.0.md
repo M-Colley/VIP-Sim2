@@ -16,6 +16,11 @@ corrections change what you see. If you compare screenshots or study material ma
 | `VIP-Sim-macOS-universal.zip` | macOS 12+, Apple silicon and Intel |
 | `VIP-Sim-Linux-x64.tar.gz` | Linux, Wayland with layer-shell (not GNOME) |
 
+These builds were made with **Unity 6000.6.7f1**, not the 6000.5.8f1 the project is pinned
+to, which was not installed on the build machine. Unity 6.6 brings its own versions of its
+built-in packages (uGUI 2.6.0, Burst 2.0.0, Collections 6.6.0); the source and its package
+pins are unchanged. 2.0.x was built with 6000.5.8f1.
+
 `SHA256SUMS.txt` lists the checksums. Each archive contains the application, a
 `READ-ME-FIRST.md` with the first-launch steps for that platform, the licence, third-party
 notices and the changelog.
@@ -56,6 +61,14 @@ to `Pictures/VIP-Sim`. A profile is written next to it under the same name; load
 - Saving over a profile on a full or locked disk destroyed the existing file.
 
 The full list, including performance and Linux fixes, is in `CHANGELOG.md`.
+
+## Updated components
+
+- **UnitEye** (eye tracking) is updated to upstream v0.1.0, with its gaze, calibration and
+  drift-correction fixes. Its calibration training changed, so recalibrate after updating
+  rather than relying on a calibration made with 2.0.x.
+- Unity Input System 1.20.1 and Newtonsoft JSON 3.2.2. Unity Inference 2.6.1 and the
+  MediaPipe plugin 0.16.3 were already current.
 
 ## Privacy
 

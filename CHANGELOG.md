@@ -92,10 +92,23 @@ was ambiguous, the behaviour on screen was kept and the ambiguity is listed unde
 - **Gaze was written to disk.** The UnitEye prefab shipped with its CSV logger enabled, so
   every gaze sample was written under the install folder while eye tracking ran — contrary
   to `docs/PRIVACY.md`, which says gaze is only held in memory. The logger is off. If a
-  study turns it on, it writes to `persistentDataPath` with culture-invariant numbers and
-  ISO timestamps, and stops cleanly when the folder is not writable. Three gaze recordings
-  from May 2024 that an Editor run had put into the repository are removed (they remain in
-  the git history).
+  study turns it on, a built player writes to `persistentDataPath`, with culture-invariant
+  numbers. Three gaze recordings from May 2024 that an Editor run had put into the
+  repository are removed (they remain in the git history).
+
+### Changed — dependencies
+
+- **UnitEye updated to upstream v0.1.0** ([wgnrto/uniteye](https://github.com/wgnrto/uniteye)
+  `f566a12`). It brings upstream's gaze, calibration, drift, CSV and AOI fixes, pairs blink,
+  drowsiness and distance with the camera frame their gaze came from, and adds editor
+  inspectors. Upstream renumbered the package from 1.1.0 to 0.1.0; it is the newer code.
+  VIP-Sim keeps its own differences: no second cursor, the CSV logger off, and disabling
+  gaze also stopping face-landmark inference and the webcam.
+- `com.unity.inputsystem` 1.19.0 → 1.20.1 and `com.unity.nuget.newtonsoft-json` 3.2.1 →
+  3.2.2, as the new UnitEye requires. Editor-only: Rider integration 3.0.36 → 3.1.1, Visual
+  Studio integration 2.0.23 → 2.0.29.
+- Unchanged because already current: `com.unity.ai.inference` 2.6.1 and MediaPipe Unity
+  Plugin 0.16.3.
 
 ### Performance
 
