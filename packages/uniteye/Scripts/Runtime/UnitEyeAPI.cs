@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Mediapipe.Unity;
-using Mediapipe.Unity.FaceMesh;
 using UnityEngine;
 
 namespace UnitEye
@@ -54,7 +52,6 @@ namespace UnitEye
             CheckIsInitialized();
 
             s_gazeScript.enabled = true;
-            SetRigActive(true);
         }
 
         /// <summary>
@@ -68,19 +65,6 @@ namespace UnitEye
             CheckIsInitialized();
 
             s_gazeScript.enabled = false;
-            SetRigActive(false);
-        }
-
-        // HomulerGaze lives on a different GameObject than the landmark inference and the webcam. Disabling
-        // only HomulerGaze left FaceMeshSolution doing GPU readback + inference every camera frame and the
-        // camera running. WebCamSource stops/resumes the device in its own OnDisable/OnEnable.
-        private static void SetRigActive(bool active)
-        {
-            var root = s_gazeScript.transform.root;
-            foreach (var faceMesh in root.GetComponentsInChildren<FaceMeshSolution>(true))
-                faceMesh.enabled = active;
-            foreach (var webcam in root.GetComponentsInChildren<WebCamSource>(true))
-                webcam.enabled = active;
         }
 
         /// <summary>
