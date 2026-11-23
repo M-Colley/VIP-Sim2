@@ -272,7 +272,7 @@ namespace UnitEye
             if (src == null) return;
             if (copy == null || copy.width != src.width || copy.height != src.height)
             {
-                if (copy != null) copy.Release();
+                DestroyRenderTexture(copy);
                 copy = new RenderTexture(src.width, src.height, 0, RenderTextureFormat.ARGB32);
                 copy.Create();
             }
@@ -305,7 +305,7 @@ namespace UnitEye
             int outH = Mathf.Max(16, Mathf.RoundToInt(h * rect.height));
             if (_frameCopy == null || _frameCopy.width != outW || _frameCopy.height != outH)
             {
-                if (_frameCopy != null) _frameCopy.Release();
+                DestroyRenderTexture(_frameCopy);
                 _frameCopy = new RenderTexture(outW, outH, 0, RenderTextureFormat.ARGB32);
                 _frameCopy.Create();
             }
@@ -442,9 +442,19 @@ namespace UnitEye
             try { _features?.Dispose(); } catch { } finally { _features = null; }
             try { _landmarks?.Dispose(); } catch { } finally { _landmarks = null; }
             try { if (_imageQueue != null && !_imageQueue.IsAddingCompleted) _imageQueue.CompleteAdding(); } catch { }
-            if (_leftCopy != null) { _leftCopy.Release(); _leftCopy = null; }
-            if (_rightCopy != null) { _rightCopy.Release(); _rightCopy = null; }
-            if (_frameCopy != null) { _frameCopy.Release(); _frameCopy = null; }
+            DestroyRenderTexture(_leftCopy); _leftCopy = null;
+            DestroyRenderTexture(_rightCopy); _rightCopy = null;
+            DestroyRenderTexture(_frameCopy); _frameCopy = null;
+        }
+
+        //Release() frees the GPU memory but the RenderTexture object itself stays alive until the scene
+        //unloads, so every resize or session leaked one. Destroy it too.
+        private static void DestroyRenderTexture(RenderTexture rt)
+        {
+            if (rt == null) return;
+            rt.Release();
+            if (Application.isPlaying) UnityEngine.Object.Destroy(rt);
+            else UnityEngine.Object.DestroyImmediate(rt);
         }
 
         private static void WriteFloats(FileStream fs, float[] values, int count)

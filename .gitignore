@@ -127,3 +127,10 @@ windows/Assets/Resources/PerformanceTestRun*.json
 windows/Assets/Resources/PerformanceTestRun*.json.meta
 macos/Assets/Resources/PerformanceTestRun*.json
 macos/Assets/Resources/PerformanceTestRun*.json.meta
+
+# Gaze logs. UnitEye writes them to persistentDataPath now, but an Editor run with an older
+# logger configuration put real gaze recordings here, and they were committed.
+/windows/Assets/CSVLogs/
+/windows/Assets/CSVLogs.meta
+/macos/Assets/CSVLogs/
+/macos/Assets/CSVLogs.meta

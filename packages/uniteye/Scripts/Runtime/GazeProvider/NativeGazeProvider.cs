@@ -173,6 +173,11 @@ namespace UnitEye
             if (!_backbone.PerformInference(_webcam))
                 return false;
 
+            //In async-readback mode PerformInference can report a published result while the face has been
+            //lost since the readback was scheduled; FaceLandmarks is then null and the code below indexes it.
+            if (_faceMesh == null || _faceMesh.FaceLandmarks == null)
+                return false;
+
             _rawGaze = _backbone.RawGaze;
             //Compute EyeFeature once, then derive blink/drowsy from it (was recomputed inside each call).
             _eyeFeature = _eyeHelper.EyeFeature();

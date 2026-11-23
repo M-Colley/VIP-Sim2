@@ -33,6 +33,9 @@ namespace Mediapipe.Unity
 
         private WebCamTexture _webCamTexture;
         private int _deviceIndex = -1;
+        //True when OnDisable stopped a running camera, so OnEnable knows to resume it. Start does not rerun
+        //on reactivation, and without this the camera would stay on after the rig is deactivated.
+        private bool _stoppedByDisable;
 
         /// <summary>True once the webcam has delivered a real frame.</summary>
         public bool isPrepared => _webCamTexture != null && _webCamTexture.width > 16;
@@ -93,6 +96,23 @@ namespace Mediapipe.Unity
 #endif
             SelectSource(-1);
             yield break;
+        }
+
+        private void OnDisable()
+        {
+            //The first OnEnable runs before Start, when no texture exists yet; OnDisable then does nothing.
+            if (_webCamTexture != null && _webCamTexture.isPlaying)
+            {
+                _webCamTexture.Stop();
+                _stoppedByDisable = true;
+            }
+        }
+
+        private void OnEnable()
+        {
+            if (_stoppedByDisable && _webCamTexture != null)
+                _webCamTexture.Play();
+            _stoppedByDisable = false;
         }
 
         private void OnDestroy() => StopCamera();

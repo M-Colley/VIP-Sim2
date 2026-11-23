@@ -53,7 +53,15 @@ namespace UnitEye
         private float _lastLogTime = float.NegativeInfinity;
 
         //Unity Event to handle path changes
-        private UnityEvent _onPathChangeEvent;
+        //Created here, not only in Start: a disabled logger never runs Start, and the path setters invoke this.
+        private UnityEvent _onPathChangeEvent = new UnityEvent();
+
+        //Running flush coroutine, so OnEnable cannot start a second one.
+        private Coroutine _flushRoutine;
+
+        //Set after a write failure (read-only folder, locked file). Logging then stays off for the session
+        //so the queue cannot grow without bound.
+        private bool _writeFailed;
 
         //Private queue
         private readonly List<CSVData> _queue = new List<CSVData>();
@@ -67,13 +75,12 @@ namespace UnitEye
             DateTime now = DateTime.Now;
 
             //Set up Event Listener
-            if (_onPathChangeEvent == null)
-                _onPathChangeEvent = new UnityEvent();
             _onPathChangeEvent.AddListener(PathChange);
 
-            //Default to Application.persistentDataPath/CSVLogs for Android
-            //Else if useDefaultFolder default to Application.dataPath/CSVLogs or keep the path if useDefaultFolder is false
-            BaseFolderPath = Application.platform == RuntimePlatform.Android ? $"{Application.persistentDataPath}/CSVLogs" : BaseFolderPath == "" || useDefaultFolder ? $"{Application.dataPath}/CSVLogs" : BaseFolderPath;
+            //Default to Application.persistentDataPath/CSVLogs (Application.dataPath is inside the install
+            //folder, which is often read-only and not a place for per-user data). Keep the configured path
+            //only if useDefaultFolder is false and a path is set. Android always uses the default.
+            BaseFolderPath = Application.platform == RuntimePlatform.Android ? $"{Application.persistentDataPath}/CSVLogs" : BaseFolderPath == "" || useDefaultFolder ? $"{Application.persistentDataPath}/CSVLogs" : BaseFolderPath;
 
             //Append timestamp with leading zeroes to filename
             BaseFileName += $"_{now.Year}" +
@@ -82,9 +89,24 @@ namespace UnitEye
                 $"_{((now.Hour < 10) ? "0" + now.Hour : now.Hour)}" +
                 $"{((now.Minute < 10) ? "0" + now.Minute : now.Minute)}" +
                 $"{((now.Second < 10) ? "0" + now.Second : now.Second)}";
+        }
 
-            //Start timed coroutine to write data every timeUntilWrite seconds
-            StartCoroutine(WriteData());
+        //The flush coroutine lives in OnEnable/OnDisable, not Start: deactivating the GameObject stops all
+        //its coroutines, and Start does not run again on reactivation.
+        private void OnEnable()
+        {
+            if (_flushRoutine == null)
+                _flushRoutine = StartCoroutine(WriteData());
+        }
+
+        private void OnDisable()
+        {
+            if (_flushRoutine != null)
+            {
+                StopCoroutine(_flushRoutine);
+                _flushRoutine = null;
+            }
+            WriteQueue();
         }
 
         //Write when pause is triggered
@@ -148,6 +170,10 @@ namespace UnitEye
             {
                 Debug.Log("File Path is not valid, please ensure a valid file path is provided.");
                 Debug.LogException(e);
+            } catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                FailWriting(e);
+                return;
             }
 
             //Check if file exists already
@@ -169,11 +195,23 @@ namespace UnitEye
                         csvWriter.WriteLine(csvdata.SerializeCSVData());
                 }
                 _queue.Clear();
-            } catch (IOException e)
+            } catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
             {
-                Debug.Log("Could not access file, a different program might be locking it!");
+                FailWriting(e);
+            }
+        }
+
+        //UnauthorizedAccessException is not an IOException, so both are caught. A retry would fail the same
+        //way every flush while the queue keeps growing, so log once, stop logging and drop the queue.
+        private void FailWriting(Exception e)
+        {
+            if (!_writeFailed)
+            {
+                Debug.LogWarning("CSVLogger: cannot write the log file (folder not writable or file locked); gaze logging is stopped for this session.");
                 Debug.LogException(e);
             }
+            _writeFailed = true;
+            _queue.Clear();
         }
 
         /// <summary>
@@ -181,7 +219,7 @@ namespace UnitEye
         /// a CSVData (and copying its AOI list) to skip those allocations on frames the limiter would drop
         /// anyway — with logsPerSecond below the frame rate that is most frames. Side-effect free.
         /// </summary>
-        public bool ShouldLog => Time.time - _lastLogTime >= 1f / logsPerSecond;
+        public bool ShouldLog => !_writeFailed && Time.time - _lastLogTime >= 1f / logsPerSecond;
 
         //Append csvdata to _queue (rate-limited to logsPerSecond)
         public void Append(CSVData csvdata)

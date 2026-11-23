@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System;
+using System.Globalization;
 
 namespace UnitEye
 {
@@ -39,34 +40,34 @@ namespace UnitEye
             this.captureLatencyMs = captureLatencyMs;
         }
 
+        //Invariant culture so the decimal separator is always a period regardless of the user's locale.
+        private static string F(float v) => v.ToString(CultureInfo.InvariantCulture);
+
         //Seralize all the CSVData properties into one string
         public string SerializeCSVData()
         {
             System.Text.StringBuilder bobTheStringBuilder = new System.Text.StringBuilder();
 
             //Gaze location both in pixels and normalized
-            bobTheStringBuilder.Append($"{(int)gazePixelX};{(int)gazePixelY};{gazeNormalizedX};{gazeNormalizedY}");
+            bobTheStringBuilder.Append($"{(int)gazePixelX};{(int)gazePixelY};{F(gazeNormalizedX)};{F(gazeNormalizedY)}");
 
             //Unfiltered normalized gaze location 
-            bobTheStringBuilder.Append($";{gazeNormalizedUnfilteredX};{gazeNormalizedUnfilteredY}");
+            bobTheStringBuilder.Append($";{F(gazeNormalizedUnfilteredX)};{F(gazeNormalizedUnfilteredY)}");
 
             //Distance to camera
-            bobTheStringBuilder.Append($";{(float.IsPositiveInfinity(distanceToCamera) ? 0f : distanceToCamera):F1}");
+            bobTheStringBuilder.Append($";{(float.IsPositiveInfinity(distanceToCamera) ? 0f : distanceToCamera).ToString("F1", CultureInfo.InvariantCulture)}");
 
             //Eye Aspect Ratio and blinking
-            bobTheStringBuilder.Append($";{(float.IsNaN(eyeAspectRatio) ? 0f : eyeAspectRatio)};{blinking}");
+            bobTheStringBuilder.Append($";{F(float.IsNaN(eyeAspectRatio) ? 0f : eyeAspectRatio)};{blinking}");
 
             //Add timestamp with milliseconds at the end
-            bobTheStringBuilder.Append($";{timestamp}:{timestamp.Millisecond}");
+            bobTheStringBuilder.Append($";{timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture)}");
 
             //Add unix timestamp in milliseconds
             bobTheStringBuilder.Append($";{((DateTimeOffset)timestamp).ToUnixTimeMilliseconds()}");
 
             //Measured pipeline latency (see field comment)
-            bobTheStringBuilder.Append($";{captureLatencyMs:F0}");
-
-            //Replace decimal separator from comma to period (for locales with comma)
-            bobTheStringBuilder.Replace(",", ".");
+            bobTheStringBuilder.Append($";{captureLatencyMs.ToString("F0", CultureInfo.InvariantCulture)}");
 
             //Write AOIList if not empty
             if (AOIList.Count > 0)
