@@ -51,6 +51,10 @@ namespace VipSim.Tests
             var extensions = new[] { ".cs", ".shader", ".compute", ".cginc", ".hlsl" };
             return Directory.GetFiles(dir, "*", SearchOption.AllDirectories)
                             .Where(f => extensions.Contains(Path.GetExtension(f)))
+                            // Profiles/ exists only on Windows; the macOS project keeps its
+                            // SettingsManager under Assets/Scripts. Same exclusion as the CI rule.
+                            .Where(f => !f.Replace(Path.DirectorySeparatorChar, '/')
+                                          .Contains("/VisualEffects/Profiles/"))
                             .OrderBy(f => f)
                             .ToArray();
         }
