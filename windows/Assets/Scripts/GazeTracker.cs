@@ -23,6 +23,9 @@
 using UnityEngine;
 using UnitEye;
 
+// Before the effects: they read xy_norm in their own Update, and with no defined order
+// some of them got this frame's gaze and some got last frame's.
+[DefaultExecutionOrder(-100)]
 public class GazeTracker : MonoBehaviour
 {
     // NB: explicit values. These are serialized in VIP_SIM.unity; renumbering

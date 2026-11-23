@@ -9765,7 +9765,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   Shader: {fileID: 4800000, guid: 7bb6ec2b844044692b57517b7aca1c7b, type: 3}
   LinkEyes: 1
-  maxCPD: 30
+  maxCPD: 0
   kernalSigma: 0.19988333
   screenWidth_px: 2560
   autoScreenWidth: 1

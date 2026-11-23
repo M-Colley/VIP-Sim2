@@ -10,6 +10,12 @@ public class PixelationEffect : MonoBehaviour
     public float pixelRadius = 10f;
 
     private Material pixelationMaterial;
+    private static readonly int PixelSizeId = Shader.PropertyToID("_PixelSize");
+
+    void OnDestroy()
+    {
+        if (pixelationMaterial != null) DestroyImmediate(pixelationMaterial);
+    }
 
     void Start()
     {
@@ -31,7 +37,8 @@ public class PixelationEffect : MonoBehaviour
             return;
         }
 
-        pixelationMaterial.SetFloat("_PixelSize", 1000 - pixelRadius);
+        // Floored at 1: at the slider's maximum (1000) this was 0, and the shader divides by it.
+        pixelationMaterial.SetFloat(PixelSizeId, Mathf.Max(1f, 1000f - pixelRadius));
 
 
         Graphics.Blit(source, destination, pixelationMaterial);

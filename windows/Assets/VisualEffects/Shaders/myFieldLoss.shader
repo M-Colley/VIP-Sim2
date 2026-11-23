@@ -108,8 +108,10 @@
                 float2 centerPos = half2(0.5, 0.5);
 
                 // Calculate scaled UV coordinates centered around the mouse position
-                float2 normalizedMousePos = centerPos + (mousePos - centerPos) / _OverlayScale;
-                float2 scaledUV = (i.uv[0] - centerPos) / _OverlayScale + normalizedMousePos;
+                // Floored: a profile severity of 0 maps to a scale of 0, and dividing by it gave NaN UVs.
+                float overlayScale = max(_OverlayScale, 1e-3);
+                float2 normalizedMousePos = centerPos + (mousePos - centerPos) / overlayScale;
+                float2 scaledUV = (i.uv[0] - centerPos) / overlayScale + normalizedMousePos;
 
                 // Clamp UV coordinates to prevent repetition
                 scaledUV = clamp(scaledUV, 0.0, 1.0);

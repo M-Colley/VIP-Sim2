@@ -76,10 +76,14 @@ namespace VisSim
             base.OnDisable();
         }
 
-        private float prev_foveat_d = 0;
-        private float prev_rise_d = 0f;
+        // What the cycle actually runs on. The public fields hold the slider values, and the
+        // slider runs the other way round from the durations (1 - x, and 4 - x for the
+        // exponent). This used to be written back into the public fields themselves, so the
+        // values the UI, profiles and saved settings read were the inverted ones: a saved
+        // setting reloaded reversed, and reopening the panel showed the opposite of what was
+        // running. The mapping itself is unchanged; it is just no longer stored in the field.
+        private float run_foveat_d, run_rise_d, run_rise_exp;
 
-        private float prev_rise_exp = 0f;
 
         protected override void OnUpdate()
         {
@@ -88,18 +92,11 @@ namespace VisSim
                 Debug.Log("foveat_d" + foveat_d);
             }
 
-            if(prev_foveat_d != foveat_d){
-                foveat_d = 1 - foveat_d;
-                prev_foveat_d = foveat_d;
-            }
-            if(prev_rise_d != rise_d){
-                rise_d = 1 - rise_d;
-                prev_rise_d = rise_d;
-            }
-            if(prev_rise_exp != rise_exp){
-                rise_exp = 4 - rise_exp;
-                prev_rise_exp = rise_exp;
-            }
+            // Floors keep the cycle defined at the ends of the sliders: a zero period made the
+            // modulo below NaN and a zero rise divided by zero.
+            run_foveat_d = Mathf.Max(0f, 1f - foveat_d);
+            run_rise_d = Mathf.Max(1e-3f, 1f - rise_d);
+            run_rise_exp = 4f - rise_exp;
 
             // The angular scale has to come from the display in use,
             // not a constant baked in on someone else's monitor.
@@ -132,7 +129,7 @@ namespace VisSim
 
             /*------ Simulate jerk nystagmus ------ */
             // get time elapsed within current period
-            float total_d = foveat_d + rise_d;
+            float total_d = run_foveat_d + run_rise_d;
             t_cycle = timer_secs % total_d;
 
             // if starting a new peiod, generate a new random baseline
@@ -149,12 +146,12 @@ namespace VisSim
 
             // get x value, between 0 and 1 (proportion of the way through the current period)
             float shift_proportion;
-            if (t_cycle <= foveat_d)
+            if (t_cycle <= run_foveat_d)
             {
                 shift_proportion = 0;
             } else {
-                shift_proportion = (t_cycle - foveat_d) / rise_d; // proportion of rise period
-                shift_proportion = Mathf.Pow(shift_proportion, rise_exp);
+                shift_proportion = (t_cycle - run_foveat_d) / run_rise_d; // proportion of rise period
+                shift_proportion = Mathf.Pow(shift_proportion, run_rise_exp);
             }
 
             // apply amplitude(scale x to be: 0 <= x <= amp_deg)

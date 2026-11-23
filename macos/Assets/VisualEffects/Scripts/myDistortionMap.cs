@@ -181,12 +181,28 @@ namespace VisSim
                 }
             }
             // make textures
-            //Texture2D warpTextureX = new Texture2D(width_px, height_px, TextureFormat.RGB24, false); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
-            warpTextureX = new Texture2D(width_px, height_px, TextureFormat.RGB24, false); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
+            //
+            // Linear (the last argument): these hold displacements, not colours. Created as
+            // sRGB, the GPU decoded them on the way in under the Linear colour space (Windows)
+            // and did not under Gamma (macOS), so the same map produced different warps per
+            // platform -- an asymmetric, non-linear warp on one, and the whole image shifted
+            // by 0.058 UV on the other, which the -0.0425 constant in the shader had been
+            // tuned to hide on Windows only.
+            //
+            // Reused rather than recreated: compute() runs on every enable, and a fresh pair
+            // of textures each time leaked the previous pair.
+            if (warpTextureX == null || warpTextureX.width != width_px || warpTextureX.height != height_px)
+            {
+                DestroyTexture(warpTextureX);
+                warpTextureX = new Texture2D(width_px, height_px, TextureFormat.RGB24, false, true);
+            }
             warpTextureX.SetPixels(imgMatrix_x);
             warpTextureX.Apply(false); // actually apply all SetPixels, don't recalculate mip levels
-            //Texture2D warpTextureY = new Texture2D(width_px, height_px, TextureFormat.RGB24, false); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
-            warpTextureY = new Texture2D(width_px, height_px, TextureFormat.RGB24, false); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
+            if (warpTextureY == null || warpTextureY.width != width_px || warpTextureY.height != height_px)
+            {
+                DestroyTexture(warpTextureY);
+                warpTextureY = new Texture2D(width_px, height_px, TextureFormat.RGB24, false, true);
+            }
             warpTextureY.SetPixels(imgMatrix_y);
             warpTextureY.Apply(false); // actually apply all SetPixels, don't recalculate mip levels
 
@@ -199,6 +215,19 @@ namespace VisSim
             Material.SetTexture("_WarpTextureY", warpTextureY);
 
 
+        }
+
+        private static void DestroyTexture(Texture2D t)
+        {
+            if (t == null) return;
+            if (Application.isPlaying) Destroy(t);
+            else DestroyImmediate(t);
+        }
+
+        protected void OnDestroy()
+        {
+            DestroyTexture(warpTextureX);
+            DestroyTexture(warpTextureY);
         }
 
         // Called by camera to apply image effect

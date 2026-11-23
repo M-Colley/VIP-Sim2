@@ -29,28 +29,9 @@ namespace VisSim
         {
             base.Start();
 
-            //Create render texture (NB: we will do this rather than using a temporary rendertexture, as in Unity 5+ these don't appear to support mipmaps)
-            int width_px = Screen.width;
-            int height_px = Screen.height;
-            //Ensure size is a power of two: NB this is extremely important, as mipmaps will only be generated for rendertextures that are a power of two!!
-            if (width_px != Mathf.ClosestPowerOfTwo(width_px))
-            {
-                Debug.LogFormat("WARNING, width ({0}) must be a power of two. Will round upwards to {1}", width_px, Mathf.NextPowerOfTwo(width_px));
-                width_px = Mathf.ClosestPowerOfTwo(width_px);
-            }
-            if (height_px != Mathf.ClosestPowerOfTwo(height_px))
-            {
-                Debug.LogFormat("WARNING, height ({0}) must be a power of two. Will round upwards to {1}", height_px, Mathf.NextPowerOfTwo(height_px));
-                height_px = Mathf.ClosestPowerOfTwo(height_px);
-            }
-            // initialise texture
-            rt = new RenderTexture(width_px, height_px, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear); // MOVE TO INIT
-            rt.useMipMap = true;
-            rt.isPowerOfTwo = true; // round dimensions to nearest power of two size (I think?). 
-            rt.Create();
-
-            // compute number of levels of blur -- this will be set when(ever) the Material is created (onEnable)
-            numLevelsOfBlur = 1 + 1 + Mathf.Floor(Mathf.Log(Mathf.Max(width_px, height_px)));
+            // The intermediate texture is allocated on first use, at the size of the image it is
+            // given; see EnsureTarget. This only sets the blur depth the Material starts with.
+            numLevelsOfBlur = LevelsOfBlur(Screen.width, Screen.height);
 
             // generate a default overlay
             overlayTexture = (Texture2D)Resources.Load("macular-degeneration", typeof(Texture2D));
@@ -66,10 +47,54 @@ namespace VisSim
             base.OnDisable();
 
             _oldOverlayTexture = null; // important to force regeneration of Material on re-enable
+            ReleaseTarget();           // nothing to hold while switched off
+        }
+
+        private static float LevelsOfBlur(int w, int h)
+        {
+            return 1 + 1 + Mathf.Floor(Mathf.Log(Mathf.Max(w, h)));
+        }
+
+        /// <summary>
+        /// The mip chain this effect blurs with, at the size and format of the image it is given.
+        ///
+        /// It used to be made once in Awake, from Screen, rounded to the closest power of two
+        /// in 8-bit linear: 2560x1440 became 2048x1024, so the whole picture -- the healthy
+        /// field included -- was squeezed through a smaller, anisotropic texture and came out
+        /// soft, shadows banded, and the size never followed a resolution change. Mip chains
+        /// on non-power-of-two textures are supported on every graphics API this ships on.
+        /// Allocating on first use also stops the effect holding the texture while it is off.
+        /// </summary>
+        private void EnsureTarget(RenderTexture source)
+        {
+            if (rt != null && rt.width == source.width && rt.height == source.height &&
+                rt.format == source.format) return;
+            ReleaseTarget();
+
+            var desc = source.descriptor;
+            desc.depthBufferBits = 0;
+            desc.msaaSamples = 1;
+            desc.useMipMap = true;
+            desc.autoGenerateMips = true;
+            rt = new RenderTexture(desc);
+            rt.Create();
+
+            numLevelsOfBlur = LevelsOfBlur(source.width, source.height);
+            if (Material != null) Material.SetFloat("_MaxLODlevel", numLevelsOfBlur);
+        }
+
+        private void ReleaseTarget()
+        {
+            if (rt == null) return;
+            rt.Release();
+            DestroyImmediate(rt);
+            rt = null;
         }
 
         protected override void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
+            EnsureTarget(source);
+
             // blit whole camera image into an intermediate rendertexture (rt), at which point mipmaps will be generated
             Graphics.Blit(source, rt);
 
@@ -114,18 +139,9 @@ namespace VisSim
             return this.overlayRawGrid_xy;
         }
 
-        // The intermediate RenderTexture is allocated in Awake() and lives for the
-        // lifetime of the component. Without this it was never released: at
-        // 2048x1024 ARGB32 with a mip chain that is ~11MB of GPU memory leaked per
-        // instance, per scene load, and there is one instance per eye.
         protected void OnDestroy()
         {
-            if (rt != null)
-            {
-                rt.Release();
-                DestroyImmediate(rt);
-                rt = null;
-            }
+            ReleaseTarget();
         }
         protected override string GetShaderName()
         {

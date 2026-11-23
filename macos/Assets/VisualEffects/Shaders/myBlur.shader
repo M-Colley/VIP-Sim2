@@ -84,6 +84,11 @@ Shader "Hidden/myBlur" { // defines the name of the shader
 					break;
 				}
 			}
+			// Alpha passes through from the pixel itself. Summed with weight 1 per tap it grew
+			// by the kernel width each pass -- clipped to 1 in 8-bit targets, unbounded in HDR
+			// ones -- and turned the area around the captured window opaque. The overlay is
+			// composited by its alpha, so every effect leaves alpha as it found it.
+			color.a = tex2D(_MainTex, UnityStereoScreenSpaceUVAdjust(uv, _MainTex_ST)).a;
 			return color;
 		}
 	ENDCG

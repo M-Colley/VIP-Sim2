@@ -151,7 +151,9 @@ namespace VisSim
 
                 shader.SetFloat("Threshold", threshold);
                 shader.SetTexture(kernelIndex, "Result", _inpainterTexture);
-                shader.Dispatch(kernelIndex, _scotomaTexture.width, _scotomaTexture.height, 1);
+                // Thread groups, not pixels: the kernels are numthreads(8,8,1), so passing the
+                // pixel counts launched 64 times the work.
+                shader.Dispatch(kernelIndex, (_scotomaTexture.width + 7) / 8, (_scotomaTexture.height + 7) / 8, 1);
 
                 ReplaceInpainterTexture(new Texture2D(_inpainterTexture.width, _inpainterTexture.height, TextureFormat.ARGB32, false)); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
                 var prevActive = RenderTexture.active;
@@ -210,10 +212,10 @@ namespace VisSim
                 shader2.SetFloat("Threshold", threshold);
                 shader2.SetTexture(kernelIndex, "InputTexture", inpainterTexture);
                 shader2.SetTexture(kernelIndex, "Result", _inpainterTexture);
-                shader2.Dispatch(kernelIndex, _inpainterTexture.width, _inpainterTexture.height, 1);
+                shader2.Dispatch(kernelIndex, (_inpainterTexture.width + 7) / 8, (_inpainterTexture.height + 7) / 8, 1);
 
                 DisposeOwned(ref cardinalOffsetsTexture);
-                cardinalOffsetsTexture = new Texture2D(inpainterTexture.width, inpainterTexture.height, TextureFormat.ARGB32, false); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
+                cardinalOffsetsTexture = new Texture2D(inpainterTexture.width, inpainterTexture.height, TextureFormat.ARGB32, false, true); // linear: offsets, not colours (see below)
                 var prevActive = RenderTexture.active;
                 RenderTexture.active = _inpainterTexture;
                 cardinalOffsetsTexture.wrapMode = TextureWrapMode.Clamp;
@@ -273,7 +275,11 @@ namespace VisSim
             }
 
             DisposeOwned(ref cardinalOffsetsTexture);
-            cardinalOffsetsTexture = new Texture2D(inpainterTexture.width, inpainterTexture.height, TextureFormat.ARGB32, false); // Create a new texture ARGB32 and no
+            // Linear (the last argument). These are distances in texels, not colours; as an sRGB
+            // texture the GPU decoded R, G and B (left, right, up) but not A (down) under the
+            // Linear colour space, so on Windows a 30-texel offset of 0.117 arrived as 0.013 and
+            // the fill was sampled from inside the scotoma it was meant to fill.
+            cardinalOffsetsTexture = new Texture2D(inpainterTexture.width, inpainterTexture.height, TextureFormat.ARGB32, false, true);
             cardinalOffsetsTexture.wrapMode = TextureWrapMode.Clamp;
             cardinalOffsetsTexture.SetPixels(cardinalOffsetsImgMatrix);
             cardinalOffsetsTexture.Apply(false); // actually apply all SetPixels, don't recalculate mip levels

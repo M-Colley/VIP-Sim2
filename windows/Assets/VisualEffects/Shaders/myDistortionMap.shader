@@ -65,15 +65,18 @@ Shader "Hidden/VisSim/myDistortionMap"
 					// For debugging
 					//return warpX;
 
+					// The exact inverse of the encoding in myDistortionMap.compute (v * 5 + 0.5).
+					// This was 0.2 * w - 0.0425, a constant tuned to cancel the sRGB decode of a
+					// texture that should never have been sRGB; the textures are linear now.
 					float w = (warpX.x + warpX.y + warpX.z) / 3.0; // would be better to also use the alpha channel too, and get another 8-bits of precision...
-					float xOffset = (0.2 * w) -0.0425; // rescale(0 to 1) -> (-.1 to .1)
+					float xOffset = (0.2 * w) - 0.1; // rescale(0 to 1) -> (-.1 to .1)
 					xOffset = -xOffset;
 
 					w = (warpY.x + warpY.y + warpY.z) / 3.0;
-					float yOffset = (0.2 * w) - 0.0425; // rescale(0 to 1) -> (-.1 to .1)
-					yOffset = yOffset;
+					float yOffset = (0.2 * w) - 0.1; // rescale(0 to 1) -> (-.1 to .1)
 
-					// HACKS - suggestive of some kind of rounding error somewhere in the code?
+					// Dead zone for 8-bit quantisation: 0.5 is stored as 128/255, which decodes to
+					// an offset of 0.0004 -- about a pixel -- where there should be none.
 					if (xOffset > -0.001 && xOffset < 0.001) {
 						xOffset = 0;
 					}

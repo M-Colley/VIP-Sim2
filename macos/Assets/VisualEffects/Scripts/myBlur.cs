@@ -48,16 +48,15 @@ namespace VisSim
         private float widthMod = 1.0f;
         private float[] floatArray;
 
-        //#if UNITY_EDITOR
         private float _old_kernalSigma = 3.0f;
-        private float _old_maxCPD = 30.0f;
-        //#endif
+        private float _old_maxCPD = float.NaN;
+        private int _old_screenWidth;
 
         // Use this for initialization
         public new void OnEnable()
         {
-            maxCPD = 0.0f;
-            // init blur kernel
+            // maxCPD is no longer reset here. It is the user's setting, and resetting it on
+            // enable meant switching blur off and on again forgot it.
             computeBlurKernel();
 
             // call base method to enable effect
@@ -76,23 +75,22 @@ namespace VisSim
             float pixel_per_dg = screenWidth_px / viewingAngle_deg; // screenWidth_dg
             //Debug.Log("pixel_per_dg: " + pixel_per_dg);
 
-            maxCPD = 30.0f - maxCPD;
+            // maxCPD is the slider's value, 0 (no loss) to 30 (the most); the acuity it stands
+            // for is 30 - maxCPD cycles per degree. The conversion used to be written back into
+            // maxCPD itself, so the field the UI, the profile and the saved settings all read
+            // held the inverted number: a saved profile reloaded with its severity reversed,
+            // and reopening the panel showed the opposite of what was running.
+            double cpd = 30.0 - maxCPD;
 
-            double sigma = 1 / (2 * Math.PI * maxCPD);
+            double sigma = 1 / (2 * Math.PI * cpd);
             sigma = Math.Sqrt(2 * Math.Log(2)) * sigma; // scale so that cutoff specifies 50 % decrement(otherwise will be targetting 60.7 %)
             sigma = sigma * pixel_per_dg; // convert to pixels
-            kernalSigma = (float)sigma;
+            kernalSigma = (float)Math.Min(sigma, MAX_KERNAL_SIGMA);
             //Debug.Log("kernalSigma: " + kernalSigma);
-            
-            //
-            if (kernalSigma > MAX_KERNAL_SIGMA)
-            {
-                kernalSigma = MAX_KERNAL_SIGMA;
-                maxCPD = (float)((Math.Sqrt(2) * pixel_per_dg * Math.Sqrt(Math.Log(2))) / (2 * kernalSigma * Math.PI));
-            }
 
-            // set Gaussian kernel
-            kernelSize = (int)Mathf.Round(4.0f * kernalSigma + 1.0f);
+            // set Gaussian kernel. Odd, so it is centred: an even width put the image half a
+            // pixel off at every blur level where 4 sigma + 1 rounded to an even number.
+            kernelSize = 2 * (int)Mathf.Round(2.0f * kernalSigma) + 1;
             float[] gaussianKernel = GaussianKernel(kernalSigma, kernelSize, true);
             floatArray = new float[100];
             for (int i = 0; i < kernelSize; i++)
@@ -100,11 +98,10 @@ namespace VisSim
                 floatArray[i] = gaussianKernel[i];
             }
 
-            // if in editor store values so know whether effect has been updated
-            //#if UNITY_EDITOR
-                _old_kernalSigma = kernalSigma;
-                _old_maxCPD = maxCPD;
-            //#endif
+            // store values so we know whether the effect has been updated
+            _old_kernalSigma = kernalSigma;
+            _old_maxCPD = maxCPD;
+            _old_screenWidth = Screen.width;
         }
 
         /// <summary>
@@ -151,13 +148,13 @@ namespace VisSim
         // Called by camera to apply image effect
         protected override void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            // update blur kernel if necessary
-            //#if UNITY_EDITOR
-            if (kernalSigma != _old_kernalSigma || maxCPD != _old_maxCPD)
+            // update blur kernel if necessary -- including when the display changes (F3 to a
+            // monitor of another width), since the kernel is in pixels per degree.
+            if (kernalSigma != _old_kernalSigma || maxCPD != _old_maxCPD ||
+                (autoScreenWidth && Screen.width != _old_screenWidth))
             {
                 computeBlurKernel();
             }
-            //#endif
 
             // set shader params
             Material.SetVector("_Parameter", new Vector4(blurSize * widthMod, -blurSize * widthMod, 0.0f, 0.0f));
@@ -169,29 +166,14 @@ namespace VisSim
             source.filterMode = FilterMode.Bilinear;
             int rtW = source.width >> downsample;
             int rtH = source.height >> downsample;
+            // One vertical pass, then one horizontal pass straight into the destination. The
+            // "downsample" copy used to be made with pass 0, which is the vertical blur, and
+            // pass 0 then ran again: the vertical sigma was sqrt(2) times the horizontal one,
+            // so the simulated acuity was wrong vertically, at the cost of two extra blits.
             RenderTexture rt = RenderTexture.GetTemporary(rtW, rtH, 0, source.format);
             rt.filterMode = FilterMode.Bilinear;
             Graphics.Blit(source, rt, Material, 0);
-            Material.SetVector("_Parameter", new Vector4(blurSize * widthMod, -blurSize * widthMod, 0.0f, 0.0f));
-
-            // vertical blur
-            RenderTexture rt2 = RenderTexture.GetTemporary(rtW, rtH, 0, source.format);
-            rt2.filterMode = FilterMode.Bilinear;
-            Graphics.Blit(rt, rt2, Material, 0);
-            RenderTexture.ReleaseTemporary(rt);
-            rt = rt2;
-
-            // horizontal blur
-            rt2 = RenderTexture.GetTemporary(rtW, rtH, 0, source.format);
-            rt2.filterMode = FilterMode.Bilinear;
-            Graphics.Blit(rt, rt2, Material, 1);
-            RenderTexture.ReleaseTemporary(rt);
-            rt = rt2;
-
-            // Blit
-            Graphics.Blit(rt, destination);
-
-            // Free memory
+            Graphics.Blit(rt, destination, Material, 1);
             RenderTexture.ReleaseTemporary(rt);
         }
 

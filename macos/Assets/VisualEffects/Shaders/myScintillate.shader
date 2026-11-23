@@ -82,7 +82,11 @@ Shader "Hidden/VisSim/myScintillate"
 				float nb = frac(n * 1.3453) * 2.0;
 				float na = frac(n * 1.3647) * 2.0;
 				half lum = luminance(color.rgb);
-				return lerp(color, color * half4(nr, ng, nb, na), _Params.y * (1.0 - lerp(0.0, lum, _Params.z)));
+				// Noise on colour only. Multiplied into alpha as well (na ranges 0..2), it made
+				// about half the pixels in the ring partly transparent, so the real window behind
+				// the overlay showed through the simulation.
+				half4 noisy = lerp(color, color * half4(nr, ng, nb, na), _Params.y * (1.0 - lerp(0.0, lum, _Params.z)));
+				return half4(noisy.rgb, color.a);
 			}
 			else
 			{

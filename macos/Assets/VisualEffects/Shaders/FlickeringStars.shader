@@ -104,7 +104,8 @@
                     if (distance < starRadii[j])
                     {
                         float4 blurredColor = float4(0, 0, 0, 0);
-                        float blurSamples = 16;
+                        // 5x5 taps: dividing by 16 brightened every star by 1.56x and clipped.
+                        float blurSamples = 25;
                         float blurRadius = 0.005;
                         for (int x = -2; x <= 2; x++)
                         {

@@ -30,6 +30,13 @@ namespace VisSim
         int widthStd_px = 15;
         int minRadius_px = 30;
 
+        private Texture2D _mask;
+
+        protected void OnDestroy()
+        {
+            if (_mask != null) DestroyImmediate(_mask);
+        }
+
         public new void OnEnable()
         {
             // 
@@ -65,7 +72,13 @@ namespace VisSim
                     }
                 }
             }
+            // Replaces the previous mask, which was leaked on every enable.
+            if (_mask != null)
+            {
+                if (Application.isPlaying) Destroy(_mask); else DestroyImmediate(_mask);
+            }
             Texture2D tex = new Texture2D(width_px, height_px, TextureFormat.RGB24, false); // Create a new texture RGB24 (24 bit without alpha) and no mipmaps
+            _mask = tex;
             tex.SetPixels(px);
             tex.Apply(false); // actually apply all SetPixels, don't recalculate mip levels
 
@@ -106,8 +119,10 @@ namespace VisSim
             // update params
             Material.SetVector("_Params", new Vector3(Seed, Strength, LumContribution));
 
-            // Blit
-            Graphics.Blit(source, destination, Material);
+            // Blit, with pass 3 (coloured noise, luminance-weighted). Without a pass index
+            // Blit draws every pass in turn into the same target, so the first three were
+            // computed and overwritten -- three wasted full-screen passes every frame.
+            Graphics.Blit(source, destination, Material, 3);
         }
 
 

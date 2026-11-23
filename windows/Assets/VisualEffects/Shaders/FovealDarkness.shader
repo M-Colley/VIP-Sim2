@@ -61,8 +61,10 @@
                 float2 uv = i.uv;
                 float2 mousePos = float2(_MouseX, _MouseY);
 
-                // Calculate the aspect ratio
-                float aspectRatio = _ScreenWidth / _ScreenHeight;
+                // Calculate the aspect ratio. As floats: both uniforms are ints, and int/int
+                // truncated to 1 on 16:9 and 16:10 screens (an ellipse, not a circle) and to 2
+                // on 21:9.
+                float aspectRatio = (float)_ScreenWidth / max((float)_ScreenHeight, 1.0);
 
                 // Adjust the UV coordinates to maintain a circular vortex
                 float2 adjustedUV = uv;
@@ -74,8 +76,10 @@
                 float2 delta = adjustedUV - adjustedMousePos;
                 float dist = length(delta);
 
-                // Fetch the color from the vortexed coordinates
-                fixed4 color = tex2D(_MainTex, adjustedUV);
+                // The pixel itself. adjustedUV is for the distance only: sampled there, the
+                // image was stretched by the aspect ratio -- invisible while the ratio wrongly
+                // came out as 1, and the whole frame on a 21:9 screen where it came out as 2.
+                fixed4 color = tex2D(_MainTex, uv);
    
                     
                 if (dist < _InnerCircleRadius)
