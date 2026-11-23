@@ -7,6 +7,10 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ## [Unreleased]
 
+---
+
+## [2.1.0] — 2026-11-23
+
 ### Fixed — what the simulation draws
 
 These change the picture. Each was a defect, not a recalibration; where a value's meaning

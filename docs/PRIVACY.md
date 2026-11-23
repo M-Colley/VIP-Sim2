@@ -4,7 +4,7 @@
 > against the source, so that a lawyer can finish it quickly and a reviewer can check
 > every claim against the code. Have it reviewed before publishing.
 
-**Applies to:** VIP-Sim 2.0.1 (Windows, macOS, Linux) and the VIP-Sim website
+**Applies to:** VIP-Sim 2.1.0 (Windows, macOS, Linux) and the VIP-Sim website
 **Last updated:** 19 August 2026
 
 ### Who is responsible for what
