@@ -7,7 +7,115 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ## [Unreleased]
 
-### Fixed
+### Fixed — what the simulation draws
+
+These change the picture. Each was a defect, not a recalibration; where a value's meaning
+was ambiguous, the behaviour on screen was kept and the ambiguity is listed under
+*Known issues* in the release notes.
+
+- **Blur applied its vertical pass twice.** The "downsample" copy used pass 0, which is the
+  vertical blur, and pass 0 then ran again: the vertical sigma was √2 times the horizontal
+  one, so the simulated acuity was wrong vertically. Alpha was summed with weight 1 per tap
+  and turned the area around the captured window opaque. Even kernel widths shifted the
+  image by half a pixel. The kernel now also follows a change of display width.
+- **Blur and nystagmus stored their slider values inverted.** The conversion from slider to
+  internal value (`30 − maxCPD`, `1 − foveat_d`, …) was written back into the public field,
+  so a saved profile reloaded with the severity reversed, reopening the panel showed the
+  opposite of what was running, and switching blur off and on forgot its setting. The
+  mapping is unchanged; it is no longer stored in the field.
+- **Foveal darkness and Distortion were ellipses.** The aspect ratio was `int / int`: 1 on
+  16:9 and 16:10 screens, 2 on 21:9, where foveal darkness also stretched the whole frame.
+- **Wavy Distortion differed between Windows and macOS.** Its displacement maps were sRGB
+  textures: decoded on Windows (Linear colour space), giving an asymmetric, non-linear warp
+  that a hand-tuned constant partly hid; not decoded on macOS (Gamma), where the same
+  constant shifted the whole image by 0.058 UV. The maps are linear now and decoded exactly.
+- **In-Filling sampled from inside the scotoma on Windows.** Its offset texture holds texel
+  distances but was sRGB, so three of its four channels were gamma-decoded.
+- **Central and peripheral vision loss softened the whole picture.** The frame went through a
+  power-of-two, 8-bit linear intermediate (2560×1440 → 2048×1024), so the healthy field was
+  resampled too and shadows banded. It is now allocated at the frame's own size and format,
+  on first use, and follows resolution changes.
+- **Flickering stars went blank for good after one switch off and on**, the star-size slider
+  took effect only at the next 5 s regeneration, and every star was 1.56× too bright
+  (25 taps divided by 16).
+- **Teichopsia let the real window show through its ring** (noise was multiplied into
+  alpha) and ran four full-screen passes, three of them discarded.
+- **Gaze-following effects could use the previous frame's gaze**; the gaze tracker now runs
+  before them.
+- Division by zero at the Detail Loss slider maximum and at a vision-loss scale of 0.
+
+### Fixed — profiles and settings
+
+- **Four rows were paired with the wrong effect.** "Distortion" toggles the vortex and
+  "Metamorphopsia" the distortion map, but profiles paired them the other way round, and the
+  same for Detail Loss / In-Filling. A profile with a vortex in it lit the wrong row, and the
+  master switch, which presses lit rows, then switched on an effect nobody asked for.
+- **A saved profile did not load back.** `Capture` wrote each effect's primary parameter
+  under its own name (`maxCPD`, `amp_deg`, …) and `Apply` rejected those names.
+- **Wavy Distortion II was invisible to profiles** — never saved, never switched off.
+- **Blur severity covered a thirtieth of its range**: severity 1 gave almost no blur.
+- **A malformed value no longer abandons a load halfway** with some effects already on.
+- **Loading a profile while the master switch is off** no longer brings back the previous
+  profile's effects when the switch is turned on again.
+- **Old `.profile` files set every missing value to zero**, and set the scene light's
+  intensity to the floaters' intensity. Missing keys now keep their current values.
+- **Saving over a profile on a full or locked disk destroyed it.** Files are written beside
+  the target and swapped in; read and write failures are logged.
+- **A parameter at its maximum was shown at its minimum** in the panel.
+
+### Fixed — application
+
+- **Typing `@` on a German or Austrian keyboard quit VIP-Sim.** Windows reports AltGr as
+  Ctrl+Alt, so AltGr+Q matched Ctrl+Alt+Q. And F12 was read globally, so opening DevTools in
+  the captured browser quit too. Ctrl+Alt+Q now needs left Alt; F12 quits only when VIP-Sim
+  has focus, as documented.
+- **Closing the F1 panel with Esc left the whole overlay swallowing clicks.**
+- **Save image** saved the wrong region for a window partly off-screen, threw for a window on
+  another screen, and failed silently when the file could not be written.
+- **The webcam kept running after switching gaze to the mouse**, and disabling gaze left face
+  landmark inference running every camera frame.
+- **macOS: the window list offered VIP-Sim's own overlay**, and one Material leaked per
+  capture.
+- **Linux:** a change of output size overran the presenter's buffers; the frame loop could
+  stop for good when both buffers were busy; after a crash the presenter stayed attached to
+  the dead frame buffer; the overlay outlived a crashed player; a resize between two native
+  calls could write past the managed capture buffer; and a capture texture leaked per resize.
+  The nested compositor no longer lets SDL's cursor surface replace the frame, checks buffer
+  stride, and clears its references when the player destroys its window.
+
+### Privacy
+
+- **Gaze was written to disk.** The UnitEye prefab shipped with its CSV logger enabled, so
+  every gaze sample was written under the install folder while eye tracking ran — contrary
+  to `docs/PRIVACY.md`, which says gaze is only held in memory. The logger is off. If a
+  study turns it on, it writes to `persistentDataPath` with culture-invariant numbers and
+  ISO timestamps, and stops cleanly when the folder is not writable. Three gaze recordings
+  from May 2024 that an Editor run had put into the repository are removed (they remain in
+  the git history).
+
+### Performance
+
+- With the mouse as gaze source, two scene searches and two thrown exceptions per frame are
+  gone. The capture-mode check no longer searches the scene every frame.
+- Blur does two fewer full-screen blits, Teichopsia three fewer passes, Double Vision one
+  fewer blit and no longer holds an unused screen-sized texture (about 45 MB at 4K per eye).
+- The diagnostics' alpha probe no longer allocates a full-screen texture and a 33 MB array
+  every five seconds.
+- Linux: the capture copy is skipped when no new frame arrived; the presenter's pixel
+  statistics run every 64th frame instead of every frame.
+- Smaller per-frame allocations removed (shader property names, UI hit names, IMGUI
+  content), and the panel skin no longer rebuilds and leaks eight textures per A+/A−.
+
+### Build and release tooling
+
+- `VipSimBuild` no longer deletes a non-empty `-buildOutput` folder that is not a player build.
+- `package-release.sh` refuses a Linux archive without the presenter library or launcher, and
+  reports a missing build instead of failing silently in the checksum step.
+- `sign-windows.ps1` signs every unsigned DLL and EXE, including `GameAssembly.dll`.
+- The Linux test scripts no longer overwrite the user's portal configuration or VIP-Sim
+  preferences.
+
+### Fixed (earlier in this cycle)
 
 - **Windows whose title mentions VIP-Sim can be captured again.** The window list dropped
   any window whose title contained "vipsim" — a filter meant to hide our own overlay that
