@@ -56,16 +56,23 @@ chmod +x "$STAGE/mac/VIP-Sim.app/Contents/MacOS/VIP-Sim" "$STAGE/mac/setup.sh"
 # load-bearing and tar keeps it without ceremony.
 LIN_BUILD="$ROOT/windows/Build/StandaloneLinux64"
 PRESENTER="$ROOT/linux/presenter/build/vipsim-presenter"
-if [ -f "$LIN_BUILD/VIP-Sim" ] && [ -f "$PRESENTER" ]; then
+PRESENTER_LIB="$ROOT/linux/presenter/build/libvipsim_present.so"
+CAPTURE_LIB="$ROOT/linux/presenter/build/libvipsim_capture.so"
+LAUNCHER="$LIN_BUILD/VIP-Sim.sh"
+# Every file the tarball needs is in the gate: a missing library or launcher used to be
+# swallowed by a silenced cp/chmod and the archive shipped without it.
+if [ -f "$LIN_BUILD/VIP-Sim" ] && [ -f "$PRESENTER" ] && [ -f "$PRESENTER_LIB" ] && [ -f "$LAUNCHER" ]; then
     mkdir -p "$STAGE/lin/VIP-Sim"
     cp -r "$LIN_BUILD/." "$STAGE/lin/VIP-Sim/"
     rm -rf "$STAGE/lin/VIP-Sim/"*_BurstDebugInformation_DoNotShip
     cp "$PRESENTER" "$STAGE/lin/VIP-Sim/"
     mkdir -p "$STAGE/lin/VIP-Sim/VIP-Sim_Data/Plugins/x86_64"
-    cp "$ROOT/linux/presenter/build/libvipsim_present.so"        "$ROOT/linux/presenter/build/libvipsim_capture.so"        "$STAGE/lin/VIP-Sim/VIP-Sim_Data/Plugins/x86_64/" 2>/dev/null || true
+    cp "$PRESENTER_LIB" "$STAGE/lin/VIP-Sim/VIP-Sim_Data/Plugins/x86_64/"
+    # Optional: build.sh skips it when glib/pipewire headers are missing.
+    [ -f "$CAPTURE_LIB" ] && cp "$CAPTURE_LIB" "$STAGE/lin/VIP-Sim/VIP-Sim_Data/Plugins/x86_64/"
     cp "$ROOT/docs/LINUX_README.md" "$STAGE/lin/VIP-Sim/READ-ME-FIRST.md"
     cp "$ROOT/docs/ACCESSIBILITY.md" "$ROOT/CHANGELOG.md" "$ROOT/LICENSE"        "$ROOT/THIRD-PARTY-NOTICES.md" "$STAGE/lin/VIP-Sim/"
-    chmod +x "$STAGE/lin/VIP-Sim/VIP-Sim" "$STAGE/lin/VIP-Sim/vipsim-presenter"              "$STAGE/lin/VIP-Sim/VIP-Sim.sh" 2>/dev/null || true
+    chmod +x "$STAGE/lin/VIP-Sim/VIP-Sim" "$STAGE/lin/VIP-Sim/vipsim-presenter" "$STAGE/lin/VIP-Sim/VIP-Sim.sh"
     ( cd "$STAGE/lin" && tar czf "$OUT/VIP-Sim-Linux-x64.tar.gz" VIP-Sim )
     echo "included a Linux tarball"
 else
@@ -73,7 +80,10 @@ else
 fi
 
 # ---- Checksums, so a truncated download can be told from a broken build.
-( cd "$OUT" && sha256sum VIP-Sim-*.zip VIP-Sim-*.tar.gz 2>/dev/null > SHA256SUMS.txt )
+# nullglob: with no Linux build the tar.gz pattern would stay literal and sha256sum would
+# fail under set -e without saying why.
+shopt -s nullglob
+( cd "$OUT" && ARCHIVES=(VIP-Sim-*.zip VIP-Sim-*.tar.gz) && sha256sum "${ARCHIVES[@]}" > SHA256SUMS.txt )
 
 echo
 ls -lh "$OUT"

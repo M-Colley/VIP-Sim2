@@ -7,7 +7,7 @@
     and the user has to click through "More info > Run anyway". For a tool distributed to
     study participants or sold, that is not acceptable -- most people stop at that screen.
 
-    Signs the plug-in DLLs as well as the executable. Unity ships uWindowCapture and the
+    Signs every DLL and EXE in the build that is not already validly signed. Unity ships uWindowCapture and the
     MediaPipe natives as loose DLLs inside VIP-Sim_Data/Plugins; leaving those unsigned
     means the signed executable loads unsigned code, which some enterprise policies block
     outright even though the .exe itself verifies.
@@ -58,14 +58,15 @@ if (-not $CertPassword) { $CertPassword = Read-Host "Certificate password" -AsSe
 $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
              [Runtime.InteropServices.Marshal]::SecureStringToBSTR($CertPassword))
 
-# Plug-ins first. The executable is signed last so that verifying it also verifies a
-# bundle whose native dependencies are already signed.
-$targets = @()
-$plugins = Join-Path $BuildDir "VIP-Sim_Data\Plugins"
-if (Test-Path $plugins) {
-    $targets += Get-ChildItem $plugins -Recurse -Include *.dll | Select-Object -ExpandProperty FullName
-}
-$targets += $exe
+# Every DLL and EXE in the build that is not already validly signed. Plugins\ alone is not
+# enough: an IL2CPP build keeps GameAssembly.dll and UnityPlayer.dll at the root, and an
+# unsigned GameAssembly.dll is the one that carries all of VIP-Sim's own code. Files with a
+# valid signature (Unity's own) are left alone. Executables go last so that verifying them
+# also verifies a bundle whose dependencies are already signed.
+$all = Get-ChildItem $BuildDir -Recurse -File -Include *.dll, *.exe
+$targets = @($all | Where-Object { (Get-AuthenticodeSignature $_.FullName).Status -ne "Valid" } |
+                    Sort-Object @{ Expression = { $_.Extension -eq ".exe" } }, FullName |
+                    Select-Object -ExpandProperty FullName)
 
 Write-Host "Signing $($targets.Count) file(s) with $(Split-Path $CertPath -Leaf)"
 foreach ($t in $targets) {

@@ -74,10 +74,22 @@ namespace VipSim.EditorTools
             string want = backend.ToString();
 
             if (!Directory.Exists(outDir)) return;
-            if (File.Exists(marker) && File.ReadAllText(marker).Trim() == want) return;
+            bool hasMarker = File.Exists(marker);
+            if (hasMarker && File.ReadAllText(marker).Trim() == want) return;
 
             if (Directory.GetFileSystemEntries(outDir).Length != 0)
             {
+                // Deleting is only safe for a folder this script built into, or one that
+                // plainly is a player build from before the marker existed. Anything else
+                // is somebody's folder that -buildOutput happened to point at.
+                bool looksLikePlayer = Directory.GetDirectories(outDir, "*_Data").Length > 0
+                                    || Directory.Exists(Path.Combine(outDir, "VIP-Sim.app"));
+                if (!hasMarker && !looksLikePlayer)
+                    throw new BuildFailedException(
+                        $"Refusing to clear {outDir}: it is not empty and does not look like a " +
+                        "VIP-Sim player build (no .vipsim-backend marker, no *_Data folder, no " +
+                        "VIP-Sim.app). Point -buildOutput at an empty or new folder.");
+
                 Debug.Log($"[VipSimBuild] output was built with a different backend; clearing {outDir}");
                 Directory.Delete(outDir, true);
             }
