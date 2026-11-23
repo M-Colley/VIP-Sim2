@@ -46,6 +46,17 @@ namespace UnitEye
         /// failures. 0 when unavailable.</summary>
         float BinocularIrisDisagreement { get; }
 
+        /// <summary>
+        /// The gaze model's own per-frame uncertainty about the current estimate: angular standard
+        /// deviation per axis (yaw, pitch) in radians, or NaN when the model has none to report (see
+        /// IGazeBackbone.AngularUncertainty). Only the bin-classification backbones fill this in.
+        ///
+        /// Raw and un-normalized on purpose. It is not comparable across models or across people, so
+        /// consumers must not threshold it directly — feed it to a <see cref="GazeConfidence"/> tracker,
+        /// which scores a frame against the session's own running baseline.
+        /// </summary>
+        Vector2 GazeAngularUncertainty { get; }
+
         /// <summary>Estimated distance from the camera in mm (negative sentinel if unavailable).</summary>
         float DistanceMm { get; }
 
@@ -66,6 +77,9 @@ namespace UnitEye
         /// overlay is gated separately by AnnotateFaceMesh). Calibration/evaluation hide it so the preview
         /// does not distract. WebGL no-ops — the browser owns rendering.</summary>
         void SetRendering(bool rendering);
+
+        /// <summary>Pauses or resumes the underlying capture and landmark pipeline (e.g. via UnitEyeAPI.DisableGaze).</summary>
+        void SetActive(bool active);
 
         /// <summary>Swap the gaze model at runtime (native only; WebGL no-ops — the browser owns the CV).
         /// The calibration is per-backbone, so the pipeline falls back to raw gaze until recalibrated.</summary>

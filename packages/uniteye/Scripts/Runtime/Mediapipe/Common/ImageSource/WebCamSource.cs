@@ -33,9 +33,7 @@ namespace Mediapipe.Unity
 
         private WebCamTexture _webCamTexture;
         private int _deviceIndex = -1;
-        //True when OnDisable stopped a running camera, so OnEnable knows to resume it. Start does not rerun
-        //on reactivation, and without this the camera would stay on after the rig is deactivated.
-        private bool _stoppedByDisable;
+        private bool _resumeOnEnable;
 
         /// <summary>True once the webcam has delivered a real frame.</summary>
         public bool isPrepared => _webCamTexture != null && _webCamTexture.width > 16;
@@ -98,27 +96,31 @@ namespace Mediapipe.Unity
             yield break;
         }
 
-        private void OnDisable()
-        {
-            //The first OnEnable runs before Start, when no texture exists yet; OnDisable then does nothing.
-            if (_webCamTexture != null && _webCamTexture.isPlaying)
-            {
-                _webCamTexture.Stop();
-                _stoppedByDisable = true;
-            }
-        }
-
         private void OnEnable()
         {
-            if (_stoppedByDisable && _webCamTexture != null)
+            if (_resumeOnEnable && _webCamTexture != null && !_webCamTexture.isPlaying)
                 _webCamTexture.Play();
-            _stoppedByDisable = false;
+            _resumeOnEnable = false;
+        }
+
+        private void OnDisable()
+        {
+            if (_webCamTexture != null && _webCamTexture.isPlaying)
+            {
+                _resumeOnEnable = true;
+                _webCamTexture.Stop();
+            }
+            else
+            {
+                _resumeOnEnable = false;
+            }
         }
 
         private void OnDestroy() => StopCamera();
 
         private void StopCamera()
         {
+            _resumeOnEnable = false;
             if (_webCamTexture == null) return;
             _webCamTexture.Stop();
             Destroy(_webCamTexture);
@@ -143,11 +145,26 @@ namespace Mediapipe.Unity
 
             if (index < 0)
             {
-                index = 0;
+                index = -1;
                 if (!string.IsNullOrEmpty(_name))
                 {
                     for (int i = 0; i < devices.Length; i++)
                         if (devices[i].name == _name) { index = i; break; }
+                }
+                if (index < 0)
+                {
+                    int bestDiff = int.MaxValue;
+                    index = 0;
+                    for (int i = 0; i < devices.Length; i++)
+                    {
+                        var res = devices[i].availableResolutions;
+                        if (res == null || res.Length == 0) continue;
+                        for (int r = 0; r < res.Length; r++)
+                        {
+                            int diff = Mathf.Abs(res[r].width - _preferableDefaultWidth);
+                            if (diff < bestDiff) { bestDiff = diff; index = i; }
+                        }
+                    }
                 }
             }
             index = ((index % devices.Length) + devices.Length) % devices.Length;
@@ -158,7 +175,10 @@ namespace Mediapipe.Unity
             // Request the preferred width + frame rate; the device delivers the closest it supports.
             _webCamTexture = new WebCamTexture(devices[index].name, _preferableDefaultWidth,
                 Mathf.RoundToInt(_preferableDefaultWidth * 9f / 16f), Mathf.Max(1, _requestedFps));
-            _webCamTexture.Play();
+            if (isActiveAndEnabled)
+                _webCamTexture.Play();
+            else
+                _resumeOnEnable = true;
         }
     }
 }

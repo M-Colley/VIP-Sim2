@@ -20,8 +20,30 @@ namespace UnitEye
         /// <summary>Run one frame of inference. Returns true if a fresh gaze estimate is available.</summary>
         bool PerformInference(WebCamSource webcam);
 
+        /// <summary>Polls and drains any completed async GPU readback on the exact engine frame it finishes.</summary>
+        bool PollAsyncReadback();
+
+        /// <summary>True while an async GPU readback is still in flight on the GPU.</summary>
+        bool HasPendingReadback { get; }
+
         /// <summary>Raw (pre-calibration) gaze in pixels, (0,0) at the top-left.</summary>
         Vector2 RawGaze { get; }
+
+        /// <summary>
+        /// The backbone's own per-frame uncertainty about the CURRENTLY PUBLISHED estimate, as an angular
+        /// standard deviation per axis (yaw, pitch) in radians. <c>NaN</c> on either axis means "this
+        /// backbone has no uncertainty to report" — which is a real answer, not a failure, and consumers
+        /// must treat it as such rather than substituting a number.
+        ///
+        /// Only the bin-classification backbones can fill this in: their output IS a distribution, so its
+        /// spread is free (see GazeEstimationRunner.DecodeAngleRadians). A backbone that regresses a point
+        /// directly, like EyeMU, has nothing to measure and reports NaN.
+        ///
+        /// Absolute values are NOT comparable across backbones — a model with broad heads always reports a
+        /// large sigma. Consumers compare a frame against the SESSION's own running baseline; see
+        /// <see cref="GazeConfidence"/>.
+        /// </summary>
+        Vector2 AngularUncertainty { get; }
 
         /// <summary>
         /// Feature vector fed to the calibration model. Its layout is backbone-specific (EyeMU emits its

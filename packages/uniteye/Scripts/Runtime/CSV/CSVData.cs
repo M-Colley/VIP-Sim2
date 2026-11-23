@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System;
-using System.Globalization;
 
 namespace UnitEye
 {
@@ -40,51 +39,62 @@ namespace UnitEye
             this.captureLatencyMs = captureLatencyMs;
         }
 
-        //Invariant culture so the decimal separator is always a period regardless of the user's locale.
-        private static string F(float v) => v.ToString(CultureInfo.InvariantCulture);
-
-        //Seralize all the CSVData properties into one string
+        //Serialize all the CSVData properties into one semicolon-delimited row (InvariantCulture, sanitized)
         public string SerializeCSVData()
         {
-            System.Text.StringBuilder bobTheStringBuilder = new System.Text.StringBuilder();
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            var sb = new System.Text.StringBuilder(192);
 
-            //Gaze location both in pixels and normalized
-            bobTheStringBuilder.Append($"{(int)gazePixelX};{(int)gazePixelY};{F(gazeNormalizedX)};{F(gazeNormalizedY)}");
+            int px = float.IsNaN(gazePixelX) || float.IsInfinity(gazePixelX) ? 0 : UnityEngine.Mathf.RoundToInt(gazePixelX);
+            int py = float.IsNaN(gazePixelY) || float.IsInfinity(gazePixelY) ? 0 : UnityEngine.Mathf.RoundToInt(gazePixelY);
+            float nx = FiniteOrZero(gazeNormalizedX);
+            float ny = FiniteOrZero(gazeNormalizedY);
+            float unx = FiniteOrZero(gazeNormalizedUnfilteredX);
+            float uny = FiniteOrZero(gazeNormalizedUnfilteredY);
+            float dist = FiniteOrZero(distanceToCamera);
+            float ear = FiniteOrZero(eyeAspectRatio);
+            float lat = FiniteOrZero(captureLatencyMs);
 
-            //Unfiltered normalized gaze location 
-            bobTheStringBuilder.Append($";{F(gazeNormalizedUnfilteredX)};{F(gazeNormalizedUnfilteredY)}");
+            sb.Append(px.ToString(inv)).Append(';')
+              .Append(py.ToString(inv)).Append(';')
+              .Append(nx.ToString(inv)).Append(';')
+              .Append(ny.ToString(inv)).Append(';')
+              .Append(unx.ToString(inv)).Append(';')
+              .Append(uny.ToString(inv)).Append(';')
+              .Append(dist.ToString("F1", inv)).Append(';')
+              .Append(ear.ToString(inv)).Append(';')
+              .Append(blinking ? "True" : "False").Append(';')
+              .Append(timestamp.ToString("yyyy-MM-dd HH:mm:ss", inv)).Append(':').Append(timestamp.Millisecond.ToString("D3", inv)).Append(';')
+              .Append(((DateTimeOffset)timestamp).ToUnixTimeMilliseconds().ToString(inv)).Append(';')
+              .Append(lat.ToString("F0", inv)).Append(';');
 
-            //Distance to camera
-            bobTheStringBuilder.Append($";{(float.IsPositiveInfinity(distanceToCamera) ? 0f : distanceToCamera).ToString("F1", CultureInfo.InvariantCulture)}");
-
-            //Eye Aspect Ratio and blinking
-            bobTheStringBuilder.Append($";{F(float.IsNaN(eyeAspectRatio) ? 0f : eyeAspectRatio)};{blinking}");
-
-            //Add timestamp with milliseconds at the end
-            bobTheStringBuilder.Append($";{timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture)}");
-
-            //Add unix timestamp in milliseconds
-            bobTheStringBuilder.Append($";{((DateTimeOffset)timestamp).ToUnixTimeMilliseconds()}");
-
-            //Measured pipeline latency (see field comment)
-            bobTheStringBuilder.Append($";{captureLatencyMs.ToString("F0", CultureInfo.InvariantCulture)}");
-
-            //Write AOIList if not empty
-            if (AOIList.Count > 0)
+            if (AOIList != null && AOIList.Count > 0)
             {
-                //Might need changing depending on the .ToString() behaviour of the AOIList
-                bobTheStringBuilder.Append($";{string.Join(" | ", AOIList)}");
+                for (int i = 0; i < AOIList.Count; i++)
+                {
+                    if (i > 0) sb.Append(" | ");
+                    AppendSanitized(sb, AOIList[i]);
+                }
             }
-            else
+
+            sb.Append(';');
+            AppendSanitized(sb, notes);
+
+            return sb.ToString();
+        }
+
+        private static float FiniteOrZero(float v) => float.IsNaN(v) || float.IsInfinity(v) ? 0f : v;
+
+        private static void AppendSanitized(System.Text.StringBuilder sb, string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+            for (int i = 0; i < text.Length; i++)
             {
-                //If empty write empty value
-                bobTheStringBuilder.Append($";");
+                char c = text[i];
+                if (c == ';') sb.Append(',');
+                else if (c == '\r' || c == '\n') sb.Append(' ');
+                else sb.Append(c);
             }
-
-            //Write notes
-            bobTheStringBuilder.Append($";{notes}");
-
-            return bobTheStringBuilder.ToString();
         }
     }
 }

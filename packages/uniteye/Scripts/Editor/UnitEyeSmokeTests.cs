@@ -73,6 +73,7 @@ public static class UnitEyeSmokeTests
             TestGazeErrorModel();
             TestInteriorPreset();
             TestEmbeddingProjection();
+            TestAuditRegressionFixes();
         }
         catch (Exception e)
         {
@@ -1325,6 +1326,77 @@ public static class UnitEyeSmokeTests
             "Gaze decode: windowed decode jumps between lobes on a nudge (why it is not the default)");
         Check(Mathf.Abs(aFull - bFull) * Mathf.Rad2Deg < 10f,
             "Gaze decode: full expectation is stable across the same nudge");
+
+        TestGazeDecodeSpread();
+    }
+
+    /// <summary>
+    /// The softmax spread the decode reports alongside the angle — the per-frame confidence signal the AOI
+    /// ellipse, the drift anchor weights and the calibration gate all run on. Pinned here because the whole
+    /// chain is only as meaningful as this number: if it stopped tracking breadth, every consumer would
+    /// silently keep working while weighting on noise.
+    /// </summary>
+    private static void TestGazeDecodeSpread()
+    {
+        //Ordering is the core contract: broader distribution -> larger sigma.
+        GazeEstimationRunner.DecodeAngleRadians(GazeBinGaussian(45, 1f), out float sharp);
+        GazeEstimationRunner.DecodeAngleRadians(GazeBinGaussian(45, 3f), out float mid);
+        GazeEstimationRunner.DecodeAngleRadians(GazeBinLobe(45, 0.35f), out float broad);
+        Check(sharp >= 0f && mid > sharp && broad > mid,
+            $"Gaze spread: sigma increases with head breadth ({sharp * Mathf.Rad2Deg:F1} < " +
+            $"{mid * Mathf.Rad2Deg:F1} < {broad * Mathf.Rad2Deg:F1} deg)");
+
+        //A one-hot spike has no spread at all. This is the degenerate case the Var >= 0 clamp exists for:
+        //E[i^2] - E[i]^2 cancels to a small negative in float, and an unclamped sqrt would return NaN and
+        //poison every consumer downstream.
+        GazeEstimationRunner.DecodeAngleRadians(GazeBinSpike(45), out float spike);
+        Check(!float.IsNaN(spike) && spike >= 0f && spike * Mathf.Rad2Deg < 1f,
+            $"Gaze spread: a one-hot spike has ~zero spread and never NaNs ({spike * Mathf.Rad2Deg:F3} deg)");
+
+        //The two-lobe shape that makes the WINDOWED decode hop: the full decode's sigma must register it as
+        //low confidence, which is exactly the information the window throws away.
+        GazeEstimationRunner.DecodeAngleRadians(GazeBinTwoLobes(40, 85, 2f), out float twoLobeFull);
+        GazeEstimationRunner.DecodeAngleRadiansWindowed(GazeBinTwoLobes(40, 85, 2f), out float twoLobeWin);
+        Check(twoLobeFull > twoLobeWin,
+            "Gaze spread: the full decode sees the second lobe's uncertainty, the windowed one cannot");
+
+        //Sigma is a spread, so the -180deg OFFSET must NOT be applied to it: two identically-shaped lobes
+        //at different positions have the same spread.
+        GazeEstimationRunner.DecodeAngleRadians(GazeBinGaussian(20, 2f), out float lowBin);
+        GazeEstimationRunner.DecodeAngleRadians(GazeBinGaussian(70, 2f), out float highBin);
+        CheckClose(lowBin, highBin, 1e-3f, "Gaze spread: sigma is position-independent (no angle offset applied)");
+
+        //And the tracker on top of it: a stable stream is "confident", a sudden broadening is not, and a
+        //backbone that reports NaN (EyeMU) must leave every consumer untouched.
+        var tracker = new GazeConfidence();
+        for (int i = 0; i < 200; i++)
+            tracker.Observe(new Vector2(0.05f, 0.05f));
+        Check(tracker.HasSignal, "GazeConfidence: acquires a signal after warmup");
+        CheckClose(tracker.Confidence, 1f, 1e-3f, "GazeConfidence: a steady stream sits at full confidence");
+        CheckClose(tracker.VarianceScaleX, 1f, 1e-3f, "GazeConfidence: steady stream does not inflate the ellipse");
+
+        tracker.Observe(new Vector2(0.20f, 0.05f));
+        Check(tracker.Confidence < 0.3f, $"GazeConfidence: a 4x-broader frame drops confidence ({tracker.Confidence:F2})");
+        Check(tracker.VarianceScaleX > 3f && tracker.VarianceScaleY < 1.5f,
+            "GazeConfidence: inflates only the axis that actually broadened");
+
+        tracker.Observe(new Vector2(float.NaN, float.NaN));
+        Check(!tracker.HasSignal && tracker.Confidence == 1f &&
+              tracker.VarianceScaleX == 1f && tracker.VarianceScaleY == 1f,
+            "GazeConfidence: a backbone with no uncertainty (EyeMU/WebGL) is fully inert");
+
+        //Feature block: the interaction terms are what let the fit undo a VARYING compression, so their
+        //product form is pinned, and a NaN sigma must enter as 0 rather than poisoning the row.
+        var f = new float[GazeEstimationRunner.FeatureCount];
+        GazeEstimationRunner.FillSigmaFeatures(f, GazeEstimationRunner.SigmaFeatureStart, 0.3f, -0.2f, 0.11f, 0.07f);
+        int s = GazeEstimationRunner.SigmaFeatureStart;
+        CheckClose(f[s], 0.11f, 1e-6f, "sigma feature[0] = sigmaYaw");
+        CheckClose(f[s + 1], 0.07f, 1e-6f, "sigma feature[1] = sigmaPitch");
+        CheckClose(f[s + 2], 0.11f * 0.3f, 1e-6f, "sigma feature[2] = sigmaYaw * yaw");
+        CheckClose(f[s + 3], 0.07f * -0.2f, 1e-6f, "sigma feature[3] = sigmaPitch * pitch");
+        GazeEstimationRunner.FillSigmaFeatures(f, s, 0.3f, -0.2f, float.NaN, float.PositiveInfinity);
+        Check(f[s] == 0f && f[s + 1] == 0f && f[s + 2] == 0f && f[s + 3] == 0f,
+            "sigma features: a non-finite spread enters as 0, never NaN");
     }
 
     private static void TestGazeFeaturePolynomial()
@@ -1333,9 +1405,12 @@ public static class UnitEyeSmokeTests
         //LINEAR ridge can bend to the corners (raw [yaw,pitch] can't: the angle->screen map is nonlinear
         //with a yaw*pitch coupling). Pin the length + exact term layout so the basis isn't silently
         //changed and train/predict stay in lockstep (both read this same vector).
-        Check(GazeEstimationRunner.FeatureCount == 32, "Gaze calibration feature vector is 32 terms (polynomial + head pose + iris + context)");
+        Check(GazeEstimationRunner.FeatureCount == 36, "Gaze calibration feature vector is 36 terms (polynomial + head pose + iris + context + sigma)");
         Check(GazeEstimationRunner.IrisFeatureStart == 11, "Direction-model iris block starts after the head pose (7/8/9 stay stable)");
         Check(GazeEstimationRunner.ContextFeatureStart == 15, "Direction-model context block starts after the iris block");
+        Check(GazeEstimationRunner.SigmaFeatureStart == 32, "Direction-model sigma block is APPENDED after the context block");
+        Check(GazeEstimationRunner.SigmaFeatureStart + GazeEstimationRunner.SigmaFeatureCount
+              == GazeEstimationRunner.FeatureCount, "Sigma block is the last engineered block (embedding tail follows)");
         var f = new float[GazeEstimationRunner.FeatureCount];
         float yaw = 0.3f, pitch = -0.2f;
         GazeEstimationRunner.FillGazeFeatures(f, yaw, pitch, 0.11f, 0.12f, 0.13f, 0.14f);
@@ -1598,6 +1673,172 @@ public static class UnitEyeSmokeTests
                 worker?.Dispose();
             }
         }
+
+        TestGazeModelInputSizeIsDeclared();
+        TestFlipAugmentationSignConvention();
+    }
+
+    /// <summary>
+    /// GazeEstimationRunner now DERIVES its input side from the loaded graph instead of assuming 448.
+    /// This pins the other half of that contract: the shipped exports must actually declare a static,
+    /// square 448 — if one ever does not, the runner will follow the model and this test says so, rather
+    /// than the two silently disagreeing.
+    /// </summary>
+    private static void TestGazeModelInputSizeIsDeclared()
+    {
+        foreach (var path in new[] { "ONNX/GazeEstimation/mobileone_s0_gaze",
+                                     "ONNX/GazeEstimation/mobilenetv2_gaze",
+                                     "ONNX/GazeEstimation/resnet34_gaze" })
+        {
+            var asset = Resources.Load<ModelAsset>(path);
+            if (asset == null) continue;
+            var shape = ModelLoader.Load(asset).inputs[0].shape;
+            Check(!shape.isRankDynamic && shape.rank == 4, $"{path}: input shape is a static-rank NCHW tensor");
+            if (shape.isRankDynamic || shape.rank != 4) continue;
+            //Get() returns -1 for a dynamic dimension, which is what "cannot size buffers from this" means.
+            int h = shape.Get(2), w = shape.Get(3);
+            Check(h > 0 && w > 0, $"{path}: input H/W are static (a dynamic size cannot size buffers)");
+            if (h <= 0 || w <= 0) continue;
+            Check(h == 448 && w == 448, $"{path}: declares 448x448 (got {w}x{h})");
+        }
+    }
+
+    /// <summary>
+    /// SETTLES THE FLIP-TTA CATASTROPHE RISK WITHOUT A WEBCAM.
+    ///
+    /// Flip TTA computes <c>(yaw - yawMirrored) * 0.5</c>. Read that as an algebraic decomposition rather
+    /// than as "an average": writing the two readings as
+    ///     yaw(x) = b + a      yaw(mirror(x)) = b - a
+    /// the expression returns exactly <b>a</b>, the MIRROR-ANTISYMMETRIC component, and cancels <b>b</b>,
+    /// the model's mirror-symmetric bias. Flip TTA is therefore a bias-cancelling estimator, and the one
+    /// way it can go catastrophically wrong is <b>a == 0 for every input</b> — a yaw head that ignores the
+    /// mirror. Then the estimate is identically zero and gaze pins to the screen centre, which reads as a
+    /// bad calibration rather than a bug. THAT is what this test rules out.
+    ///
+    /// AN EARLIER VERSION OF THIS TEST WAS WRONG, and the way it was wrong is worth keeping written down.
+    /// It scored <c>|yaw(x) + yaw(mirror(x))| / (|yaw(x)| + |yaw(mirror(x))|)</c>, claiming ~0 meant the
+    /// sign convention held and ~1 meant it was inverted. Substituting the decomposition, that ratio is
+    /// <c>2|b| / (|b+a| + |b-a|)</c> — which is exactly 1 whenever <c>|b| >= |a|</c>, REGARDLESS of the
+    /// convention. It measures bias dominance, not sign. Measured against the shipped exports it returned
+    /// 1.000 for all three, purely because these models carry a large mirror-symmetric bias on
+    /// off-distribution input (b ~ -70 deg on synthetic fields), and would have condemned a perfectly
+    /// working configuration.
+    ///
+    /// The stimuli matter too. A random field is statistically mirror-symmetric, so the model responds to
+    /// it and its mirror almost identically (a ~ 0) and any threshold on `a` fails for want of signal, not
+    /// for want of equivariance. The two stimuli below are deliberately maximally mirror-asymmetric.
+    ///
+    /// Still does NOT prove flip TTA IMPROVES accuracy — that needs faces and a live camera.
+    /// </summary>
+    private static void TestFlipAugmentationSignConvention()
+    {
+        const int size = 448;
+        //Above this the antisymmetric component is unambiguously alive. Measured headroom on the shipped
+        //exports at the time of writing: 72.5 / 25.5 / 8.1 deg, so this is a wide margin, not a fitted one.
+        const float NonDegenerateDegrees = 2f;
+
+        foreach (var path in new[] { "ONNX/GazeEstimation/mobileone_s0_gaze",
+                                     "ONNX/GazeEstimation/mobilenetv2_gaze",
+                                     "ONNX/GazeEstimation/resnet34_gaze" })
+        {
+            var asset = Resources.Load<ModelAsset>(path);
+            if (asset == null) continue;
+            var model = ModelLoader.Load(asset);
+
+            float maxAnti = 0f, biasAtMax = 0f, maxPitchSwing = 0f;
+            int trials = 0;
+            Worker worker = null;
+            try
+            {
+                worker = new Worker(model, BackendType.CPU);
+                foreach (var direct in new[] { HorizontalRamp(size), HorizontalSplit(size) })
+                {
+                    var mirrored = MirrorNCHW(direct, size);
+                    if (!TryDecodeAngles(worker, direct, size, out float yawA, out float pitchA)) continue;
+                    if (!TryDecodeAngles(worker, mirrored, size, out float yawB, out float pitchB)) continue;
+
+                    float anti = (yawA - yawB) * 0.5f * Mathf.Rad2Deg;   // what flip TTA keeps
+                    float bias = (yawA + yawB) * 0.5f * Mathf.Rad2Deg;   // what flip TTA cancels
+                    if (Mathf.Abs(anti) > maxAnti) { maxAnti = Mathf.Abs(anti); biasAtMax = bias; }
+                    //Pitch is mirror-INVARIANT, so flip TTA averages it. Reported, not asserted: averaging
+                    //is the right operation for the symmetric part whatever its size, so a swing here is
+                    //information about the model, not a reason to withhold the feature.
+                    maxPitchSwing = Mathf.Max(maxPitchSwing, Mathf.Abs(pitchA - pitchB) * Mathf.Rad2Deg);
+                    trials++;
+                }
+            }
+            catch (Exception e) { UnitEyeLog.Exception(e); }
+            finally { worker?.Dispose(); }
+
+            if (trials == 0) { Check(false, $"{path}: flip-TTA check could not run"); continue; }
+
+            bool safe = maxAnti > NonDegenerateDegrees;
+            Check(safe,
+                $"{path}: flip TTA cannot collapse gaze to centre — the yaw head's mirror-antisymmetric " +
+                $"component is alive ({maxAnti:F2} deg, need > {NonDegenerateDegrees})");
+            Debug.Log($"UNITEYE_FLIP_TTA {path} antisymmetric={maxAnti:F2}deg " +
+                      $"biasCancelled={biasAtMax:F2}deg pitchSwing={maxPitchSwing:F2}deg " +
+                      $"verdict={(safe ? "SAFE-TO-ENABLE" : "DO-NOT-ENABLE")}");
+        }
+    }
+
+    /// <summary>Left-to-right luminance ramp, NCHW (1,3,size,size), in the ImageNet-normalized range the
+    /// preprocess produces. Maximally mirror-asymmetric, so the mirror genuinely changes the input.</summary>
+    private static float[] HorizontalRamp(int size)
+    {
+        var d = new float[3 * size * size];
+        for (int c = 0; c < 3; c++)
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                    d[c * size * size + y * size + x] = (x / (float)(size - 1)) * 4f - 2f;
+        return d;
+    }
+
+    /// <summary>Hard bright-left / dark-right split — the other extreme of mirror asymmetry, and a
+    /// different kind of edge structure from the ramp.</summary>
+    private static float[] HorizontalSplit(int size)
+    {
+        var d = new float[3 * size * size];
+        for (int c = 0; c < 3; c++)
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                    d[c * size * size + y * size + x] = x < size / 2 ? 1.8f : -1.8f;
+        return d;
+    }
+
+    /// <summary>Horizontal mirror of an NCHW (1,3,size,size) buffer — the tensor-space equivalent of the
+    /// runner's mirrored Blit.</summary>
+    private static float[] MirrorNCHW(float[] src, int size)
+    {
+        var dst = new float[src.Length];
+        for (int c = 0; c < 3; c++)
+            for (int y = 0; y < size; y++)
+            {
+                int row = c * size * size + y * size;
+                for (int x = 0; x < size; x++)
+                    dst[row + x] = src[row + (size - 1 - x)];
+            }
+        return dst;
+    }
+
+    private static bool TryDecodeAngles(Worker worker, float[] data, int size, out float yaw, out float pitch)
+    {
+        yaw = pitch = 0f;
+        Tensor<float> input = null;
+        try
+        {
+            input = new Tensor<float>(new TensorShape(1, 3, size, size), data);
+            worker.SetInput("input", input);
+            worker.Schedule();
+            var yawT = worker.PeekOutput("yaw") as Tensor<float>;
+            var pitchT = worker.PeekOutput("pitch") as Tensor<float>;
+            if (yawT == null || pitchT == null) return false;
+            yaw = GazeEstimationRunner.DecodeAngleRadians(yawT.DownloadToArray());
+            pitch = GazeEstimationRunner.DecodeAngleRadians(pitchT.DownloadToArray());
+            return true;
+        }
+        catch (Exception e) { UnitEyeLog.Exception(e); return false; }
+        finally { input?.Dispose(); }
     }
 
     #endregion
@@ -1878,6 +2119,157 @@ public static class UnitEyeSmokeTests
                 p.y < Screen.height * 0.2f || p.y > Screen.height * 0.8f)
                 interior = false;
         Check(interior, "InteriorPreset points are strictly interior (not on the boundary)");
+    }
+
+    private static void TestAuditRegressionFixes()
+    {
+        // 1. Inverse roll rotation of roll-normalized gaze angles + uncertainties
+        GazeEstimationRunner.UnrotateGazeAngles(0.25f, 0f, 0.08f, 0.03f, Mathf.PI * 0.5f,
+            out float camYaw90, out float camPitch90, out float camSigYaw90, out float camSigPitch90);
+        CheckClose(camYaw90, 0f, 1e-5f, "UnrotateGazeAngles: +90deg roll maps head yaw to 0 camera yaw");
+        CheckClose(camPitch90, 0.25f, 1e-5f, "UnrotateGazeAngles: +90deg roll maps head yaw to +camera pitch");
+        CheckClose(camSigYaw90, 0.03f, 1e-5f, "UnrotateGazeAngles: +90deg roll swaps sigma axes (yaw)");
+        CheckClose(camSigPitch90, 0.08f, 1e-5f, "UnrotateGazeAngles: +90deg roll swaps sigma axes (pitch)");
+
+        GazeEstimationRunner.UnrotateGazeAngles(camYaw90, camPitch90, camSigYaw90, camSigPitch90, -Mathf.PI * 0.5f,
+            out float rtYaw, out float rtPitch, out _, out _);
+        CheckClose(rtYaw, 0.25f, 1e-5f, "UnrotateGazeAngles: inverse roll round-trip recovers yaw");
+        CheckClose(rtPitch, 0f, 1e-5f, "UnrotateGazeAngles: inverse roll round-trip recovers pitch");
+
+        // 2. DriftCorrector partial-warmup centroid preservation when AffineUnlocked == true
+        var warmDrift = new DriftCorrector();
+        var corners = new[]
+        {
+            new Vector2(0.2f, 0.2f), new Vector2(0.8f, 0.2f),
+            new Vector2(0.2f, 0.8f), new Vector2(0.8f, 0.8f),
+        };
+        for (int r = 0; r < 2; r++)
+        {
+            foreach (var tgt in corners)
+            {
+                var pred = new Vector2(0.5f + (tgt.x - 0.5f) * 0.85f, 0.5f + (tgt.y - 0.5f) * 0.85f);
+                warmDrift.AddAnchor(pred, tgt, weight: 0.25f);
+            }
+        }
+        Check(warmDrift.AffineUnlocked, "DriftCorrector: symmetric spread anchors unlock affine at partial warmup");
+        var centerOut = warmDrift.Apply(new Vector2(0.5f, 0.5f));
+        CheckClose(centerOut.x, 0.5f, 1e-5f, "DriftCorrector: partial warmup preserves symmetric anchor centroid (x)");
+        CheckClose(centerOut.y, 0.5f, 1e-5f, "DriftCorrector: partial warmup preserves symmetric anchor centroid (y)");
+
+        // 3. FixationAggregator immediate post-saccade onset (<150ms) and non-self-breaking 6s stare
+        var fix = new FixationAggregator();
+        double t = 0.0;
+        for (int i = 0; i < 6; i++, t += 1.0 / 30.0)
+            fix.Add(new Vector2(200f, 200f), t);
+        Check(fix.InFixation, "FixationAggregator: initial cluster establishes fixation");
+        fix.Add(new Vector2(1400f, 800f), t); // saccade jump to new target
+        t += 1.0 / 30.0;
+        for (int i = 0; i < 4; i++, t += 1.0 / 30.0)
+            fix.Add(new Vector2(1402f + (i % 2), 801f - (i % 2)), t);
+        Check(fix.InFixation, "FixationAggregator: detects trailing fixation cluster immediately (<150ms) after saccade");
+
+        bool stayedInFixation = true;
+        var fixRng = new System.Random(1234);
+        for (int i = 0; i < 180; i++, t += 1.0 / 30.0)
+        {
+            float jx = ((float)fixRng.NextDouble() - 0.5f) * 8f;
+            float jy = ((float)fixRng.NextDouble() - 0.5f) * 8f;
+            fix.Add(new Vector2(1402f + jx, 801f + jy), t);
+            if (!fix.InFixation) stayedInFixation = false;
+        }
+        Check(stayedInFixation, "FixationAggregator: maintains steady fixation across 6s (180 frames) without self-breaking");
+        fix.Add(new Vector2(1402f, 801f), t + 2.0); // 2s face-loss gap
+        Check(!fix.InFixation, "FixationAggregator: resets fixation across a long camera/face-loss gap");
+
+        // 4. SimpleMLP normalized targets + resolution-independent scaling in CalibrationModelStore
+        var mlpRng = new System.Random(55);
+        const int nMlp = 200;
+        var mx = new float[nMlp][];
+        var my = new Vector2[nMlp];
+        for (int i = 0; i < nMlp; i++)
+        {
+            float a = (float)mlpRng.NextDouble();
+            float b = (float)mlpRng.NextDouble();
+            mx[i] = new float[] { a, b, 1f };
+            my[i] = new Vector2(0.1f + 0.8f * a, 0.15f + 0.7f * b);
+        }
+        var normMlp = new SimpleMLP(seed: 11);
+        normMlp.TrainNormalized(mx, my, 52f, 29f, balanceTraining: true);
+        Check(normMlp.NormalizedTargets, "SimpleMLP.TrainNormalized sets NormalizedTargets = true");
+        const string tempMlpName = "MLP_SmokeTempTest.json";
+        string tempMlpPath = CalibrationModelStore.GetWritablePath("MLP", tempMlpName);
+        try
+        {
+            normMlp.Save(tempMlpName);
+            Check(File.Exists(tempMlpPath), "SimpleMLP.Save writes to writable persistentDataPath");
+            var loadedNormMlp = SimpleMLP.Load(tempMlpName);
+            Check(loadedNormMlp != null && loadedNormMlp.NormalizedTargets,
+                "SimpleMLP.Load restores NormalizedTargets from persistentDataPath");
+            var pNorm = loadedNormMlp.Predict(new float[] { 0.5f, 0.5f, 1f });
+            Check(pNorm.x > 0.35f && pNorm.x < 0.65f && pNorm.y > 0.35f && pNorm.y < 0.65f,
+                $"Normalized SimpleMLP predicts in [0,1] space (got {pNorm})");
+        }
+        finally
+        {
+            CalibrationModelStore.DeleteCalibrationFile("MLP", tempMlpName);
+        }
+
+        // 5. RidgeCalibrationTrainer balanceTraining=true keeps holdout strictly disjoint from training
+        var leakFeats = new List<float[]>();
+        var leakX = new List<float>();
+        var leakY = new List<float>();
+        var leakRng = new System.Random(77);
+        for (int i = 0; i < 80; i++)
+        {
+            leakFeats.Add(new float[] { 0.5f + (float)leakRng.NextDouble() * 0.01f, 0.5f });
+            leakX.Add(0.5f); leakY.Add(0.5f);
+        }
+        for (int i = 0; i < 5; i++)
+        {
+            leakFeats.Add(new float[] { 0.1f + i * 0.001f, 0.1f });
+            leakX.Add(0.1f); leakY.Add(0.1f);
+        }
+        var balResult = RidgeCalibrationTrainer.Train(
+            leakFeats, leakX, leakY, 52f, 29f, rng: new System.Random(9), balanceTraining: true);
+        var holdoutSet = new HashSet<float[]>(balResult.HoldoutFeatures);
+        Check(holdoutSet.Count == balResult.HoldoutFeatures.Length,
+            "Balanced RidgeCalibrationTrainer holdout contains only unique sample references");
+
+        // 6. CSVData culture invariance, :D3 milliseconds, NaN guards, and semicolon/newline sanitization
+        var prevCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+        try
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = new CultureInfo("de-DE");
+            var ts = new DateTime(2026, 7, 14, 9, 8, 7, 5, DateTimeKind.Utc);
+            var row = new CSVData(float.NaN, 540.4f, 0.25f, 0.75f, 0.25f, 0.75f, float.NaN, 0.31f, false,
+                ts, new List<string> { "Btn;A", "Panel\nB" }, captureLatencyMs: 12.3f);
+            row.notes = "RMSE X: 1.2cm; RMSE Y: 1.4cm\nDone";
+            string csv = row.SerializeCSVData();
+            string[] cols = csv.Split(';');
+            Check(cols.Length == 14, $"CSVData row must always have exactly 14 semicolon-separated columns (got {cols.Length}: {csv})");
+            Check(cols[0] == "0", $"CSVData NaN pixel X should serialize to 0, not int.MinValue (got {cols[0]})");
+            Check(cols[2] == "0.25", $"CSVData floats must use '.' under de-DE culture (got {cols[2]})");
+            Check(cols[9].EndsWith(":005", StringComparison.Ordinal), $"CSVData timestamp ms must be zero-padded :D3 (got {cols[9]})");
+            Check(!csv.Contains("\n") && !csv.Contains("\r"), "CSVData must strip embedded newlines from AOIs and notes");
+        }
+        finally
+        {
+            System.Threading.Thread.CurrentThread.CurrentCulture = prevCulture;
+        }
+
+        // 7. AOI thin-bar margin hit test + degenerate capsule/polygon safety
+        var thinBar = new AOIBox("thin", new Vector2(0.495f, 0.2f), new Vector2(0.505f, 0.8f)) { margin = 0.04f };
+        Check(thinBar.CheckAOIWithMargin(new Vector2(0.480f, 0.5f)),
+            "AOI.CheckAOIWithMargin hits a thin bar narrower than margin via half-margin ring");
+        var degenCap = new AOICapsule("cap", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), 0.05f);
+        Check(degenCap.CheckAOI(new Vector2(0.52f, 0.5f)) && !degenCap.CheckAOI(new Vector2(0.7f, 0.5f)),
+            "Degenerate zero-length AOICapsule behaves as a circle without NaN");
+        var emptyPoly = new AOIPolygon("empty");
+        Check(!emptyPoly.CheckAOI(new Vector2(0.5f, 0.5f)), "Default-constructed empty AOIPolygon returns false safely");
+
+        // 8. Zero/NaN Screen.dpi fallback in Functions.PixelsToMm
+        CheckClose(Functions.PixelsToMm(96f, 0f), 25.4f, 1e-4f, "Functions.PixelsToMm falls back to 96 DPI when dpi == 0");
+        CheckClose(Functions.PixelsToMm(96f, float.NaN), 25.4f, 1e-4f, "Functions.PixelsToMm falls back to 96 DPI when dpi is NaN");
     }
 
     #endregion
