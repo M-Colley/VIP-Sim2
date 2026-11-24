@@ -11,6 +11,7 @@ public class PixelationEffect : MonoBehaviour
 
     private Material pixelationMaterial;
     private static readonly int PixelSizeId = Shader.PropertyToID("_PixelSize");
+    private const float MinCells = 8f;
 
     void OnDestroy()
     {
@@ -37,8 +38,9 @@ public class PixelationEffect : MonoBehaviour
             return;
         }
 
-        // Floored at 1: at the slider's maximum (1000) this was 0, and the shader divides by it.
-        pixelationMaterial.SetFloat(PixelSizeId, Mathf.Max(1f, 1000f - pixelRadius));
+        // At least MinCells across. At the slider's maximum (1000) this was 0, and the shader
+        // divides by it; floored at 1, one sampled pixel filled the whole screen, desktop included.
+        pixelationMaterial.SetFloat(PixelSizeId, Mathf.Max(MinCells, 1000f - pixelRadius));
 
 
         Graphics.Blit(source, destination, pixelationMaterial);

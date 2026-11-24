@@ -82,17 +82,14 @@
                 fixed4 color = tex2D(_MainTex, uv);
    
                     
-                if (dist < _InnerCircleRadius)
-                {
-                    // Set color to black
-                    fixed4 blackColor = lerp(fixed4(0, 0, 0, 1.0), color, _Opacity);
-                    // Calculate fade factor
-                    float fade = smoothstep(_InnerCircleRadius - _FadeWidth, _InnerCircleRadius, dist);
-                    
-                    // Interpolate between grey and original color based on fade factor
-                    //fixed4 outerColor = tex2D(_MainTex, uv);
-                    color = lerp(blackColor, color, fade);
-                }
+                // Full strength inside _InnerCircleRadius, fading out over the next _FadeWidth.
+                // The fade used to run inwards from radius - width; with the defaults (0.01 and
+                // 0.05) it started below zero, so even the centre was darkened by only 5%.
+                // _Opacity is the strength of the dark spot: 0 leaves the image, 1 is black. It
+                // was the reverse, against its label and the profiles' severity.
+                float fade = smoothstep(_InnerCircleRadius, _InnerCircleRadius + max(_FadeWidth, 1e-5), dist);
+                fixed4 dark = lerp(color, fixed4(0, 0, 0, 1.0), _Opacity);
+                color = lerp(dark, color, fade);
 
                 return color;
             }

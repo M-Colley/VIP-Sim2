@@ -255,8 +255,9 @@ namespace VisSim
             Vector2 circleCenter = new Vector2(width / 2, height / 2);
             //float circleRadius = Mathf.Min(width, height) / 4; // Adjust radius as needed
 
-            // Random position and size
-            int floaterWidth = Mathf.FloorToInt(floaterSize * UnityEngine.Random.Range(0.5f, 1.5f));
+            // Random position and size. At least one pixel: floored, size 1 (the slider's
+            // minimum and the scene default) gave 0-pixel floaters half the time.
+            int floaterWidth = Mathf.Max(1, Mathf.RoundToInt(floaterSize * UnityEngine.Random.Range(0.5f, 1.5f)));
             int floaterHeight = floaterWidth;
 
 
@@ -279,13 +280,21 @@ namespace VisSim
                 yPos = UnityEngine.Random.Range(0, height - floaterHeight);
             }
 
-            // Use Perlin noise or random noise for organic blob shape
+            // Organic blob: a disc whose edge Perlin noise roughens, from a patch of noise of its
+            // own. The mask used to be PerlinNoise(x * 0.1, y * 0.1) > 0.5 from the origin for
+            // every floater. The noise is below 0.5 there, so small floaters drew no pixel at
+            // all and the larger ones all had the same shape. The disc always covers its centre.
+            float noiseX = UnityEngine.Random.Range(0f, 256f);
+            float noiseY = UnityEngine.Random.Range(0f, 256f);
+            float r = floaterWidth * 0.5f;
             for (int y = 0; y < floaterHeight; y++)
             {
                 for (int x = 0; x < floaterWidth; x++)
                 {
-                    float perlinValue = Mathf.PerlinNoise(x * 0.1f, y * 0.1f); // Control shape using Perlin noise
-                    if (perlinValue > 0.5f)
+                    float dx = x + 0.5f - r;
+                    float dy = y + 0.5f - r;
+                    float edge = r * (0.55f + 0.45f * Mathf.PerlinNoise(noiseX + x * 0.3f, noiseY + y * 0.3f));
+                    if (dx * dx + dy * dy <= edge * edge)
                     {
                         pixels[(xPos + x) + (yPos + y) * width] = Color.white; // White for the floaters
                     }
