@@ -32,6 +32,8 @@ public static class ProfileBinder
         public Dictionary<string, string> Fields;   // profile parameter -> component field
         public string SeverityField;                // where a bare severity goes
         public float SevMin, SevMax;                // the range it is spread over
+        public string LegacyField;                  // a former name of SeverityField
+        public Func<float, float> FromLegacy;       // its value in SeverityField's units
     }
 
     private static Dictionary<string, string> F(params string[] kv)
@@ -47,9 +49,12 @@ public static class ProfileBinder
     private static readonly List<Bind> Table = new List<Bind>
     {
         new Bind { Filter = "blur", EffectObject = "Hyperopia", Get = s => s.myBlur,
-                   // maxCPD's own [Range] is 0..30, the convention stated above. 0..1 was a
-                   // thirtieth of it: severity 1 gave 29 cycles/degree, i.e. almost no blur.
-                   SeverityField = "maxCPD", SevMin = 0f, SevMax = 30f, Fields = F() },
+                   // Linear in logMAR, so equal severity steps are equal numbers of chart
+                   // lines: 0.5 is 20/200. Linear in cycles per degree (the old maxCPD),
+                   // severities below 0.6 asked for more detail than the screen can show.
+                   // Profiles captured before the change carry maxCPD and are converted.
+                   SeverityField = "logMAR", SevMin = 0f, SevMax = VisSim.myBlur.MaxLogMAR,
+                   LegacyField = "maxCPD", FromLegacy = VisSim.myBlur.LogMarFromMaxCPD, Fields = F() },
 
         new Bind { Filter = "bcg", EffectObject = "Contrast Sensitivity",
                    Get = s => s.myBrightnessContrastGamma, SeverityField = "Contrast",
@@ -216,8 +221,23 @@ public static class ProfileBinder
 
                 if (prop.Name == "field_type") continue;   // handled above
 
+                if (bind.LegacyField != null && prop.Name == bind.LegacyField)
+                {
+                    object oldObj;
+                    float converted = 0f;
+                    bool ok = TryConvert(prop.Value, typeof(float), out oldObj);
+                    if (ok)
+                    {
+                        converted = bind.FromLegacy((float)oldObj);
+                        ok = TrySet(target, bind.SeverityField, new JValue(converted));
+                    }
+                    if (ok) report.Applied.Add($"{f.Name}.{prop.Name} -> {bind.SeverityField}={converted:0.###}");
+                    else report.Unsupported.Add($"{f.Name}.{prop.Name}");
+                    continue;
+                }
+
                 // Capture writes the primary parameter under the component's own field name
-                // ("maxCPD", "amp_deg", ...), so that name has to be accepted here too.
+                // ("logMAR", "amp_deg", ...), so that name has to be accepted here too.
                 // Without this a saved profile did not load back: the value it was saved for
                 // was reported as unsupported and left where it was.
                 string field;
