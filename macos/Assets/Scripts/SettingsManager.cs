@@ -207,6 +207,11 @@ private void Start()
             Debug.LogError($"[SettingsManager] {Path.GetFileName(path)}: {e.Message}. Nothing was changed.");
             return;
         }
+        // Files saved before blur moved to logMAR carry maxCPD instead. Converted, they load
+        // the blur they were saved with.
+        if (probe["logMAR"] == null && probe["maxCPD"] is JValue legacyCpd &&
+            (legacyCpd.Type == JTokenType.Float || legacyCpd.Type == JTokenType.Integer))
+            appSettings.logMAR = VisSim.myBlur.LogMarFromMaxCPD(legacyCpd.Value<float>());
         UpdatePublicFields();
         Debug.Log($"[SettingsManager] loaded {known} settings from {path}");
     }
@@ -243,7 +248,7 @@ private void Start()
         myFieldLoss.overlayScale = appSettings.overlayscale;
 
         // Hyperopia
-        myBlur.maxCPD = appSettings.maxCPD;
+        myBlur.logMAR = appSettings.logMAR;
         // Color Vision Deficiency
         myRecolour.anomType = appSettings.anomType;
         myRecolour.severityIndex = appSettings.severityIndex;
@@ -313,7 +318,7 @@ private void Start()
         appSettings.overlayscale = myFieldLoss.overlayScale;
 
         // Hyperopia
-        appSettings.maxCPD = myBlur.maxCPD;
+        appSettings.logMAR = myBlur.logMAR;
         // Color Vision Deficiency
         appSettings.anomType = myRecolour.anomType;
         appSettings.severityIndex = myRecolour.severityIndex;
@@ -393,7 +398,7 @@ public class AppSettings
     // vision loss central
     public float overlay_scale;
     // Hyperopia
-    public float maxCPD;
+    public float logMAR;   // acuity loss; files from older versions have maxCPD instead
     // Color Vision Deficiency
     public AnomolyType anomType;
     // Contrast Sensitivty

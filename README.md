@@ -175,7 +175,7 @@ Simulating specific user diagnoses
 | Shader Name                 | Eye Tracking Required | Parameters                                                                 |
 |----------------------------|-----------------------|---------------------------------------------------------------------------|
 | Central Vision Loss        | ✅ Yes                | Size (0 to full screen size)                                               |
-| Hyperopia                  | ❌ No                 | Visual acuity in CPD (0.01–30)                                             |
+| Hyperopia                  | ❌ No                 | Acuity loss in logMAR (0 = 20/20, 1 = 20/200, 2 = 20/2000)                 |
 | Color Vision Deficiency    | ❌ No                 | Type (Protanomaly, Deuteranomaly, Tritanomaly, Monochrome), Severity (0–100%) |
 | Contrast Sensitivity       | ❌ No                 | Brightness (-1 to 1), Contrast (-1 to 1), Gamma (0 to 1)                   |
 | Metamorphopsia Pointwise   | ✅ Yes                | –                                                                         |

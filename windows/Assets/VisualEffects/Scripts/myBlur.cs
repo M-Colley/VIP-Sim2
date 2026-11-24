@@ -10,10 +10,23 @@ namespace VisSim
     public class myBlur : LinkableBaseEffect
     {
 
-        // internal
-        [Range(0.0f, 30f)]
-        // amount of blurring (in acuity/cycles-per-degree units)
-        public float maxCPD = 0.0f; // reminder that 1 logMar [top row of chart] is equal to about 3 cpd, 0==30, -0.2==47.5 [30/exp10(1.0)]
+        // Acuity loss in logMAR, the scale acuity charts use: 0 is 20/20 (30 cycles per
+        // degree), 1 is 20/200 (3 cpd), 2 is 20/2000 (0.3 cpd), and each 0.1 is one chart
+        // line. This replaced maxCPD, which held 30 minus the acuity in cycles per degree.
+        // Linear in cycles per degree, the first 60% of that slider stayed finer than a
+        // 1920 px screen spanning 80 degrees can show (12 cpd), so it drew nothing.
+        public const float MaxLogMAR = 2f;
+        private const double NormalCPD = 30.0;
+        [Range(0f, MaxLogMAR)]
+        public float logMAR = 0f;
+
+        /// <summary>The logMAR a value of the old maxCPD field stood for.</summary>
+        public static float LogMarFromMaxCPD(float maxCPD)
+        {
+            double cpd = NormalCPD - maxCPD;
+            if (cpd <= NormalCPD * Math.Pow(10.0, -MaxLogMAR)) return MaxLogMAR;
+            return Mathf.Clamp((float)Math.Log10(NormalCPD / cpd), 0f, MaxLogMAR);
+        }
 
         // amount of blurring (in computer/kernel-size units)
         [Linkable, Range(0.001f, 10.0f)]
@@ -49,13 +62,14 @@ namespace VisSim
         private float[] floatArray;
 
         private float _old_kernalSigma = 3.0f;
-        private float _old_maxCPD = float.NaN;
+        private float _old_logMAR = float.NaN;
         private int _old_screenWidth;
+        private static bool _warnedCap;
 
         // Use this for initialization
         public new void OnEnable()
         {
-            // maxCPD is no longer reset here. It is the user's setting, and resetting it on
+            // logMAR is not reset here. It is the user's setting, and resetting it on
             // enable meant switching blur off and on again forgot it.
             computeBlurKernel();
 
@@ -75,16 +89,24 @@ namespace VisSim
             float pixel_per_dg = screenWidth_px / viewingAngle_deg; // screenWidth_dg
             //Debug.Log("pixel_per_dg: " + pixel_per_dg);
 
-            // maxCPD is the slider's value, 0 (no loss) to 30 (the most); the acuity it stands
-            // for is 30 - maxCPD cycles per degree. The conversion used to be written back into
-            // maxCPD itself, so the field the UI, the profile and the saved settings all read
-            // held the inverted number: a saved profile reloaded with its severity reversed,
-            // and reopening the panel showed the opposite of what was running.
-            double cpd = 30.0 - maxCPD;
+            // The acuity in cycles per degree. The conversion is kept out of logMAR itself: the
+            // UI, the profile and the saved settings all read that field.
+            double cpd = NormalCPD * Math.Pow(10.0, -logMAR);
 
             double sigma = 1 / (2 * Math.PI * cpd);
             sigma = Math.Sqrt(2 * Math.Log(2)) * sigma; // scale so that cutoff specifies 50 % decrement(otherwise will be targetting 60.7 %)
             sigma = sigma * pixel_per_dg; // convert to pixels
+            if (sigma > MAX_KERNAL_SIGMA && !_warnedCap)
+            {
+                // The kernel is bounded by the shader's 100 taps. On a display with many pixels
+                // per degree the strongest settings reach that bound and stop getting blurrier.
+                _warnedCap = true;
+                double capLogMar = Math.Log10(NormalCPD * 2 * Math.PI * MAX_KERNAL_SIGMA /
+                                              (Math.Sqrt(2 * Math.Log(2)) * pixel_per_dg));
+                Debug.LogWarning($"[myBlur] logMAR {logMAR:0.00} needs a {sigma:0.#} px blur at " +
+                                 $"{pixel_per_dg:0.#} px per degree; the blur stops at {MAX_KERNAL_SIGMA} px, " +
+                                 $"which is logMAR {capLogMar:0.00} on this display.");
+            }
             kernalSigma = (float)Math.Min(sigma, MAX_KERNAL_SIGMA);
             //Debug.Log("kernalSigma: " + kernalSigma);
 
@@ -100,7 +122,7 @@ namespace VisSim
 
             // store values so we know whether the effect has been updated
             _old_kernalSigma = kernalSigma;
-            _old_maxCPD = maxCPD;
+            _old_logMAR = logMAR;
             _old_screenWidth = Screen.width;
         }
 
@@ -150,7 +172,7 @@ namespace VisSim
         {
             // update blur kernel if necessary -- including when the display changes (F3 to a
             // monitor of another width), since the kernel is in pixels per degree.
-            if (kernalSigma != _old_kernalSigma || maxCPD != _old_maxCPD ||
+            if (kernalSigma != _old_kernalSigma || logMAR != _old_logMAR ||
                 (autoScreenWidth && Screen.width != _old_screenWidth))
             {
                 computeBlurKernel();

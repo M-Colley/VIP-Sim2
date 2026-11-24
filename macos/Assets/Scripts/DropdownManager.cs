@@ -250,7 +250,7 @@ public class DropdownManager : MonoBehaviour
     private static readonly Dictionary<string, string> Mappings = new Dictionary<string, string>()
     {
         { "overlayScale", "Scale (-/+)" },
-        { "maxCPD", "Cycles per degree (-/+)" },
+        { "logMAR", "Acuity loss, logMAR (-/+)" },
         { "anomType", "Type" },
         { "Brightness", "Brightness (-/+)" },
         { "Contrast", "Contrast (-/+)" },

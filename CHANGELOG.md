@@ -27,10 +27,20 @@ All notable changes to VIP-Sim are recorded here. Versions follow
   Each floater is now a disc with a noise-roughened edge from its own patch of noise, at
   least one pixel wide. The scene defaults move from size 1 and density 0.5 (50 floaters)
   to size 5 and density 1 (100 floaters).
+- **Blur severity is linear in logMAR.** Blur's setting is now the acuity loss in logMAR,
+  from 0 (20/20) to 2 (20/2000), where each 0.1 is one line of an acuity chart. A profile's
+  severity maps onto it linearly, so severity 0.5 is 20/200. The mapping was linear in
+  cycles per degree. Up to severity 0.6 it asked for finer detail than a 1920 px screen
+  spanning 80° can show (12 cycles per degree), so the first 60% of the slider and of the
+  severity range drew nothing. A 1.5 px blur, now reached at severity 0.5, took severity 0.9.
+  The setting is renamed from `maxCPD` to `logMAR`. Settings files and captured profiles
+  that carry `maxCPD` are converted when they load. Above 32 px per degree (2560 px across
+  80°), the strongest settings reach the blur's 20 px limit, and the log names the logMAR
+  where that happens.
 
 ### Changed — dependencies
 
-- **UnitEye's runtime matches upstream `main` (f566a12).** `HomulerGaze.cs` takes the fix
+- **UnitEye's runtime matches upstream `main` (083bc07).** `HomulerGaze.cs` takes the fix
   from [wgnrto/uniteye#13](https://github.com/wgnrto/uniteye/pull/13): disabling gaze
   before `HomulerGaze.Start` now pauses the webcam and face-landmark inference.
 - **UnitEye's `UnitEyeAPI.cs` matches upstream again.** VIP-Sim's `DisableGaze()` change

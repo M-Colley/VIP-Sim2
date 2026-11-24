@@ -10,7 +10,7 @@ undegraded window show through, and a pixel outside it with alpha 0 but non-zero
 light to the desktop.
 
 Writes metrics.csv and one contact sheet per pass (sheet_default.png, sheet_sev050.png,
-sheet_sev100.png, sheet_off.png).
+sheet_sev100.png, ..., sheet_off.png).
 """
 
 import csv
@@ -84,12 +84,22 @@ font = ImageFont.load_default(size=15)
 th = round(thumb_w * h / w)
 lab = 38
 cols = 4
-passes = {
-    "default": lambda n: n.startswith("default_") and not n.endswith("__off"),
-    "sev050": lambda n: n.startswith("sev050_") and not n.endswith("__off"),
-    "sev100": lambda n: n.startswith("sev100_") and not n.endswith("__off"),
-    "off": lambda n: n.endswith("__off"),
-}
+
+
+# One sheet per pass prefix in the run (default, sev050, sev100, or what -gallerySeverities gave).
+def pick_prefix(prefix):
+    return lambda n: n.startswith(prefix + "_") and not n.endswith("__off")
+
+
+prefixes = sorted(
+    {
+        m["image"].split("_", 1)[0]
+        for m in metrics
+        if m["image"] != "00_baseline" and not m["image"].endswith("__off")
+    }
+)
+passes = {p: pick_prefix(p) for p in prefixes}
+passes["off"] = lambda n: n.endswith("__off")
 by_name = {m["image"]: m for m in metrics}
 for key, pick in passes.items():
     sel = ["00_baseline"] + [m["image"] for m in metrics if pick(m["image"])]

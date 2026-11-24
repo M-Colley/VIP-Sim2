@@ -38,6 +38,7 @@ namespace VipSim.EditorTools
     /// Run (NOT with -nographics; this needs a real device):
     ///   Unity -batchmode -projectPath windows -executeMethod VipSim.EditorTools.VipSimEffectGallery.Run
     ///         -galleryOut C:\path\to\out -logFile C:\path\to\gallery.log [-galleryOnly regex]
+    ///         [-gallerySeverities 0.25,0.5,0.75,1]
     /// -galleryOnly keeps the jobs whose name matches (case-insensitive), e.g. "pixel|foveal".
     /// Entering play mode reloads the domain, so progress is resumed from SessionState.
     /// </summary>
@@ -167,7 +168,14 @@ namespace VipSim.EditorTools
                 });
             }
 
-            foreach (float sev in Severities)
+            // -gallerySeverities 0.25,0.5 replaces the default severities.
+            float[] severities = Severities;
+            string sevArg = Arg("-gallerySeverities");
+            if (!string.IsNullOrEmpty(sevArg))
+                severities = Array.ConvertAll(sevArg.Split(','),
+                    v => float.Parse(v, System.Globalization.CultureInfo.InvariantCulture));
+
+            foreach (float sev in severities)
             {
                 foreach (string filter in ProfileFilters())
                 {
