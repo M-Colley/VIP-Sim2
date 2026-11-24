@@ -7,8 +7,32 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ## [Unreleased]
 
+### Fixed — what the simulation draws
+
+- **Pixelation no longer vanishes at its maximum.** The slider's (and a profile's) maximum
+  leaves one cell. The shader sampled cell corners, so that one cell took the four screen
+  corners, usually transparent desktop, and the whole overlay went transparent: the real
+  window showed through unchanged. It now samples cell centres, clamped inside the frame,
+  and keeps at least 8 cells across: one cell filled the screen, desktop included, with a
+  single sampled pixel.
+- **Foveal darkness darkens the centre of gaze.** At its defaults (radius 0.01, fade 0.05)
+  the fade ran inwards from below zero, so the centre was darkened by only 5%. The spot is
+  now at full strength inside the radius and fades out over the fade width beyond it.
+  **Opacity now means the spot's strength** (0 leaves the image, 1 is black). It was the
+  reverse, against its label and against the profiles, which map severity onto it. A saved
+  opacity of 0.5, the default, looks the same; other saved values are reversed.
+- **Floaters are drawn.** Each floater's shape was Perlin noise above 0.5 from the same
+  origin, where the noise is below 0.5, and size 1 (the slider's minimum and the scene
+  default) floored to 0 pixels half the time. So the default floaters drew no pixel at all.
+  Each floater is now a disc with a noise-roughened edge from its own patch of noise, at
+  least one pixel wide. The scene defaults move from size 1 and density 0.5 (50 floaters)
+  to size 5 and density 1 (100 floaters).
+
 ### Changed — dependencies
 
+- **UnitEye's runtime matches upstream `main` (f566a12).** `HomulerGaze.cs` takes the fix
+  from [wgnrto/uniteye#13](https://github.com/wgnrto/uniteye/pull/13): disabling gaze
+  before `HomulerGaze.Start` now pauses the webcam and face-landmark inference.
 - **UnitEye's `UnitEyeAPI.cs` matches upstream again.** VIP-Sim's `DisableGaze()` change
   duplicated upstream: `HomulerGaze.OnDisable` already pauses `FaceMeshSolution` and
   `WebCamSource` through its gaze provider. `GazeTracker` also deactivates the whole UnitEye

@@ -9403,8 +9403,8 @@ MonoBehaviour:
   LinkEyes: 1
   floaterType: 0
   intensity: 1
-  floaterSize: 1
-  floaterDensity: 0.5
+  floaterSize: 5
+  floaterDensity: 1
   circleRadius: 250
   center: 1
   texture: {fileID: 0}

@@ -46,15 +46,22 @@ Shader "Hidden/PixelationEffect"
                 uv = floor(uv * _PixelSize) / _PixelSize;
                 return tex2D(_MainTex, uv);
                 */
-                float2 uv = i.uv * _PixelSize;
+                // Blend the four nearest cell centres. The samples used to sit on cell corners,
+                // which include the frame's edges: with one cell (the slider's maximum) they were
+                // the four screen corners, usually transparent desktop, so the whole overlay
+                // went transparent and the effect vanished. Clamped to the outermost centres,
+                // no sample falls outside the frame.
+                float2 uv = i.uv * _PixelSize - 0.5;
                 float2 pixelCoord = floor(uv);
                 float2 fraction = uv - pixelCoord;
+                float2 lo = 0.5 / _PixelSize;
+                float2 hi = 1.0 - lo;
 
                 // Get the colors of the surrounding pixels
-                half4 col00 = tex2D(_MainTex, (pixelCoord + float2(0, 0)) / _PixelSize);
-                half4 col10 = tex2D(_MainTex, (pixelCoord + float2(1, 0)) / _PixelSize);
-                half4 col01 = tex2D(_MainTex, (pixelCoord + float2(0, 1)) / _PixelSize);
-                half4 col11 = tex2D(_MainTex, (pixelCoord + float2(1, 1)) / _PixelSize);
+                half4 col00 = tex2D(_MainTex, clamp((pixelCoord + float2(0.5, 0.5)) / _PixelSize, lo, hi));
+                half4 col10 = tex2D(_MainTex, clamp((pixelCoord + float2(1.5, 0.5)) / _PixelSize, lo, hi));
+                half4 col01 = tex2D(_MainTex, clamp((pixelCoord + float2(0.5, 1.5)) / _PixelSize, lo, hi));
+                half4 col11 = tex2D(_MainTex, clamp((pixelCoord + float2(1.5, 1.5)) / _PixelSize, lo, hi));
 
                 // Interpolate between the colors
                 half4 col0 = lerp(col00, col10, fraction.x);
