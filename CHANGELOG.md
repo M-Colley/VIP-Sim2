@@ -30,7 +30,7 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ### Changed — dependencies
 
-- **UnitEye's runtime matches upstream `main` (f566a12).** `HomulerGaze.cs` takes the fix
+- **UnitEye's runtime matches upstream `main` (083bc07).** `HomulerGaze.cs` takes the fix
   from [wgnrto/uniteye#13](https://github.com/wgnrto/uniteye/pull/13): disabling gaze
   before `HomulerGaze.Start` now pauses the webcam and face-landmark inference.
 - **UnitEye's `UnitEyeAPI.cs` matches upstream again.** VIP-Sim's `DisableGaze()` change
