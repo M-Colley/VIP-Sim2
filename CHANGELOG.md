@@ -7,6 +7,31 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 
 ## [Unreleased]
 
+### Added: reviews and reports
+
+- **The camera button records a review finding.** Each press saves the captured window with
+  the symptoms applied, the same crop without them, and a profile that reproduces the
+  simulation. The new **Review** tab in the F1 panel names the product and the reviewer,
+  and takes a note, an impact (observation, minor, major, blocker) and the requirements
+  each finding concerns: EN 301 549 clauses 4.2.2 (usage with limited vision) and 4.2.4
+  (usage without perception of colour), the WCAG 2.2 success criteria on low vision, or
+  none.
+- **Every change writes three files** to `Pictures/VIP-Sim/Review <date and time>`:
+  `report.html` (findings with both images side by side, settings with their units, the
+  viewing conditions, method and limitations; prints to PDF from a browser),
+  `findings.csv` (one row per finding with Summary, Description, Priority and Labels for
+  Jira or Azure DevOps import) and `findings.json` (schema `vipsim-review/1`).
+- **Settings in the report carry their units.** logMAR, degrees of visual angle and prism
+  dioptres are named; every other value is marked as a position on the effect's own,
+  uncalibrated scale.
+- **Window titles stay out of reports unless switched on.** A title can name a document or
+  a customer, so recording it is a separate choice in the Review tab, off by default.
+- The image the camera button saved before had no record of the viewing distance, the
+  screen, the version or the unsimulated window. Saved images now go into the review folder
+  instead of directly into `Pictures/VIP-Sim`.
+- The effect gallery takes `-galleryReview`, which saves one finding through the camera
+  button's code path and checks the files it writes.
+
 ### Fixed — what the simulation draws
 
 - **Pixelation no longer vanishes at its maximum.** The slider's (and a profile's) maximum

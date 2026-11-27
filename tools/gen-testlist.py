@@ -385,6 +385,25 @@ GROUPS = [
                         "at all -- and revealing the list afterwards showed every symptom off "
                         "while the effects were running.",
             },
+            {
+                "id": "D11",
+                "title": "Degrees match the screen and the viewing distance",
+                "plat": ALL,
+                "do": "Open F1 \u2192 Display & text. Measure the width of the picture area and your "
+                      "eye-to-screen distance. Compare the width shown with yours, enter your "
+                      "distance, then switch on Farsightedness and change the distance from 60 to "
+                      "120 cm.",
+                "expect": "On Windows, and on macOS with one display, the panel shows the monitor's "
+                          "own width within about a centimetre of yours. The log has a "
+                          "`[ViewingGeometry]` line with the same numbers. Doubling the distance "
+                          "visibly strengthens the blur, since one degree then covers twice as many "
+                          "pixels.",
+                "fail": "Each effect assumed its own angle for the whole screen width (80\u00b0 for "
+                        "blur, 100\u00b0 for nystagmus), so blur was 1.6 times too weak on a 24-inch "
+                        "screen at 60 cm. Nystagmus rotated the camera, which moved the image by "
+                        "about 2.6 px per degree on every screen and left it rotated after the effect "
+                        "was switched off.",
+            },
         ],
     },
     {
@@ -879,9 +898,12 @@ UNPROVEN = [
 ]
 
 ALSO_WORTH = [
-    "The save-image button. The PNG should contain the simulation -- blurred, hazed, whatever "
-    "is switched on -- and none of VIP-Sim's own interface, cropped to the window being "
-    "captured. The .json written beside it should load back and reproduce the same state.",
+    "The camera button and F1 \u2192 Review. Each press adds a finding to Pictures/VIP-Sim/Review "
+    "<date>: the window with the simulation and without it, cropped to the captured window and "
+    "free of VIP-Sim's own interface, plus a profile that loads back into the same state. Write a "
+    "note, set the impact and pick a requirement, close the panel, and open the report: "
+    "report.html shows both images side by side, findings.csv imports into Jira or Azure DevOps, "
+    "and window titles appear only when 'Record window titles' is on.",
     "Unplug one of two displays between runs, so the remembered display no longer exists.",
     "The first-run tutorial: it should appear once, and 'Show tutorial' in the F1 panel should "
     "bring it back.",
