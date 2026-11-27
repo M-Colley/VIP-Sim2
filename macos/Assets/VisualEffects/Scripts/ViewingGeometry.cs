@@ -132,9 +132,13 @@ namespace VisSim
             return pixelsAcross / widthCm * 2f * distanceCm * Mathf.Tan(0.5f * Mathf.Deg2Rad);
         }
 
+        /// <summary>True while the distance or the width is fixed by SetFixed.</summary>
+        public static bool DistanceFixed => _fixedDistanceCm.HasValue;
+        public static bool WidthFixed => _fixedWidthCm.HasValue;
+
         /// <summary>
-        /// Fixes the geometry for the effect gallery and tests, without touching the saved
-        /// settings. Null restores the setting.
+        /// Fixes the geometry for an organisation's policy file, the effect gallery and tests,
+        /// without touching the saved settings. Null restores the setting.
         /// </summary>
         public static void SetFixed(float? widthCm, float? distanceCm)
         {
