@@ -9575,14 +9575,11 @@ MonoBehaviour:
   amp_deg: 8
   baselineErr_deg: 0.73333335
   direction_deg: 0
-  artificialRotation: 0
+  artificialRotation: 1
   useNullingField: 1
   nullTex: {fileID: 0}
   _nullAmount: 0
   enableDebugLogging: 0
-  screenWidth_px: 1334
-  autoScreenWidth: 1
-  viewingAngle_deg: 100
 --- !u!114 &858823462
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9676,9 +9673,6 @@ MonoBehaviour:
   DisplaceY_pd: 10
   IsMonocular: 0
   BlendAmount: 1
-  screenWidth_px: 1334
-  autoScreenWidth: 1
-  viewingAngle_deg: 100
 --- !u!114 &858823468
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9767,9 +9761,6 @@ MonoBehaviour:
   LinkEyes: 1
   logMAR: 0
   kernalSigma: 0.19988333
-  screenWidth_px: 2560
-  autoScreenWidth: 1
-  viewingAngle_deg: 80
 --- !u!114 &858823472
 MonoBehaviour:
   m_ObjectHideFlags: 0

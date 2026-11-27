@@ -18,8 +18,12 @@ namespace VisSim
         public float direction_deg = 0f;  // direction of travel (currently only used in artificial/monocular mode)
 
         // binocular (rotate camera) or monocular (transpose image)
+        // VIP-Sim shows a 2D capture through an orthographic camera, so it uses the pixel shift.
+        // Rotating that camera moved the image by about 2.6 px per degree, a scale set by how far
+        // the window plane sits from the camera, and left the camera rotated after the effect
+        // was switched off. The pixel shift uses ViewingGeometry and leaves the camera alone.
         [Linkable, Tooltip("If artificialRotation=true then displacement will be carried out by shifting/extrapolating pixels, rather than by rotating the camera (appropriate for 2D images).")]
-        public bool artificialRotation = false;
+        public bool artificialRotation = true;
 
         // nulling map
         [Linkable, Range(0, 1)]
@@ -43,19 +47,6 @@ namespace VisSim
         [SerializeField, Tooltip("Logs additional information when enabled for debugging.")]
         private bool enableDebugLogging = false;
 
-        // geometry info
-        [Linkable, Range(100, 10000), Tooltip("Only required if using artificial rotation")]
-        public int screenWidth_px = 1334;
-        [Tooltip("Derive the screen width from the display actually in use.\n\n" +
-                 "Leave this on. The value below was a fixed constant, so every " +
-                 "degree-based parameter was silently mis-scaled on any display of a " +
-                 "different width -- on a 3840px screen a constant of 1334 makes each " +
-                 "degree 2.9x too small, and the simulated severity is wrong by that " +
-                 "factor. Turn it off only to reproduce a specific rig.")]
-        public bool autoScreenWidth = true;
-
-        [Linkable, Range(1f, 180.0f), Tooltip("Only required if using artificial rotation")]
-        public float viewingAngle_deg = 100.0f;
         private float pixel_per_dg;
 
         // init
@@ -98,10 +89,8 @@ namespace VisSim
             run_rise_d = Mathf.Max(1e-3f, 1f - rise_d);
             run_rise_exp = 4f - rise_exp;
 
-            // The angular scale has to come from the display in use,
-            // not a constant baked in on someone else's monitor.
-            if (autoScreenWidth && Screen.width > 0) screenWidth_px = Screen.width;
-            pixel_per_dg = screenWidth_px / viewingAngle_deg;
+            // From the screen's physical size and the viewing distance.
+            pixel_per_dg = ViewingGeometry.PixelsPerDegree;
 
             //Update timer
             timer_secs += Time.deltaTime;

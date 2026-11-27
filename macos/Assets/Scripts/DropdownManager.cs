@@ -45,7 +45,6 @@ public class DropdownManager : MonoBehaviour
         fixedInputs.Add("Rise_exp");
         fixedInputs.Add("Amp_deg");
         fixedInputs.Add("kernalSigma");
-        fixedInputs.Add("viewingAngle_deg");
         fixedInputs.Add("AutomaticTimer");
         fixedInputs.Add("useBrightness");
         fixedInputs.Add("useContrast");

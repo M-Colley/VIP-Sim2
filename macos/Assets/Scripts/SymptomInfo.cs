@@ -245,6 +245,119 @@ public class SymptomInfo : MonoBehaviour
         }
     }
 
+    // What is typed into the two geometry fields. A value is applied once it parses and is
+    // in range; until then the field keeps the text and a line below says what is accepted.
+    private string _distanceText, _widthText;
+    private bool _distanceBad, _widthBad;
+    private GUIStyle _field;
+    private const string WidthControl = "vipsim-screen-width";
+    private const string DistanceControl = "vipsim-viewing-distance";
+
+    /// <summary>
+    /// Viewing distance and screen width. Blur and eye tremor are set in
+    /// degrees of visual angle, and these two numbers convert degrees to pixels. The width is
+    /// read from the monitor where it reports one. The distance cannot be measured, so it is
+    /// asked for here; without it those effects are only as accurate as the 60 cm default.
+    /// </summary>
+    private void DrawGeometrySection(float s, float bh)
+    {
+        GUILayout.Label("VIEWING DISTANCE AND SCREEN SIZE", VipSimSkin.Heading);
+        GUILayout.Space(6 * s);
+        GUILayout.Label("Farsightedness (blur) and eye tremor (nystagmus) are set in degrees of visual " +
+                        "angle. Their size on screen depends on how far your eyes are from the screen and " +
+                        "how wide the screen is. Measure both in centimetres.", VipSimSkin.Body);
+        GUILayout.Space(8 * s);
+
+        if (_field == null || _field.fontSize != VipSimSkin.Body.fontSize)
+            _field = new GUIStyle(GUI.skin.textField)
+            {
+                fontSize = VipSimSkin.Body.fontSize,
+                alignment = TextAnchor.MiddleLeft,
+            };
+
+        string focused = GUI.GetNameOfFocusedControl();
+        var geometry = VisSim.ViewingGeometry.Source;
+        if (focused != DistanceControl && !_distanceBad)
+            _distanceText = Cm(VisSim.ViewingGeometry.DistanceCm);
+        if (focused != WidthControl && !_widthBad)
+            _widthText = geometry == VisSim.ViewingGeometry.WidthSource.Entered ? Cm(VisSim.ViewingGeometry.WidthCm) : "";
+
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Viewing distance, cm", VipSimSkin.Term);
+        GUILayout.FlexibleSpace();
+        GUI.SetNextControlName(DistanceControl);
+        string distance = GUILayout.TextField(_distanceText ?? "", 6, _field, GUILayout.Width(130 * s), GUILayout.Height(bh));
+        GUILayout.EndHorizontal();
+        if (distance != _distanceText)
+        {
+            _distanceText = distance;
+            _distanceBad = !TryCm(distance, VisSim.ViewingGeometry.MinDistanceCm, VisSim.ViewingGeometry.MaxDistanceCm, out float d);
+            if (!_distanceBad) VisSim.ViewingGeometry.DistanceCm = d;
+        }
+        if (_distanceBad)
+            GUILayout.Label($"<color=#{VipSimSkin.AccentHex}>Enter a distance from " +
+                            $"{VisSim.ViewingGeometry.MinDistanceCm:0} to {VisSim.ViewingGeometry.MaxDistanceCm:0} cm.</color>",
+                            VipSimSkin.Body);
+
+        GUILayout.Space(6 * s);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("Screen width, cm (leave empty to use the monitor's value)", VipSimSkin.Term);
+        GUILayout.FlexibleSpace();
+        GUI.SetNextControlName(WidthControl);
+        string width = GUILayout.TextField(_widthText ?? "", 6, _field, GUILayout.Width(130 * s), GUILayout.Height(bh));
+        GUILayout.EndHorizontal();
+        if (width != _widthText)
+        {
+            _widthText = width;
+            if (string.IsNullOrWhiteSpace(width))
+            {
+                _widthBad = false;
+                VisSim.ViewingGeometry.EnteredWidthCm = 0f;
+            }
+            else
+            {
+                _widthBad = !TryCm(width, VisSim.ViewingGeometry.MinWidthCm, VisSim.ViewingGeometry.MaxWidthCm, out float w);
+                if (!_widthBad) VisSim.ViewingGeometry.EnteredWidthCm = w;
+            }
+        }
+        if (_widthBad)
+            GUILayout.Label($"<color=#{VipSimSkin.AccentHex}>Enter a width from " +
+                            $"{VisSim.ViewingGeometry.MinWidthCm:0} to {VisSim.ViewingGeometry.MaxWidthCm:0} cm, " +
+                            "or leave it empty.</color>", VipSimSkin.Body);
+
+        float monitor = VisSim.ViewingGeometry.MonitorWidthCm;
+        string widthNote;
+        switch (VisSim.ViewingGeometry.Source)
+        {
+            case VisSim.ViewingGeometry.WidthSource.Monitor:
+                widthNote = $"The monitor reports {monitor:0.0} cm.";
+                break;
+            case VisSim.ViewingGeometry.WidthSource.Entered:
+                widthNote = monitor > 0f ? $"Using the width entered. The monitor reports {monitor:0.0} cm."
+                                         : "Using the width entered. The monitor does not report its size.";
+                break;
+            default:
+                widthNote = $"The monitor does not report its size, so {VisSim.ViewingGeometry.AssumedWidthCm:0.0} cm " +
+                            "(a 24-inch screen) is assumed. Measure the width of the picture and enter it.";
+                break;
+        }
+        GUILayout.Space(6 * s);
+        GUILayout.Label(widthNote, VipSimSkin.Body);
+        GUILayout.Label($"One degree is {VisSim.ViewingGeometry.PixelsPerDegree:0.0} px at the centre of this " +
+                        $"screen, and the screen spans {VisSim.ViewingGeometry.ScreenSpanDeg:0} degrees of your view.",
+                        VipSimSkin.Body);
+    }
+
+    private static string Cm(float v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+
+    // Accepts a comma as the decimal mark too, since half the users type one.
+    private static bool TryCm(string text, float min, float max, out float value)
+    {
+        bool ok = float.TryParse((text ?? "").Trim().Replace(',', '.'), System.Globalization.NumberStyles.Float,
+                                 System.Globalization.CultureInfo.InvariantCulture, out value);
+        return ok && value >= min && value <= max;
+    }
+
     /// <summary>
     /// Which screen the overlay is on, and how big its own text is.
     ///
@@ -272,6 +385,12 @@ public class SymptomInfo : MonoBehaviour
             GUILayout.Label("One screen is connected, so there is nowhere else to move to.",
                             VipSimSkin.Body);
         }
+
+        GUILayout.Space(16 * s);
+        VipSimSkin.Separator(0f);
+        GUILayout.Space(16 * s);
+
+        DrawGeometrySection(s, bh);
 
         GUILayout.Space(16 * s);
         VipSimSkin.Separator(0f);

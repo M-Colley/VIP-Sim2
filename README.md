@@ -154,6 +154,11 @@ Full instructions and troubleshooting: [docs/MACOS_README.md](docs/MACOS_README.
 **Ctrl+Alt+Q always quits.** VIP-Sim is a borderless, always-on-top, click-through overlay
 with no title bar, so this is the guaranteed way out if the toolbar is ever unreachable.
 
+**Enter your viewing distance.** Blur and eye tremor are set in degrees of visual angle, so their size
+on screen depends on how far you sit from the screen and how wide it is. Press **F1**, open
+**Display & text**, and enter the distance in centimetres. VIP-Sim reads the screen's width from the
+monitor; enter it there as well if the monitor does not report one.
+
 ### 🎓 Tutorial
 
 <p align="center">
@@ -179,7 +184,7 @@ Simulating specific user diagnoses
 | Color Vision Deficiency    | ❌ No                 | Type (Protanomaly, Deuteranomaly, Tritanomaly, Monochrome), Severity (0–100%) |
 | Contrast Sensitivity       | ❌ No                 | Brightness (-1 to 1), Contrast (-1 to 1), Gamma (0 to 1)                   |
 | Metamorphopsia Pointwise   | ✅ Yes                | –                                                                         |
-| Nystagmus                  | ❌ No                 | Speed (0–1 s), Amplitude (0–20% of screen width)                          |
+| Nystagmus                  | ❌ No                 | Speed (0–1 s), Amplitude (0.1–20 degrees of visual angle)                 |
 | Retinopathy / Floaters     | ✅ Yes                | Color, Opacity, Density, Speed, Centering, Radius                         |
 | Teichopsia                 | ✅ Yes                | Strength (0–1)                                                            |
 | Metamorphopsia Overlay     | ❌ No                 | Speed, Frequency, Amplitude (each 0–1)                                    |

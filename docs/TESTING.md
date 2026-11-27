@@ -293,6 +293,14 @@ Read the ALPHA line in the log alongside these — it names every effect that is
 - **Expect:** The list appears with p1's eight symptoms already lit.
 - **Has failed as:** The binder looked the list up with GameObject.Find, which skips inactive objects, so a profile loaded while the list was hidden updated no rows at all -- and revealing the list afterwards showed every symptom off while the effects were running.
 
+### D11. Degrees match the screen and the viewing distance
+
+*All platforms*
+
+- **Do:** Open F1 → Display & text. Measure the width of the picture area and your eye-to-screen distance. Compare the width shown with yours, enter your distance, then switch on Farsightedness and change the distance from 60 to 120 cm.
+- **Expect:** On Windows, and on macOS with one display, the panel shows the monitor's own width within about a centimetre of yours. The log has a `[ViewingGeometry]` line with the same numbers. Doubling the distance visibly strengthens the blur, since one degree then covers twice as many pixels.
+- **Has failed as:** Each effect assumed its own angle for the whole screen width (80° for blur, 100° for nystagmus), so blur was 1.6 times too weak on a 24-inch screen at 60 cm. Nystagmus rotated the camera, which moved the image by about 2.6 px per degree on every screen and left it rotated after the effect was switched off.
+
 ## E — Toolbar, panels and accessibility
 
 The toolbar is six unlabelled glyphs. Everything that explains it has broken at some point.
