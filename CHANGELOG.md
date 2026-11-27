@@ -13,7 +13,7 @@ All notable changes to VIP-Sim are recorded here. Versions follow
   the symptoms applied, the same crop without them, and a profile that reproduces the
   simulation. The new **Review** tab in the F1 panel names the product and the reviewer,
   and takes a note, an impact (observation, minor, major, blocker) and the requirements
-  each finding concerns: EN 301 549 clauses 4.2.2 (usage with limited vision) and 4.2.4
+  each finding concerns: EN 301 549 clauses 4.2.2 (usage with limited vision) and 4.2.3
   (usage without perception of colour), the WCAG 2.2 success criteria on low vision, or
   none.
 - **Every change writes three files** to `Pictures/VIP-Sim/Review <date and time>`:
