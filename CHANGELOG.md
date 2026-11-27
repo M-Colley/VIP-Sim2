@@ -32,6 +32,24 @@ All notable changes to VIP-Sim are recorded here. Versions follow
 - The effect gallery takes `-galleryReview`, which saves one finding through the camera
   button's code path and checks the files it writes.
 
+### Added: managed deployment and documents for organisations
+
+- **An organisation can fix settings for every user of a machine** with `policy.json` in
+  `%ProgramData%\VIP-Sim` (Windows), `/Library/Application Support/VIP-Sim` (macOS),
+  `/etc/vip-sim` (Linux), or the file given by `--policy <path>`. It can switch off the
+  update check, research logging and webcam eye tracking, fix the viewing distance and
+  the screen width, choose the report folder (environment variables and `~` are
+  expanded) and name a profile to load at start. A fixed distance or width shows in a
+  disabled field with a line saying the organisation set it. An invalid entry is ignored
+  with a warning in the log; the other entries still apply. `--profile <path>` loads a
+  profile at start for one run.
+- **docs/ORGANISATIONS.md** covers the review workflow, what VIP-Sim does not claim, data
+  flows, deployment with the policy file, and the services offered around the MIT
+  software, with prices and contact still to be set. **docs/ACR.md** is a self-assessed
+  accessibility conformance report for VIP-Sim itself (VPAT 2.5 INT, EN 301 549 and
+  WCAG 2.2). **SECURITY.md**, **SUPPORT.md** and **CITATION.cff** are new.
+- **Releases carry an SPDX SBOM for each archive**, generated with anchore/sbom-action.
+
 ### Fixed — what the simulation draws
 
 - **Pixelation no longer vanishes at its maximum.** The slider's (and a profile's) maximum

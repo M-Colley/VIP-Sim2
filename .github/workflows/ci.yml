@@ -296,10 +296,45 @@ jobs:
       - name: List artifacts
         run: ls -lhR artifacts
 
+      - name: Generate SBOM for each zip
+        run: mkdir -p sbom
+
+      - name: SBOM (Windows)
+        if: hashFiles('artifacts/VIP-Sim-Windows.zip') != ''
+        uses: anchore/sbom-action@v0.24.4
+        with:
+          file: artifacts/VIP-Sim-Windows.zip
+          format: spdx-json
+          output-file: sbom/VIP-Sim-Windows.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: SBOM (macOS)
+        if: hashFiles('artifacts/VIP-Sim-macOS.zip') != ''
+        uses: anchore/sbom-action@v0.24.4
+        with:
+          file: artifacts/VIP-Sim-macOS.zip
+          format: spdx-json
+          output-file: sbom/VIP-Sim-macOS.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: SBOM (Linux)
+        if: hashFiles('artifacts/VIP-Sim-Linux.zip') != ''
+        uses: anchore/sbom-action@v0.24.4
+        with:
+          file: artifacts/VIP-Sim-Linux.zip
+          format: spdx-json
+          output-file: sbom/VIP-Sim-Linux.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
       - name: Create release
         uses: softprops/action-gh-release@v3
         with:
-          files: artifacts/*.zip
+          files: |
+            artifacts/*.zip
+            sbom/*.spdx.json
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') }}

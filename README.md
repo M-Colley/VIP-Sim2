@@ -281,6 +281,9 @@ If you use VIP-Sim in academic work, please cite:
 | Privacy | [docs/PRIVACY.md](docs/PRIVACY.md) |
 | Accessibility | [docs/ACCESSIBILITY.md](docs/ACCESSIBILITY.md) -- what works, and what does not |
 | Changes | [CHANGELOG.md](CHANGELOG.md) |
+| For organisations | [docs/ORGANISATIONS.md](docs/ORGANISATIONS.md): review reports, deployment with `policy.json`, data flows, services |
+| Conformance of VIP-Sim itself | [docs/ACR.md](docs/ACR.md), a self-assessment, VPAT 2.5 INT |
+| Security | [SECURITY.md](SECURITY.md) |
 | Linux status | [docs/LINUX_PORT.md](docs/LINUX_PORT.md) |
 
 Developer hotkeys (F6/F7/F8/F10/F11) are disabled in release builds. Launch with

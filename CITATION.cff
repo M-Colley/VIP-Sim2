@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use VIP-Sim in academic work, please cite the UIST 2025 paper."
+type: software
+title: "VIP-Sim"
+abstract: "Desktop overlay that simulates 21 vision-impairment symptoms over any application on Windows and macOS."
+version: "2.1.0"
+license: MIT
+repository-code: "https://github.com/M-Colley/VIP-Sim2"
+authors:
+  - family-names: "Rädler"
+    given-names: "Max"
+  - family-names: "Colley"
+    given-names: "Mark"
+  - family-names: "Rukzio"
+    given-names: "Enrico"
+preferred-citation:
+  type: conference-paper
+  title: "VIP-Sim: A User-Centered Approach to Vision Impairment Simulation for Accessible Design"
+  authors:
+    - family-names: "Rädler"
+      given-names: "Max"
+    - family-names: "Colley"
+      given-names: "Mark"
+    - family-names: "Rukzio"
+      given-names: "Enrico"
+  collection-title: "Proceedings of the 38th Annual ACM Symposium on User Interface Software and Technology"
+  collection-type: proceedings
+  conference:
+    name: "UIST '25"
+  publisher:
+    name: "ACM"
+  year: 2025
+  doi: "10.1145/3746059.3747704"
