@@ -46,12 +46,17 @@ public class SymptomInfo : MonoBehaviour
         if (_open == open) return;
         _open = open;
 
+        // Notes are typed here, so leaving the panel is when they are complete.
+        if (!open) ReviewRecorder.WriteIfDirty();
+
         var window = FindAnyObjectByType<TransparentWindow>(FindObjectsInactive.Include);
         if (window == null) return;
 
         if (open) window.enableInfoState();
         else window.disableInfoState();
     }
+
+    private void OnApplicationQuit() => ReviewRecorder.WriteIfDirty();
 
     private void OnDisable()
     {
@@ -125,7 +130,7 @@ public class SymptomInfo : MonoBehaviour
     /// Three sections, one purpose each, and a footer with one button in it. Nothing was
     /// removed; it is the simultaneity that was the problem.
     /// </summary>
-    private enum Tab { Symptoms, Display, Help }
+    private enum Tab { Symptoms, Display, Review, Help }
 
     private Tab _tab = Tab.Symptoms;
     private Tab _pendingTab = Tab.Symptoms;
@@ -144,7 +149,7 @@ public class SymptomInfo : MonoBehaviour
 
     // One scroll position per section, so leaving a section and coming back does not
     // silently return the reader to the top of it.
-    private readonly Vector2[] _scrolls = new Vector2[3];
+    private readonly Vector2[] _scrolls = new Vector2[4];
 
     private void OnGUI()
     {
@@ -159,6 +164,8 @@ public class SymptomInfo : MonoBehaviour
             _tab = _pendingTab;
             _updateAvailable = UpdateChecker.UpdateAvailable;
             _displays = DisplaySwitcher.DisplayCount;
+            ApplyPendingReviewActions();
+            _reviewCount = ReviewRecorder.HasFindings ? ReviewRecorder.Session.Findings.Count : 0;
         }
 
         // Sized as a share of the screen rather than in pixels: VIP-Sim runs full-screen on
@@ -184,6 +191,7 @@ public class SymptomInfo : MonoBehaviour
         GUILayout.BeginHorizontal();
         TabButton(Tab.Symptoms, "Symptoms", bh);
         TabButton(Tab.Display, "Display & text", bh);
+        TabButton(Tab.Review, "Review", bh);
         TabButton(Tab.Help, "Help & updates", bh);
         GUILayout.EndHorizontal();
 
@@ -196,6 +204,7 @@ public class SymptomInfo : MonoBehaviour
         switch (_tab)
         {
             case Tab.Display: DrawDisplaySection(s, bh); break;
+            case Tab.Review: DrawReviewSection(s, bh); break;
             case Tab.Help: DrawHelpSection(s, bh); break;
             default: DrawSymptomsSection(s); break;
         }
@@ -217,6 +226,7 @@ public class SymptomInfo : MonoBehaviour
         switch (tab)
         {
             case Tab.Display: return "Display and text";
+            case Tab.Review: return "Review and report";
             case Tab.Help: return "Help and updates";
             default: return "Vision symptoms";
         }
@@ -449,6 +459,162 @@ public class SymptomInfo : MonoBehaviour
     /// not "email the author and hope": where to report, which file to attach, and whether
     /// the build is current -- the first question any support reply would have asked.
     /// </summary>
+    // ------------------------------------------------------------------ review
+
+    // Latched at Layout like the values above: deleting a finding or starting a new review
+    // mid-frame would change the number of controls between IMGUI passes.
+    private int _reviewCount;
+    private VipSim.Review.Finding _pendingDelete;
+    private bool _pendingNewReview;
+    private GUIStyle _area, _label;
+
+    private void ApplyPendingReviewActions()
+    {
+        if (_pendingDelete != null) ReviewRecorder.Delete(_pendingDelete);
+        if (_pendingNewReview) ReviewRecorder.Start();
+        _pendingDelete = null;
+        _pendingNewReview = false;
+    }
+
+    /// <summary>
+    /// The review in progress. Findings come from the camera button in the toolbar; this
+    /// section names the product, describes each finding, rates it and links it to the
+    /// requirements it concerns. Everything is written to disk as it changes.
+    /// </summary>
+    private void DrawReviewSection(float s, float bh)
+    {
+        EnsureFieldStyles();
+
+        GUILayout.Label("REVIEW", VipSimSkin.Heading);
+        GUILayout.Space(6 * s);
+        GUILayout.Label("Each press of the <b>camera button</b> in the toolbar adds a finding. A finding " +
+                        "keeps the window with the symptoms applied, the same window without them, and the " +
+                        "settings that reproduce the simulation. Describe each finding below. VIP-Sim writes " +
+                        "a report for people, a CSV file for Jira or Azure DevOps, and a JSON file to this folder:",
+                        VipSimSkin.Body);
+        GUILayout.Label(ReviewRecorder.Folder, _label);
+        GUILayout.Space(10 * s);
+
+        var session = ReviewRecorder.Session;
+        GUILayout.Label("Product or page reviewed", _label);
+        ReviewRecorder.SetProduct(GUILayout.TextField(session.Product ?? "", 200, _field,
+                                                      GUILayout.MaxWidth(720 * s), GUILayout.Height(bh)));
+        GUILayout.Space(6 * s);
+        GUILayout.Label("Reviewer", _label);
+        ReviewRecorder.SetReviewer(GUILayout.TextField(session.Reviewer ?? "", 120, _field,
+                                                       GUILayout.MaxWidth(720 * s), GUILayout.Height(bh)));
+        GUILayout.Space(8 * s);
+
+        bool titles = ReviewRecorder.IncludeWindowTitles;
+        if (GUILayout.Button(titles ? "[x] Record window titles" : "[ ] Record window titles",
+                             titles ? VipSimSkin.Primary : VipSimSkin.Secondary,
+                             GUILayout.Height(bh), GUILayout.ExpandWidth(false)))
+            ReviewRecorder.IncludeWindowTitles = !titles;
+        GUILayout.Label("Off by default. A window title can name a document, a customer or an account, and it " +
+                        "is copied into the report and the CSV file.", _label);
+
+        GUILayout.Space(14 * s);
+        VipSimSkin.Separator(0f);
+        GUILayout.Space(10 * s);
+
+        if (_reviewCount == 0)
+        {
+            GUILayout.Label("No findings yet. Choose the symptoms, then press the camera button in the toolbar.",
+                            VipSimSkin.Body);
+            return;
+        }
+
+        for (int i = 0; i < _reviewCount && i < session.Findings.Count; i++)
+            DrawFinding(session.Findings[i], s, bh);
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Open the report", VipSimSkin.Primary, GUILayout.Height(bh)))
+            ReviewRecorder.OpenReport();
+        if (GUILayout.Button("Start a new review", VipSimSkin.Secondary, GUILayout.Height(bh)))
+            _pendingNewReview = true;
+        GUILayout.EndHorizontal();
+        GUILayout.Label("A new review starts in a new folder. This review's files stay where they are.",
+                        _label);
+    }
+
+    private void DrawFinding(VipSim.Review.Finding f, float s, float bh)
+    {
+        GUILayout.Label($"{f.Id}   <color=#{VipSimSkin.MutedHex}>{f.Captured:HH:mm}  {f.SymptomList()}</color>",
+                        VipSimSkin.Term);
+        GUILayout.Space(4 * s);
+
+        GUILayout.Label("What is the problem, and for whom?", _label);
+        string note = GUILayout.TextArea(f.Note ?? "", 4000, _area, GUILayout.MinHeight(bh * 2.2f));
+        if (note != f.Note) { f.Note = note; ReviewRecorder.MarkDirty(); }
+        GUILayout.Space(6 * s);
+
+        GUILayout.Label("Impact", _label);
+        GUILayout.BeginHorizontal();
+        foreach (VipSim.Review.Impact impact in System.Enum.GetValues(typeof(VipSim.Review.Impact)))
+        {
+            bool on = f.Impact == impact;
+            if (GUILayout.Button((on ? "[x] " : "[ ] ") + impact, on ? VipSimSkin.Primary : VipSimSkin.Secondary,
+                                 GUILayout.Height(bh)) && !on)
+            {
+                f.Impact = impact;
+                ReviewRecorder.MarkDirty();
+            }
+        }
+        GUILayout.EndHorizontal();
+        GUILayout.Space(6 * s);
+
+        GUILayout.Label("Requirements (EN 301 549 and WCAG 2.2)", _label);
+        var criteria = VipSim.Review.ReviewCatalog.Criteria;
+        const int perRow = 2;
+        for (int r = 0; r < criteria.Count; r += perRow)
+        {
+            GUILayout.BeginHorizontal();
+            for (int c = r; c < r + perRow && c < criteria.Count; c++)
+            {
+                var criterion = criteria[c];
+                bool on = f.Criteria.Contains(criterion.Id);
+                string label = (on ? "[x] " : "[ ] ") + criterion.Name +
+                               (criterion.Level.Length > 0 ? " (" + criterion.Level + ")" : "");
+                if (GUILayout.Button(label, on ? VipSimSkin.Primary : VipSimSkin.Secondary, GUILayout.Height(bh)))
+                {
+                    if (on) f.Criteria.Remove(criterion.Id);
+                    else f.Criteria.Add(criterion.Id);
+                    ReviewRecorder.MarkDirty();
+                }
+            }
+            GUILayout.EndHorizontal();
+        }
+        GUILayout.Space(6 * s);
+
+        if (GUILayout.Button($"Delete {f.Id} and its images", VipSimSkin.Secondary,
+                             GUILayout.Height(bh), GUILayout.ExpandWidth(false)))
+            _pendingDelete = f;
+
+        GUILayout.Space(12 * s);
+        VipSimSkin.Separator(0f);
+        GUILayout.Space(10 * s);
+    }
+
+    /// <summary>Text field and text area styles at the panel's body size.</summary>
+    private void EnsureFieldStyles()
+    {
+        if (_field == null || _field.fontSize != VipSimSkin.Body.fontSize)
+            _field = new GUIStyle(GUI.skin.textField)
+            {
+                fontSize = VipSimSkin.Body.fontSize,
+                alignment = TextAnchor.MiddleLeft,
+            };
+        // VipSimSkin.Muted is centred for status lines; labels sit flush with their fields.
+        if (_label == null || _label.fontSize != VipSimSkin.Muted.fontSize)
+            _label = new GUIStyle(VipSimSkin.Muted) { alignment = TextAnchor.UpperLeft, wordWrap = true };
+        if (_area == null || _area.fontSize != VipSimSkin.Body.fontSize)
+            _area = new GUIStyle(GUI.skin.textArea)
+            {
+                fontSize = VipSimSkin.Body.fontSize,
+                wordWrap = true,
+            };
+    }
+
     private void DrawHelpSection(float s, float bh)
     {
         GUILayout.Label("ABOUT VIP-SIM", VipSimSkin.Heading);

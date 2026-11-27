@@ -159,6 +159,14 @@ on screen depends on how far you sit from the screen and how wide it is. Press *
 **Display & text**, and enter the distance in centimetres. VIP-Sim reads the screen's width from the
 monitor; enter it there as well if the monitor does not report one.
 
+**Record a review.** Each press of the camera button in the toolbar adds a finding: the window
+with the symptoms, the same window without them, and the settings that reproduce it. In **F1 →
+Review**, describe each finding, rate its impact and link it to EN 301 549 or WCAG 2.2
+requirements. VIP-Sim writes `report.html`, `findings.csv` (for Jira or Azure DevOps) and
+`findings.json` to `Pictures/VIP-Sim/Review <date and time>`. The report states the viewing
+conditions and the method's limitations: use it alongside testing with people with vision
+impairments.
+
 ### 🎓 Tutorial
 
 <p align="center">

@@ -1,6 +1,6 @@
 # VIP-Sim regression checklist
 
-Every test below is a fault that has actually happened at least once, in this project, on a real machine. None of them is hypothetical, and every one of them shipped or nearly shipped. There are 70 of them.
+Every test below is a fault that has actually happened at least once, in this project, on a real machine. None of them is hypothetical, and every one of them shipped or nearly shipped. There are 71 of them.
 
 Work through them on the packaged download rather than on a build made locally: two of the faults here only existed in the archive.
 
@@ -657,7 +657,7 @@ Start here if your time is limited. These are the parts of the list nobody has b
 
 These have never failed, so they are not on the list proper — but they are untested rather than proven:
 
-- The save-image button. The PNG should contain the simulation -- blurred, hazed, whatever is switched on -- and none of VIP-Sim's own interface, cropped to the window being captured. The .json written beside it should load back and reproduce the same state.
+- The camera button and F1 → Review. Each press adds a finding to Pictures/VIP-Sim/Review <date>: the window with the simulation and without it, cropped to the captured window and free of VIP-Sim's own interface, plus a profile that loads back into the same state. Write a note, set the impact and pick a requirement, close the panel, and open the report: report.html shows both images side by side, findings.csv imports into Jira or Azure DevOps, and window titles appear only when 'Record window titles' is on.
 - Unplug one of two displays between runs, so the remembered display no longer exists.
 - The first-run tutorial: it should appear once, and 'Show tutorial' in the F1 panel should bring it back.
 - 'Copy diagnostics path' and 'Report a problem' in the F1 panel.

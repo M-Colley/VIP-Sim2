@@ -123,6 +123,11 @@ namespace VipSim.EditorTools
                     Next();
                     return;
                 }
+                if (_reviewPhase > 0)
+                {
+                    TickReview();
+                    return;
+                }
                 if (Time.frameCount < _renderAtFrame) return;
 
                 Capture(_jobs[_jobIndex].Name);
@@ -224,12 +229,98 @@ namespace VipSim.EditorTools
             if (_jobIndex >= _jobs.Count)
             {
                 File.WriteAllText(Path.Combine(_out, "gallery.csv"), _csv.ToString());
+                if (Array.IndexOf(Environment.GetCommandLineArgs(), "-galleryReview") >= 0)
+                {
+                    StartReview();
+                    return;
+                }
                 Finish(0, $"GALLERY DONE {_jobs.Count} images in {_out}");
                 return;
             }
             _errors.Clear();
             _jobs[_jobIndex].Apply();
             _renderAtFrame = Time.frameCount + SettleFrames;
+        }
+
+        // -galleryReview: after the images, save one review finding through the toolbar's
+        // own path (VipSimExport) and check what it wrote. 1 = waiting to save, 2 = saved.
+        private static int _reviewPhase;
+        private static int _reviewAt;
+        private static VipSimExport _export;
+
+        private static void StartReview()
+        {
+            ApplyProfile("vignette", 0.6f);
+            ReviewRecorder.RootOverride = Path.Combine(_out, "review");
+            ReviewRecorder.Start();
+            ReviewRecorder.SetProduct("Effect gallery stimulus");
+
+            // VipSimExport crops with a top-left origin; _stim is centred, so only y flips.
+            VipSimExport.CropOverride = new RectInt(_stim.x, _h - _stim.yMax, _stim.width, _stim.height);
+            _export = UnityEngine.Object.FindAnyObjectByType<VipSimExport>(FindObjectsInactive.Include)
+                      ?? _sm.gameObject.AddComponent<VipSimExport>();
+            _reviewAt = Time.frameCount + SettleFrames;
+            _reviewPhase = 1;
+        }
+
+        private static void TickReview()
+        {
+            if (Time.frameCount < _reviewAt) return;
+            if (_reviewPhase == 1)
+            {
+                _export.SaveSimulatedView();
+                _reviewAt = Time.frameCount + 10;
+                _reviewPhase = 2;
+                return;
+            }
+
+            string dir = ReviewRecorder.Folder;
+            var missing = new List<string>();
+            foreach (var f in new[] { "report.html", "findings.csv", "findings.json",
+                                      "F01-simulated.png", "F01-original.png", "F01-profile.json" })
+                if (!File.Exists(Path.Combine(dir, f))) missing.Add(f);
+            if (missing.Count > 0)
+            {
+                Finish(1, $"GALLERY REVIEW FAILED: missing {string.Join(", ", missing)} in {dir}");
+                return;
+            }
+
+            var session = VipSim.Review.ReviewReportWriter.Load(File.ReadAllText(Path.Combine(dir, "findings.json")));
+            var finding = session.Findings[0];
+            float diff = MeanDifference(Path.Combine(dir, "F01-simulated.png"), Path.Combine(dir, "F01-original.png"),
+                                        out int w, out int h);
+            Debug.Log($"GALLERY review {dir}: {session.Findings.Count} finding(s), symptoms " +
+                      $"[{finding.SymptomList()}], images {w}x{h}, mean difference {diff:0.0} (0..255), " +
+                      $"viewing {finding.Viewing.Describe()}");
+            bool ok = session.Findings.Count == 1 && finding.Symptoms.Count == 1 &&
+                      finding.Symptoms[0].Filter == "vignette" && w == _stim.width && h == _stim.height && diff > 2f;
+            Finish(ok ? 0 : 1, ok ? $"GALLERY DONE {_jobs.Count} images and a review in {_out}"
+                                  : "GALLERY REVIEW FAILED: see the line above");
+        }
+
+        private static float MeanDifference(string a, string b, out int w, out int h)
+        {
+            var ta = new Texture2D(2, 2);
+            var tb = new Texture2D(2, 2);
+            try
+            {
+                ta.LoadImage(File.ReadAllBytes(a));
+                tb.LoadImage(File.ReadAllBytes(b));
+                w = ta.width;
+                h = ta.height;
+                if (tb.width != w || tb.height != h) return -1f;
+                var pa = ta.GetPixels32();
+                var pb = tb.GetPixels32();
+                double sum = 0;
+                for (int i = 0; i < pa.Length; i++)
+                    sum += (Math.Abs(pa[i].r - pb[i].r) + Math.Abs(pa[i].g - pb[i].g) + Math.Abs(pa[i].b - pb[i].b)) / 3.0;
+                return (float)(sum / pa.Length);
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(ta);
+                UnityEngine.Object.Destroy(tb);
+            }
         }
 
         private static void DisableAll()

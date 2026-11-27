@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using UnityEngine;
 
 /// <summary>
@@ -20,9 +19,9 @@ using UnityEngine;
 /// broken repeatedly. Rendering the effect camera into a texture with the interface layer
 /// culled asks for exactly what is wanted and touches nothing.
 ///
-/// A profile is written beside the image. The two together are the useful artefact: the
-/// picture shows what it looked like, and the .json loads back into VIP-Sim to reproduce it.
-/// It is the same format the Save button writes, so it is a profile, not a log.
+/// Each save is a review finding (see ReviewRecorder): the simulated image, the same crop
+/// without the simulation, and a profile that loads back into VIP-Sim to reproduce it. The
+/// profile is the same format the Save button writes.
 /// </summary>
 public class VipSimExport : MonoBehaviour
 {
@@ -32,6 +31,12 @@ public class VipSimExport : MonoBehaviour
     private static string _notice;
     private static float _noticeUntil;
     private GUIStyle _style;
+
+    /// <summary>
+    /// The region to save, top-left origin, for automated checks that have no captured window
+    /// (the effect gallery's -galleryReview). Null in normal use.
+    /// </summary>
+    public static RectInt? CropOverride { get; set; }
 
     public static void Install(GameObject host)
     {
@@ -65,7 +70,7 @@ public class VipSimExport : MonoBehaviour
             yield break;
         }
 
-        RectInt crop = CapturedWindowRect();
+        RectInt crop = CropOverride ?? CapturedWindowRect();
         if (crop.width <= 0 || crop.height <= 0)
         {
             Show("Pick a window first, then save.");
@@ -100,11 +105,12 @@ public class VipSimExport : MonoBehaviour
             Mathf.Clamp01((crop.x + crop.width * 0.5f) / Mathf.Max(1, Screen.width)),
             Mathf.Clamp01(1f - (crop.y + crop.height * 0.5f) / Mathf.Max(1, Screen.height)));
 
-        Texture2D image;
+        Texture2D image, original;
         try
         {
             yield return null;
             image = Render(camera, crop);
+            original = RenderOriginal(camera, crop);
         }
         finally
         {
@@ -114,41 +120,62 @@ public class VipSimExport : MonoBehaviour
 
         if (image == null)
         {
+            if (original != null) Destroy(original);
             Show("VIP-Sim could not save the image. See the log.");
             yield break;
         }
-
-        string folder = OutputFolder();
-
-        // Seconds in the name, because a designer comparing two severities saves twice in a
-        // row and neither should overwrite the other.
-        string stamp = DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss");
-        string png = Path.Combine(folder, $"VIP-Sim {stamp}.png");
-        string json = Path.Combine(folder, $"VIP-Sim {stamp}.json");
 
         // Caught here: this runs after a yield, so the caller's try/catch around starting the
         // coroutine never sees an exception from it, and a failed write was silent.
+        VipSim.Review.Finding finding;
         try
         {
-            Directory.CreateDirectory(folder);
-            File.WriteAllBytes(png, image.EncodeToPNG());
-        }
-        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
-        {
-            Debug.LogError($"[VipSimExport] could not write {png}: {e.Message}");
-            Show("VIP-Sim could not save the image. See the log.");
-            yield break;
+            finding = ReviewRecorder.AddFinding(image.EncodeToPNG(), original == null ? null : original.EncodeToPNG(),
+                                                CaptureProfile(), CapturedWindowTitle());
         }
         finally
         {
             Destroy(image);
+            if (original != null) Destroy(original);
         }
 
-        string symptoms = WriteProfileBeside(json, stamp);
+        if (finding == null)
+        {
+            Show("VIP-Sim could not save the image. See the log.");
+            yield break;
+        }
 
-        Debug.Log($"[VipSimExport] saved {png}" +
-                  (symptoms == null ? "" : $" showing {symptoms}"));
-        Show($"Saved to {folder}");
+        Debug.Log($"[VipSimExport] finding {finding.Id} saved to {ReviewRecorder.Folder} showing {finding.SymptomList()}");
+        Show($"Finding {finding.Id} saved. Describe it under F1, Review.");
+    }
+
+    /// <summary>
+    /// The same crop without any simulated symptom, for the report's side-by-side.
+    ///
+    /// A temporary camera copied from the effect camera renders the same scene with no effect
+    /// components on it. Switching the effects off and on again instead would run their
+    /// OnDisable and OnEnable, which reset state such as the nystagmus cycle and the floaters.
+    /// </summary>
+    private static Texture2D RenderOriginal(Camera effectCamera, RectInt crop)
+    {
+        var go = new GameObject("VipSimExport original") { hideFlags = HideFlags.HideAndDontSave };
+        try
+        {
+            var plain = go.AddComponent<Camera>();
+            plain.CopyFrom(effectCamera);
+            plain.enabled = false;
+            return Render(plain, crop);
+        }
+        catch (Exception e)
+        {
+            // The simulated image is the finding; the original is supporting evidence.
+            Debug.LogWarning($"[VipSimExport] could not render the original: {e.Message}");
+            return null;
+        }
+        finally
+        {
+            DestroyImmediate(go);
+        }
     }
 
     /// <summary>
@@ -259,39 +286,40 @@ public class VipSimExport : MonoBehaviour
         return best;
     }
 
-    /// <summary>
-    /// Somewhere the user will find it. Pictures on Windows and macOS; on a Linux box that
-    /// does not report one, next to the log rather than nowhere.
-    /// </summary>
-    private static string OutputFolder()
+    /// <summary>The title of the window being simulated, where the platform reports one.</summary>
+    private static string CapturedWindowTitle()
     {
-        string pictures = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
-        string root = string.IsNullOrEmpty(pictures) ? Application.persistentDataPath : pictures;
-        return Path.Combine(root, "VIP-Sim");
+#if UNITY_STANDALONE_WIN
+        foreach (var t in FindObjectsByType<uWindowCapture.UwcWindowTexture>(
+                     FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            var win = t.window;
+            if (win == null || win.width <= 0 || win.height <= 0 || win.isMinimized) continue;
+            return win.title;
+        }
+#endif
+        return null;
     }
 
     /// <summary>
-    /// Write the simulation's settings beside the image, as a profile that loads back.
-    /// Returns the symptoms it recorded, for the log, or null if it could not be written.
+    /// The simulation's settings as a profile that loads back into VIP-Sim, or null if they
+    /// could not be read. The image is the finding; the profile is supporting evidence, so a
+    /// failure here must not lose the image.
     /// </summary>
-    private static string WriteProfileBeside(string path, string stamp)
+    private static Newtonsoft.Json.Linq.JObject CaptureProfile()
     {
         var manager = FindAnyObjectByType<SettingsManager>(FindObjectsInactive.Include);
         if (manager == null) return null;
 
         try
         {
-            var profile = ProfileBinder.Capture(manager, $"saved-{stamp}",
-                                                "Saved alongside the image of the same name.");
-            File.WriteAllText(path, profile.ToString(Newtonsoft.Json.Formatting.Indented));
-
-            var filters = profile["filters"] as Newtonsoft.Json.Linq.JArray;
-            return filters == null ? null : $"{filters.Count} symptom(s)";
+            string stamp = DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss");
+            return ProfileBinder.Capture(manager, $"saved-{stamp}",
+                                         "Saved with a review finding; reproduces its simulated image.");
         }
         catch (Exception e)
         {
-            // The image is the point; the profile is a bonus. One failing must not lose both.
-            Debug.LogWarning($"[VipSimExport] saved the image but not the profile: {e.Message}");
+            Debug.LogWarning($"[VipSimExport] could not read the settings for the finding: {e.Message}");
             return null;
         }
     }
