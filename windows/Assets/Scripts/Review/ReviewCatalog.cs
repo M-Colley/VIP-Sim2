@@ -65,7 +65,7 @@ namespace VipSim.Review
         public static readonly IReadOnlyList<Criterion> Criteria = new[]
         {
             C("en-4.2.2", "4.2.2 Usage with limited vision", "", "4.2.2", En),
-            C("en-4.2.4", "4.2.4 Usage without perception of colour", "", "4.2.4", En),
+            C("en-4.2.3", "4.2.3 Usage without perception of colour", "", "4.2.3", En),
             C("wcag-1.3.3", "1.3.3 Sensory Characteristics", "A", "9.1.3.3, 11.1.3.3", Wcag + "sensory-characteristics"),
             C("wcag-1.4.1", "1.4.1 Use of Color", "A", "9.1.4.1, 11.1.4.1", Wcag + "use-of-color"),
             C("wcag-1.4.3", "1.4.3 Contrast (Minimum)", "AA", "9.1.4.3, 11.1.4.3", Wcag + "contrast-minimum"),
