@@ -219,7 +219,7 @@ public class FirestoreRESTManager : MonoBehaviour
         // recorded consent, and it must not happen silently by default. Defaulting to off
         // is the part that can be decided in code; the rest is a policy question for
         // whoever runs the study or ships the product.
-        if (!telemetryEnabled)
+        if (!telemetryEnabled || !VipSimPolicy.TelemetryAllowed)
         {
             Debug.Log("[Telemetry] Session upload skipped: telemetry is disabled. " +
                       "Enable it on FirestoreRESTManager only once participants have consented.");

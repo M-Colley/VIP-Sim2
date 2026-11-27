@@ -227,6 +227,15 @@ public class GazeTracker : MonoBehaviour
 
         UpdateCalibrationCapture();
 
+        // An organisation's policy can forbid the webcam. The toolbar toggle and the Linux
+        // default both set UnitEye; this is the one place every route passes through.
+        if (gazeSource == GazeSource.UnitEye && !VipSimPolicy.WebcamAllowed)
+        {
+            gazeSource = GazeSource.Mouse;
+            Debug.Log("[GazeTracker] Webcam eye tracking is switched off by your organisation's policy; " +
+                      "following the mouse.");
+        }
+
         switch (gazeSource)
         {
             case GazeSource.UnitEye:

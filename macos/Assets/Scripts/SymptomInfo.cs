@@ -74,6 +74,9 @@ public class SymptomInfo : MonoBehaviour
         // has to be this one.
         StartCoroutine(RestoreDisplayWhenSettled());
 
+        // An organisation's policy.json, if there is one: geometry, report folder, start profile.
+        VipSimPolicy.ApplyAtStart(this);
+
         // The first-run tutorial is attached AT RUNTIME rather than serialized into the
         // scene: a component that exists only in code cannot drift between the two
         // platform projects, and scene surgery is what has repeatedly broken this UI.
@@ -296,8 +299,13 @@ public class SymptomInfo : MonoBehaviour
         GUILayout.Label("Viewing distance, cm", VipSimSkin.Term);
         GUILayout.FlexibleSpace();
         GUI.SetNextControlName(DistanceControl);
+        // A value fixed by the organisation's policy is shown in a disabled field.
+        GUI.enabled = !VisSim.ViewingGeometry.DistanceFixed;
         string distance = GUILayout.TextField(_distanceText ?? "", 6, _field, GUILayout.Width(130 * s), GUILayout.Height(bh));
+        GUI.enabled = true;
         GUILayout.EndHorizontal();
+        if (VisSim.ViewingGeometry.DistanceFixed)
+            GUILayout.Label("The viewing distance is set by your organisation.", VipSimSkin.Body);
         if (distance != _distanceText)
         {
             _distanceText = distance;
@@ -314,7 +322,9 @@ public class SymptomInfo : MonoBehaviour
         GUILayout.Label("Screen width, cm (leave empty to use the monitor's value)", VipSimSkin.Term);
         GUILayout.FlexibleSpace();
         GUI.SetNextControlName(WidthControl);
+        GUI.enabled = !VisSim.ViewingGeometry.WidthFixed;
         string width = GUILayout.TextField(_widthText ?? "", 6, _field, GUILayout.Width(130 * s), GUILayout.Height(bh));
+        GUI.enabled = true;
         GUILayout.EndHorizontal();
         if (width != _widthText)
         {
@@ -341,6 +351,9 @@ public class SymptomInfo : MonoBehaviour
         {
             case VisSim.ViewingGeometry.WidthSource.Monitor:
                 widthNote = $"The monitor reports {monitor:0.0} cm.";
+                break;
+            case VisSim.ViewingGeometry.WidthSource.Entered when VisSim.ViewingGeometry.WidthFixed:
+                widthNote = "The screen width is set by your organisation.";
                 break;
             case VisSim.ViewingGeometry.WidthSource.Entered:
                 widthNote = monitor > 0f ? $"Using the width entered. The monitor reports {monitor:0.0} cm."

@@ -4,7 +4,8 @@
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "VipSim.Review"
+        "VipSim.Review",
+        "VipSim.Policy"
     ],
     "includePlatforms": [
         "Editor"

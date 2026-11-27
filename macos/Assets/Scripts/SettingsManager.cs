@@ -123,6 +123,9 @@ private void Start()
     }
 
 
+    /// <summary>Load a profile or settings file, as the Load button does. Used for the start profile.</summary>
+    public void LoadFromFile(string path) => LoadSettings(path);
+
     private void LoadSettings(string path)
     {
         if (!File.Exists(path))

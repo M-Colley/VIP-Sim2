@@ -41,7 +41,8 @@ public class UpdateChecker : MonoBehaviour
 
     public static bool Enabled
     {
-        get => PlayerPrefs.GetInt(PrefKey, 1) == 1;
+        // An organisation's policy can switch the check off for every user of the machine.
+        get => VipSimPolicy.UpdateCheckAllowed && PlayerPrefs.GetInt(PrefKey, 1) == 1;
         set
         {
             PlayerPrefs.SetInt(PrefKey, value ? 1 : 0);
@@ -63,7 +64,8 @@ public class UpdateChecker : MonoBehaviour
     {
         if (!Enabled)
         {
-            Status = "Update check is off.";
+            Status = VipSimPolicy.UpdateCheckAllowed ? "Update check is off."
+                                                     : "Update check is off, set by your organisation.";
             return;
         }
         Begin();
