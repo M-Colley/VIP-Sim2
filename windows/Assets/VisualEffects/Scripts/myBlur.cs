@@ -33,24 +33,6 @@ namespace VisSim
         public float kernalSigma = 3.0f;
         public float getkernalSigma() { return kernalSigma; } // make kernalSigma readonly
 
-        // geometry info
-        [Linkable, Range(100, 10000)]
-        public int screenWidth_px = 2560;
-        [Tooltip("Derive the screen width from the display actually in use.\n\n" +
-                 "Leave this on. The value below was a fixed constant, so every " +
-                 "degree-based parameter was silently mis-scaled on any display of a " +
-                 "different width -- on a 3840px screen a constant of 1334 makes each " +
-                 "degree 2.9x too small, and the simulated severity is wrong by that " +
-                 "factor. Turn it off only to reproduce a specific rig.")]
-        public bool autoScreenWidth = true;
-
-        /*[Linkable, Range(0.001f, 60.0f)]
-        public float screenWidth_cm = 3.0f;
-        [Linkable, Range(0.001f, 60.0f)]
-        public float viewingDist_cm = 3.0f;*/
-        [Linkable, Range(1f, 180.0f)]
-        public float viewingAngle_deg = 80.0f;
-
         // internal
         [Range(0, 2)]
         private int downsample = 0;
@@ -63,7 +45,7 @@ namespace VisSim
 
         private float _old_kernalSigma = 3.0f;
         private float _old_logMAR = float.NaN;
-        private int _old_screenWidth;
+        private float _old_pixelsPerDegree;
         private static bool _warnedCap;
 
         // Use this for initialization
@@ -82,12 +64,8 @@ namespace VisSim
             // init
             widthMod = 1.0f / (1.0f * (1 << downsample));
             
-            // compute kernalSigma
-            // The angular scale has to come from the display in use,
-            // not a constant baked in on someone else's monitor.
-            if (autoScreenWidth && Screen.width > 0) screenWidth_px = Screen.width;
-            float pixel_per_dg = screenWidth_px / viewingAngle_deg; // screenWidth_dg
-            //Debug.Log("pixel_per_dg: " + pixel_per_dg);
+            // compute kernalSigma from the screen's physical size and the viewing distance
+            float pixel_per_dg = ViewingGeometry.PixelsPerDegree;
 
             // The acuity in cycles per degree. The conversion is kept out of logMAR itself: the
             // UI, the profile and the saved settings all read that field.
@@ -123,7 +101,7 @@ namespace VisSim
             // store values so we know whether the effect has been updated
             _old_kernalSigma = kernalSigma;
             _old_logMAR = logMAR;
-            _old_screenWidth = Screen.width;
+            _old_pixelsPerDegree = pixel_per_dg;
         }
 
         /// <summary>
@@ -170,10 +148,10 @@ namespace VisSim
         // Called by camera to apply image effect
         protected override void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            // update blur kernel if necessary -- including when the display changes (F3 to a
-            // monitor of another width), since the kernel is in pixels per degree.
+            // Update the kernel when the setting changes, and when the pixels per degree change:
+            // another monitor (F3), or a new viewing distance or screen width in the Display tab.
             if (kernalSigma != _old_kernalSigma || logMAR != _old_logMAR ||
-                (autoScreenWidth && Screen.width != _old_screenWidth))
+                ViewingGeometry.PixelsPerDegree != _old_pixelsPerDegree)
             {
                 computeBlurKernel();
             }

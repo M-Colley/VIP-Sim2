@@ -38,8 +38,10 @@ namespace VipSim.EditorTools
     /// Run (NOT with -nographics; this needs a real device):
     ///   Unity -batchmode -projectPath windows -executeMethod VipSim.EditorTools.VipSimEffectGallery.Run
     ///         -galleryOut C:\path\to\out -logFile C:\path\to\gallery.log [-galleryOnly regex]
-    ///         [-gallerySeverities 0.25,0.5,0.75,1]
+    ///         [-gallerySeverities 0.25,0.5,0.75,1] [-galleryScreenCm 53.1] [-galleryDistanceCm 60]
     /// -galleryOnly keeps the jobs whose name matches (case-insensitive), e.g. "pixel|foveal".
+    /// -galleryScreenCm and -galleryDistanceCm set the viewing geometry; the defaults are a
+    /// 24-inch 16:9 screen at 60 cm, independent of the monitor attached.
     /// Entering play mode reloads the domain, so progress is resumed from SessionState.
     /// </summary>
     [InitializeOnLoad]
@@ -175,6 +177,17 @@ namespace VipSim.EditorTools
                 severities = Array.ConvertAll(sevArg.Split(','),
                     v => float.Parse(v, System.Globalization.CultureInfo.InvariantCulture));
 
+            // Degrees become pixels through the monitor's size and the saved viewing distance.
+            // Both are fixed here so a run renders the same frames on every machine: by default
+            // a 24-inch 16:9 screen (53.1 cm wide) at 60 cm. The monitor's own value is logged.
+            Debug.Log($"GALLERY monitor {VisSim.ViewingGeometry.MonitorName}: " +
+                      $"{VisSim.ViewingGeometry.MonitorWidthCm:0.0} cm wide (0 = not reported)");
+            float screenCm = FloatArg("-galleryScreenCm", VisSim.ViewingGeometry.AssumedWidthCm);
+            float distanceCm = FloatArg("-galleryDistanceCm", VisSim.ViewingGeometry.DefaultDistanceCm);
+            VisSim.ViewingGeometry.SetFixed(screenCm, distanceCm);
+            Debug.Log($"GALLERY geometry {screenCm} cm wide at {distanceCm} cm: " +
+                      $"{VisSim.ViewingGeometry.PixelsPerDegree:0.00} px per degree at {Screen.width} px");
+
             foreach (float sev in severities)
             {
                 foreach (string filter in ProfileFilters())
@@ -296,7 +309,8 @@ namespace VipSim.EditorTools
             UnityEngine.Object.Destroy(png);
 
             string enabled = string.Join("+", _effects.Where(e => e.enabled).Select(e => e.GetType().Name));
-            string errs = string.Join(" | ", _errors.Distinct()).Replace(",", ";").Replace('\n', ' ');
+            // Windows exception messages carry \r\n; a bare \r also ends a CSV row.
+            string errs = string.Join(" | ", _errors.Distinct()).Replace(",", ";").Replace('\r', ' ').Replace('\n', ' ');
             var t = _cam.transform;
             _csv.AppendLine(string.Join(",", name, enabled,
                 V(t.localEulerAngles), V(t.localPosition), errs));
@@ -421,6 +435,12 @@ namespace VipSim.EditorTools
             for (int i = 0; i < args.Length - 1; i++)
                 if (args[i] == name) return args[i + 1];
             return null;
+        }
+
+        private static float FloatArg(string name, float fallback)
+        {
+            string v = Arg(name);
+            return string.IsNullOrEmpty(v) ? fallback : float.Parse(v, CultureInfo.InvariantCulture);
         }
     }
 }

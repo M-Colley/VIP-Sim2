@@ -34,9 +34,28 @@ All notable changes to VIP-Sim are recorded here. Versions follow
   spanning 80° can show (12 cycles per degree), so the first 60% of the slider and of the
   severity range drew nothing. A 1.5 px blur, now reached at severity 0.5, took severity 0.9.
   The setting is renamed from `maxCPD` to `logMAR`. Settings files and captured profiles
-  that carry `maxCPD` are converted when they load. Above 32 px per degree (2560 px across
-  80°), the strongest settings reach the blur's 20 px limit, and the log names the logMAR
-  where that happens.
+  that carry `maxCPD` are converted when they load. Above 32 px per degree (a 27-inch
+  2560 px screen at 60 cm has 45), the strongest settings reach the blur's 20 px limit, and
+  the log names the logMAR where that happens.
+- **Degrees of visual angle come from the screen's size and the viewing distance.** Blur and
+  eye tremor (nystagmus) are set in degrees. Converting degrees to pixels assumed a fixed
+  angle across the whole screen width, 80° for blur and 100° for nystagmus and the
+  prism-dioptre double vision component. A 24-inch screen viewed from 60 cm spans 48°, so a
+  degree came out 1.6 times too small for blur there. VIP-Sim now reads the screen's physical
+  width from the monitor's EDID (Windows, and macOS with one display) and takes the viewing
+  distance from a new setting, 60 cm by default. Both are in the Display tab of the help
+  panel (F1), where a width can also be entered; a monitor that reports no size is taken as
+  53.1 cm wide (24 inches). One degree is the number of pixels it covers at the screen
+  centre. The setting is stored per machine, so settings files and profiles do not carry
+  it. The per-effect `screenWidth_px`, `autoScreenWidth` and `viewingAngle_deg` fields are
+  removed.
+- **Nystagmus moves the image by its amplitude in degrees.** It rotated the orthographic
+  camera, which moved the image by about 2.6 px per degree whatever the screen, and left
+  the camera rotated after the effect was switched off: every later render differed from
+  the baseline. Nystagmus now shifts the pixels (`artificialRotation`, the mode its tooltip
+  gives for 2D images) by its amplitude in degrees through the viewing geometry. At the
+  default geometry that is about 14 times the previous motion, so severity 0.5 (8°) moves
+  the image by up to 300 px on a 1920 px, 24-inch screen.
 
 ### Changed — dependencies
 

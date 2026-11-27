@@ -414,6 +414,7 @@ public class TransparentWindow : MonoBehaviour {
             Debug.LogWarning("TransparentWindow: the window was recreated; re-acquiring its handle.");
             hWnd = IntPtr.Zero;
             OwnWindow = IntPtr.Zero;
+            VisSim.ViewingGeometry.WindowHandle = IntPtr.Zero;
             _appliedOnce = false;
         }
 
@@ -431,6 +432,7 @@ public class TransparentWindow : MonoBehaviour {
         SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
         OwnWindow = hWnd;
+        VisSim.ViewingGeometry.WindowHandle = hWnd;
 
         Debug.Log($"TransparentWindow: window 0x{hWnd.ToInt64():X} acquired after {_acquireAttempts} " +
                   $"retries (ex-style 0x{GetWindowLong(hWnd, GWL_EXSTYLE):X}); clickthrough is active.");
