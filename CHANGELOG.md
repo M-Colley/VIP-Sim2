@@ -69,6 +69,14 @@ All notable changes to VIP-Sim are recorded here. Versions follow
   differences from upstream are the licence file, no second cursor, the CSV logger off and
   the crosshair texture import setting.
 
+### Build and release tooling
+
+- The CI workflow uses the Node 24 releases of its actions: `actions/checkout@v7`,
+  `actions/cache@v6`, `actions/upload-artifact@v7`, `actions/download-artifact@v8`,
+  `game-ci/unity-builder@v6` and `softprops/action-gh-release@v3`. GitHub deprecated the
+  Node 20 runtime of the earlier majors. The release job now fails if a downloaded
+  artifact's digest does not match.
+
 ---
 
 ## [2.1.0] — 2026-11-23

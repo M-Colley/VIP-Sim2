@@ -37,7 +37,7 @@ jobs:
     name: 'Tests: repository invariants'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { lfs: true }
 
       - name: Editor version is pinned and identical across projects
@@ -183,10 +183,10 @@ jobs:
     if: needs.preflight.outputs.has_unity_licence == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { lfs: true }
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: windows/Library
           key: Library-tests-${{ hashFiles('windows/Packages/manifest.json') }}
@@ -209,7 +209,7 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           checkName: Unity EditMode results
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: unity-test-results
@@ -233,10 +233,10 @@ jobs:
           - { name: macOS,   project: macos,   targetPlatform: StandaloneOSX,       experimental: false }
           - { name: Linux,   project: windows, targetPlatform: StandaloneLinux64,   experimental: true  }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { lfs: true }
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ${{ matrix.project }}/Library
           key: Library-${{ matrix.project }}-${{ matrix.targetPlatform }}-${{ hashFiles(format('{0}/Packages/manifest.json', matrix.project)) }}
@@ -247,7 +247,7 @@ jobs:
       - name: Free disk space
         run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
 
-      - uses: game-ci/unity-builder@v4
+      - uses: game-ci/unity-builder@v6
         continue-on-error: ${{ matrix.experimental }}
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -259,6 +259,8 @@ jobs:
           targetPlatform: ${{ matrix.targetPlatform }}
           buildName: VIP-Sim
           allowDirtyBuild: true
+          # v5+ keeps .x86_64 on the Linux executable; docs/INSTALL.md runs ./VIP-Sim.
+          linux64RemoveExecutableExtension: true
 
       - name: Package
         run: |
@@ -266,7 +268,7 @@ jobs:
           cd build && zip -qr "../dist/VIP-Sim-${{ matrix.name }}.zip" . && cd ..
           ls -lh dist/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: VIP-Sim-${{ matrix.name }}
           path: dist/*.zip
@@ -283,9 +285,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           pattern: VIP-Sim-*
@@ -295,7 +297,7 @@ jobs:
         run: ls -lhR artifacts
 
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: artifacts/*.zip
           generate_release_notes: true
