@@ -40,6 +40,8 @@ namespace VipSim.EditorTools
     ///         -galleryOut C:\path\to\out -logFile C:\path\to\gallery.log [-galleryOnly regex]
     ///         [-gallerySeverities 0.25,0.5,0.75,1] [-galleryScreenCm 53.1] [-galleryDistanceCm 60]
     /// -galleryOnly keeps the jobs whose name matches (case-insensitive), e.g. "pixel|foveal".
+    /// -galleryFieldLoss replaces the test image with a one-pixel checkerboard and adds each
+    /// field-loss effect at 3 and 6 degrees; tools/measure_field_loss.py checks the radius.
     /// -galleryScreenCm and -galleryDistanceCm set the viewing geometry; the defaults are a
     /// 24-inch 16:9 screen at 60 cm, independent of the monitor attached.
     /// Entering play mode reloads the domain, so progress is resumed from SessionState.
@@ -207,6 +209,39 @@ namespace VipSim.EditorTools
                 }
             }
 
+            // -galleryFieldLoss: each field-loss effect at two radii over a one-pixel
+            // checkerboard. The checkerboard has full contrast at mip level 0 and none from
+            // level 1, so tools/measure_field_loss.py can find where the blur reaches level 0.5
+            // and compare that with the radius set here.
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-galleryFieldLoss") >= 0)
+            {
+                UseCheckerboard();
+                foreach (float r in FieldLossRadii)
+                {
+                    float radius = r;
+                    effectJobs.Add(new Job
+                    {
+                        Name = $"fieldloss_central_r{radius:0}",
+                        Apply = () => { DisableAll(); _sm.myFieldLoss.radius_deg = radius; _sm.myFieldLoss.enabled = true; },
+                    });
+                    effectJobs.Add(new Job
+                    {
+                        Name = $"fieldloss_peripheral_r{radius:0}",
+                        Apply = () =>
+                        {
+                            DisableAll();
+                            _sm.myFieldLossInverted.radius_deg = radius;
+                            _sm.myFieldLossInverted.enabled = true;
+                        },
+                    });
+                }
+                File.WriteAllText(Path.Combine(_out, "fieldloss.json"), string.Format(CultureInfo.InvariantCulture,
+                    "{{\"pixels_per_degree\": {0}, \"radii_deg\": [{1}], \"overlay_half_radius\": {2}}}",
+                    VisSim.ViewingGeometry.PixelsPerDegree,
+                    string.Join(", ", FieldLossRadii.Select(r => r.ToString(CultureInfo.InvariantCulture))),
+                    VisSim.myFieldLoss.OverlayHalfRadius));
+            }
+
             // -galleryOnly <regex> keeps the matching jobs, to re-check a few effects quickly.
             string only = Arg("-galleryOnly");
             if (!string.IsNullOrEmpty(only))
@@ -321,6 +356,26 @@ namespace VipSim.EditorTools
                 UnityEngine.Object.Destroy(ta);
                 UnityEngine.Object.Destroy(tb);
             }
+        }
+
+        private static readonly float[] FieldLossRadii = { 3f, 6f };
+
+        /// The test image becomes a checkerboard of single pixels, drawn texel for pixel.
+        private static void UseCheckerboard()
+        {
+            var quad = GameObject.Find("EffectGalleryStimulus");
+            if (quad == null) throw new Exception("EffectGalleryStimulus not found");
+            int w = _stim.width, h = _stim.height;
+            var px = new Color32[w * h];
+            var ink = new Color32(20, 20, 20, 255);
+            var paper = new Color32(240, 240, 240, 255);
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                    px[y * w + x] = ((x + y) & 1) == 0 ? ink : paper;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
+            tex.SetPixels32(px);
+            tex.Apply();
+            quad.GetComponent<MeshRenderer>().sharedMaterial.mainTexture = tex;
         }
 
         private static void DisableAll()

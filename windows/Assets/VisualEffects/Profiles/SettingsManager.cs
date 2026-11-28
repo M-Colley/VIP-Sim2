@@ -248,6 +248,16 @@ public class SettingsManager : MonoBehaviour
         if (probe["logMAR"] == null && probe["maxCPD"] is JValue legacyCpd &&
             (legacyCpd.Type == JTokenType.Float || legacyCpd.Type == JTokenType.Integer))
             appSettings.logMAR = VisSim.myBlur.LogMarFromMaxCPD(legacyCpd.Value<float>());
+        // Files saved before field loss moved to degrees carry one overlayscale, which both
+        // field-loss effects shared. Converted at this screen and viewing distance.
+        if (probe["centralRadiusDeg"] == null && probe["peripheralRadiusDeg"] == null &&
+            probe["overlayscale"] is JValue legacyScale &&
+            (legacyScale.Type == JTokenType.Float || legacyScale.Type == JTokenType.Integer))
+        {
+            float r = VisSim.myFieldLoss.RadiusDegFromOverlayScale(legacyScale.Value<float>());
+            appSettings.centralRadiusDeg = r;
+            appSettings.peripheralRadiusDeg = r;
+        }
         ApplySettings();
         Debug.Log($"[SettingsManager] loaded {known} settings from {path}");
     }
@@ -264,7 +274,7 @@ public class SettingsManager : MonoBehaviour
     private void UpdatePublicFields()
     {
         // vision loss central
-        myFieldLoss.overlayScale = appSettings.overlayscale;
+        myFieldLoss.radius_deg = appSettings.centralRadiusDeg;
 
         // Hyperopia
         myBlur.logMAR = appSettings.logMAR;
@@ -302,7 +312,7 @@ public class SettingsManager : MonoBehaviour
         myBloom.threshold = appSettings.threshold;
         myBloom.blurSize = appSettings.blurSize;
         //Vision Loss peripheral
-        myFieldLossInverted.overlayScale = appSettings.overlayscale;
+        myFieldLossInverted.radius_deg = appSettings.peripheralRadiusDeg;
         //Cataract
         myCataract.severityIndex = appSettings.c_severityIndex; //!!!!
         myCataract.useFrosting = appSettings.useFrosting;
@@ -359,7 +369,7 @@ public class SettingsManager : MonoBehaviour
     public void SyncSettings()
     {
         // vision loss central
-        appSettings.overlayscale = myFieldLoss.overlayScale;
+        appSettings.centralRadiusDeg = myFieldLoss.radius_deg;
 
         // Hyperopia
         appSettings.logMAR = myBlur.logMAR;
@@ -397,7 +407,7 @@ public class SettingsManager : MonoBehaviour
         appSettings.threshold = myBloom.threshold;
         appSettings.blurSize = myBloom.blurSize;
         // Vision Loss peripheral
-        appSettings.overlayscale = myFieldLossInverted.overlayScale;
+        appSettings.peripheralRadiusDeg = myFieldLossInverted.radius_deg;
         // Cataract
         appSettings.c_severityIndex = myCataract.severityIndex;
         appSettings.useFrosting = myCataract.useFrosting;
@@ -464,7 +474,7 @@ public class AppSettings
     // Füge hier weitere Einstellungen hinzu, die gespeichert werden sollen
 
     // vision loss central
-    public float overlay_scale;
+    public float centralRadiusDeg = 5f;      // degrees; older files have overlayscale instead
     // Hyperopia
     public float logMAR;   // acuity loss; files from older versions have maxCPD instead
     // Color Vision Deficiency
@@ -502,7 +512,7 @@ public class AppSettings
     public float threshold;
     public float blurSize;
     //Vision Loss peripheral
-    public float overlayscale;
+    public float peripheralRadiusDeg = 10f;  // degrees, residual field
     //Cataract
     public float c_severityIndex; //!!!!
     public bool useFrosting;

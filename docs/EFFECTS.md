@@ -11,7 +11,7 @@ labels exist so a designer can find the right effect, but a paper should name th
 
 | Label | Clinical term | What it does |
 |---|---|---|
-| Vision Loss, Central | Central scotoma | A blind or blurred patch in the middle of vision. Reading, faces and fine detail go; the periphery stays usable. |
+| Vision Loss, Central | Central scotoma | A blind or blurred patch in the middle of vision. Reading, faces and fine detail go; the periphery stays usable. Set as the patch's radius in degrees of visual angle. |
 | Central Dark Spot | Foveal darkness | Darkening at the precise centre of gaze, moving with the eye. |
 | Detail Loss | Reduced acuity | Fine detail is lost everywhere without the image blurring uniformly. |
 
@@ -19,7 +19,7 @@ labels exist so a designer can find the right effect, but a paper should name th
 
 | Label | Clinical term | What it does |
 |---|---|---|
-| Vision Loss, Peripheral | Peripheral scotoma | Loss around the edges, progressing inwards. Central detail is preserved, so it is easily unnoticed — characteristic of glaucoma. |
+| Vision Loss, Peripheral | Peripheral scotoma | Loss around the edges, progressing inwards. Central detail is preserved, so it is easily unnoticed. This is characteristic of glaucoma. Set as the radius of the residual field in degrees of visual angle. |
 | In-Filling | Perceptual filling-in | The brain completes missing regions with surrounding texture, so gaps are not perceived as gaps. |
 
 ## Distortion
@@ -94,6 +94,22 @@ Loss entries.
 Replacements were kept close to the original length on purpose. The buttons are a fixed
 230px with auto-sizing text, so a longer name shrinks the type rather than wrapping — which
 would trade one legibility problem for another.
+
+---
+
+## Settings with physical units
+
+Degrees become pixels through the screen's width and the viewing distance, both in the Display tab of the help panel (F1). One degree is the number of pixels it covers at the screen centre.
+
+| Setting | Effect | Unit |
+|---|---|---|
+| `logMAR` | Farsightedness (blur) | Acuity loss in logMAR: 0 is 20/20, 1 is 20/200. |
+| `radius_deg` | Vision Loss, Central | Degrees of visual angle from the point of gaze to the middle of the patch's soft edge, where the blur weight is half its maximum. The weight rises from 10% at 0.52 of the radius to 90% at 1.46 of it. |
+| `radius_deg` | Vision Loss, Peripheral | The residual field, measured the same way. |
+| `amp_deg` | Eye Tremor (nystagmus) | Amplitude in degrees of visual angle. |
+| `DisplaceX_pd`, `DisplaceY_pd` | Double Vision | Displacement in prism dioptres. |
+
+Every other setting is a position on the effect's own scale, without a physical calibration. The review report marks these values as uncalibrated.
 
 ---
 

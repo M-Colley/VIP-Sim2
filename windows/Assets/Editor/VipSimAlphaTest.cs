@@ -75,7 +75,7 @@ namespace VipSim.EditorTools
             foreach (var prop in new[] { "_Overlay", "_OffsetTextureX", "_OffsetTextureY", "_BlurTexture" })
                 if (mat.HasProperty(prop)) mat.SetTexture(prop, white);
             if (mat.HasProperty("_MaxLODlevel")) mat.SetFloat("_MaxLODlevel", 1f);
-            if (mat.HasProperty("_OverlayScale")) mat.SetFloat("_OverlayScale", 1f);
+            if (mat.HasProperty("_OverlayScale")) mat.SetVector("_OverlayScale", new Vector4(1f, 1f, 0f, 0f));
 
             var srcTex = new Texture2D(W, H, TextureFormat.RGBA32, false, true);
             var src = new RenderTexture(W, H, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);

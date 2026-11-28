@@ -32,7 +32,7 @@ public static class ProfileBinder
         public Dictionary<string, string> Fields;   // profile parameter -> component field
         public string SeverityField;                // where a bare severity goes
         public float SevMin, SevMax;                // the range it is spread over
-        public string LegacyField;                  // a former name of SeverityField
+        public string[] LegacyFields;               // former names of SeverityField
         public Func<float, float> FromLegacy;       // its value in SeverityField's units
     }
 
@@ -54,7 +54,7 @@ public static class ProfileBinder
                    // severities below 0.6 asked for more detail than the screen can show.
                    // Profiles captured before the change carry maxCPD and are converted.
                    SeverityField = "logMAR", SevMin = 0f, SevMax = VisSim.myBlur.MaxLogMAR,
-                   LegacyField = "maxCPD", FromLegacy = VisSim.myBlur.LogMarFromMaxCPD, Fields = F() },
+                   LegacyFields = new[] { "maxCPD" }, FromLegacy = VisSim.myBlur.LogMarFromMaxCPD, Fields = F() },
 
         new Bind { Filter = "bcg", EffectObject = "Contrast Sensitivity",
                    Get = s => s.myBrightnessContrastGamma, SeverityField = "Contrast",
@@ -123,13 +123,22 @@ public static class ProfileBinder
                    SeverityField = "pixelRadius", SevMin = 10f, SevMax = 1000f,
                    Fields = F("pixel_size", "pixelRadius") },
 
+        // Field loss is a radius in degrees of visual angle (myFieldLoss.radius_deg). Profiles
+        // written before carry overlayScale, a fraction of the screen, and are converted at the
+        // current screen and viewing distance.
         new Bind { Filter = "field_loss", EffectObject = "VisionLossC", Get = s => s.myFieldLoss,
-                   SeverityField = "overlayScale", SevMin = 0f, SevMax = 1.5f,
-                   Fields = F("overlay_scale", "overlayScale") },
+                   SeverityField = "radius_deg", SevMin = 0f, SevMax = 20f,
+                   LegacyFields = new[] { "overlay_scale", "overlayScale" },
+                   FromLegacy = VisSim.myFieldLoss.RadiusDegFromOverlayScale, Fields = F() },
 
+        // radius_deg is the residual field, so a more severe loss is a smaller radius and the
+        // range runs downwards: 60 degrees leaves the screen untouched, 2 degrees is a tunnel.
+        // The former overlayScale ran upwards, so a severity of 1 drew the mildest loss.
         new Bind { Filter = "vignette", EffectObject = "Vision loss, peripheral",
-                   Get = s => s.myFieldLossInverted, SeverityField = "overlayScale",
-                   SevMin = 0f, SevMax = 1.5f, Fields = F("overlay_scale", "overlayScale") },
+                   Get = s => s.myFieldLossInverted, SeverityField = "radius_deg",
+                   SevMin = VisSim.myFieldLoss.MaxRadiusDeg, SevMax = 2f,
+                   LegacyFields = new[] { "overlay_scale", "overlayScale" },
+                   FromLegacy = VisSim.myFieldLoss.RadiusDegFromOverlayScale, Fields = F() },
     };
 
     private static Bind Find(string filter)
@@ -221,7 +230,7 @@ public static class ProfileBinder
 
                 if (prop.Name == "field_type") continue;   // handled above
 
-                if (bind.LegacyField != null && prop.Name == bind.LegacyField)
+                if (bind.LegacyFields != null && Array.IndexOf(bind.LegacyFields, prop.Name) >= 0)
                 {
                     object oldObj;
                     float converted = 0f;
