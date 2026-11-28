@@ -9,7 +9,7 @@
         _MouseX("Mouse X Position (Normalized 0 to 1)", Float) = 0.0
         _MouseY("Mouse Y Position (Normalized 0 to 1)", Float) = 0.0
         _ViewDist_m("Viewing distance in meters", Float) = 2.4815
-        _OverlayScale("Overlay Scale", Float) = 1.0
+        _OverlayScale("Overlay size, fraction of the image (x, y)", Vector) = (1, 1, 0, 0)
     }
     
     SubShader
@@ -41,7 +41,7 @@
             float _MaxLODlevel;
             half _MouseX, _MouseY;
             float _ViewDist_m;
-            float _OverlayScale;
+            float4 _OverlayScale;
 
             struct appdata_t {
                 float4 vertex : POSITION;
@@ -83,8 +83,10 @@
                 float2 centerPos = half2(0.5, 0.5);
 
                 // Calculate scaled UV coordinates centered around the mouse position
-                // Floored: a profile severity of 0 maps to a scale of 0, and dividing by it gave NaN UVs.
-                float overlayScale = max(_OverlayScale, 1e-3);
+                // The overlay's size as a fraction of the image, per axis: myFieldLoss.OverlayScaleFor
+                // sets it from radius_deg so the patch is round on any screen shape. Floored: a
+                // radius of 0 gives a scale of 0, and dividing by it gave NaN UVs.
+                float2 overlayScale = max(_OverlayScale.xy, 1e-3);
                 float2 normalizedMousePos = centerPos + (mousePos - centerPos) / overlayScale;
                 float2 scaledUV = (i.uv[0] - centerPos) / overlayScale + normalizedMousePos;
 
@@ -93,6 +95,13 @@
 
                 // Fetch sample from degradation map
                 float4 degradation = tex2D(_Overlay, scaledUV);
+                // The overlay is a mask and is read as linear values. A Linear-space project
+                // (Windows) decodes the sRGB texture when sampling it; a Gamma-space one (macOS)
+                // does not, so it is decoded here. Without this the patch on macOS was weaker at
+                // its centre with a softer edge, and the peripheral loss also blurred the centre.
+                #ifdef UNITY_COLORSPACE_GAMMA
+                    degradation.rgb = GammaToLinearSpace(degradation.rgb);
+                #endif
                 float w = saturate(degradation.x * rgb2grey.x + degradation.y * rgb2grey.y + degradation.z * rgb2grey.z);
 
                 // Copy over view texture uv coordinates and

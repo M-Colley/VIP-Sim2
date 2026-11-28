@@ -1,6 +1,6 @@
 # VIP-Sim regression checklist
 
-Every test below is a fault that has actually happened at least once, in this project, on a real machine. None of them is hypothetical, and every one of them shipped or nearly shipped. There are 71 of them.
+Every test below is a fault that has actually happened at least once, in this project, on a real machine. None of them is hypothetical, and every one of them shipped or nearly shipped. There are 72 of them.
 
 Work through them on the packaged download rather than on a build made locally: two of the faults here only existed in the archive.
 
@@ -300,6 +300,14 @@ Read the ALPHA line in the log alongside these — it names every effect that is
 - **Do:** Open F1 → Display & text. Measure the width of the picture area and your eye-to-screen distance. Compare the width shown with yours, enter your distance, then switch on Farsightedness and change the distance from 60 to 120 cm.
 - **Expect:** On Windows, and on macOS with one display, the panel shows the monitor's own width within about a centimetre of yours. The log has a `[ViewingGeometry]` line with the same numbers. Doubling the distance visibly strengthens the blur, since one degree then covers twice as many pixels.
 - **Has failed as:** Each effect assumed its own angle for the whole screen width (80° for blur, 100° for nystagmus), so blur was 1.6 times too weak on a 24-inch screen at 60 cm. Nystagmus rotated the camera, which moved the image by about 2.6 px per degree on every screen and left it rotated after the effect was switched off.
+
+### D12. Field loss is round and sized in degrees
+
+*All platforms*
+
+- **Do:** Switch on Vision Loss, Peripheral. Its parameter reads Radius, degrees, at 10. Look at the patch, then change the viewing distance in F1 → Display & text from 60 to 120 cm. Switch to Vision Loss, Central and do the same.
+- **Expect:** Both patches are round on a wide screen. Doubling the distance doubles the patch's size on screen, since one degree then covers twice as many pixels. Raising a profile's peripheral severity shrinks the clear area.
+- **Has failed as:** The overlay was stretched to the screen, so the patch was 1.8 times wider than tall on a 16:9 screen, and its size was a fraction of the screen whatever the distance. Peripheral severity ran backwards: severity 1 drew the mildest loss.
 
 ## E — Toolbar, panels and accessibility
 

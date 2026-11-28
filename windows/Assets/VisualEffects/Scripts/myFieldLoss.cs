@@ -32,8 +32,52 @@ namespace VisSim
         [LinkableAttribute]
         public Texture2D overlayTexture = null; // for display purposes only (NB: should ideally be readonly)
 
-        [Linkable, Range(0.1f, 3.0f), Tooltip("Overlay Scale.")]
-        public float overlayScale = 0.75f;
+        // Distance from the point of gaze to the middle of the patch's soft edge, in degrees of
+        // visual angle, through ViewingGeometry. It replaced overlayScale, a fraction of the
+        // screen that stretched the patch to the screen's shape and changed size with it.
+        [Linkable, Range(0f, MaxRadiusDeg), Tooltip("Radius of the central loss, degrees of visual angle.")]
+        public float radius_deg = 5f;
+
+        /// <summary>Largest radius the slider and a profile can set, in degrees.</summary>
+        public const float MaxRadiusDeg = 60f;
+
+        /// <summary>
+        /// Radius of the default overlay (Resources/macular-degeneration.jpg) at which its blur
+        /// weight is half its maximum, as a fraction of the texture's side, on the linear values
+        /// the shader reads. The weight rises from 10% at 0.52 of this radius to 90% at 1.46 of
+        /// it and is complete at 1.62. FieldLossGeometryTests measures it from the imported
+        /// texture again.
+        /// </summary>
+        public const float OverlayHalfRadius = 0.1626f;
+
+        /// <summary>
+        /// The overlay's size as a fraction of an image <paramref name="width"/> by
+        /// <paramref name="height"/> pixels, per axis, so that the patch is round on screen and
+        /// its half-weight radius is <paramref name="radiusDeg"/> degrees of visual angle.
+        /// </summary>
+        public static Vector2 OverlayScaleFor(float radiusDeg, float pixelsPerDegree, int width, int height)
+        {
+            float side = Mathf.Max(0f, radiusDeg) * Mathf.Max(0f, pixelsPerDegree) / OverlayHalfRadius;
+            return new Vector2(side / Mathf.Max(1, width), side / Mathf.Max(1, height));
+        }
+
+        /// <summary>
+        /// The radius in degrees that replaces a former overlayScale. That scale stretched the
+        /// overlay to the screen's shape, so it drew an ellipse; this is the radius of the circle
+        /// with the same area, on a <paramref name="width"/> by <paramref name="height"/> pixel
+        /// screen at <paramref name="pixelsPerDegree"/>.
+        /// </summary>
+        public static float RadiusDegFromOverlayScale(float overlayScale, int width, int height, float pixelsPerDegree)
+        {
+            if (pixelsPerDegree <= 0f) return 0f;
+            float r = OverlayHalfRadius * Mathf.Max(0f, overlayScale) *
+                      Mathf.Sqrt((float)Mathf.Max(1, width) * Mathf.Max(1, height)) / pixelsPerDegree;
+            return Mathf.Min(r, MaxRadiusDeg);
+        }
+
+        /// <summary>A former overlayScale in degrees, at this screen and viewing geometry.</summary>
+        public static float RadiusDegFromOverlayScale(float overlayScale) =>
+            RadiusDegFromOverlayScale(overlayScale, Screen.width, Screen.height, ViewingGeometry.PixelsPerDegree);
 
         private Texture2D _oldOverlayTexture = null; // for checking for updates
         private float numLevelsOfBlur;
@@ -117,6 +161,10 @@ namespace VisSim
             // blit whole camera image into an intermediate rendertexture (rt), at which point mipmaps will be generated
             Graphics.Blit(source, rt);
 
+            // Sized in pixels of the image it is drawn over, so it is set here, per image.
+            Material.SetVector("_OverlayScale",
+                OverlayScaleFor(radius_deg, ViewingGeometry.PixelsPerDegree, source.width, source.height));
+
             // Blit onto screen, at which point mipmapblur shader will be applied
 			Graphics.Blit(rt, destination, Material, 0);
         }
@@ -137,8 +185,6 @@ namespace VisSim
             Material.SetFloat("_MouseY", xy_norm.y);
             //Debug.Log ("Setting position: " + ((-pos.x+1f)/2f) );
 
-            // Set the overlay scale
-            Material.SetFloat("_OverlayScale", overlayScale);
             Material.SetFloat("_DarkenAmount", 1.0f);
             Material.SetFloat("_StarIntensity", 1.0f);
             Material.SetFloat("_StarSpeed", 1.0f);

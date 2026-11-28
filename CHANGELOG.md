@@ -99,6 +99,32 @@ All notable changes to VIP-Sim are recorded here. Versions follow
   gives for 2D images) by its amplitude in degrees through the viewing geometry. At the
   default geometry that is about 14 times the previous motion, so severity 0.5 (8°) moves
   the image by up to 300 px on a 1920 px, 24-inch screen.
+- **Field loss is set as a radius in degrees of visual angle.** Central and peripheral
+  vision loss took `overlayScale`, a fraction of the screen. The overlay was stretched to
+  the screen's shape, so on a 16:9 screen the patch was 1.8 times wider than tall, and its
+  size ignored the screen's size and the viewing distance. Both effects now take
+  `radius_deg`, the distance from the point of gaze to the middle of the patch's soft edge,
+  where the blur weight is half its maximum. The patch is round and follows the viewing
+  geometry. For peripheral loss the radius is the residual field. The edge is soft: the
+  blur weight rises from 10% at 0.52 of the radius to 90% at 1.46 of it. In the effect
+  gallery at 37.87 px per degree, the radius measured on screen matched the radius set
+  within 0.4%, horizontally and vertically (`tools/measure_field_loss.py`).
+- **Peripheral loss grows with severity.** A profile's severity mapped onto `overlayScale`
+  upwards for both effects, so for peripheral loss a severity of 1 drew the mildest loss.
+  Severity now maps central loss to a radius from 0° to 20° and peripheral loss to a
+  residual field from 60° (nothing on the screen is lost) down to 2°. The defaults are 5°
+  for central loss, about the area the former default covered on a 24-inch screen at
+  60 cm, and 10° for peripheral loss, the residual field ICD-10 H54 counts as blindness;
+  the former default left about 3°. Settings files and profiles carrying `overlayScale`,
+  `overlay_scale` or `overlayscale` are converted when they load, at the current screen
+  and viewing distance, to the circle with the same area. Settings files stored one
+  `overlayscale` for both effects, so loading one gave both the same size. Each effect now
+  has its own setting, `centralRadiusDeg` and `peripheralRadiusDeg`.
+- **Field loss reads its overlay the same way on macOS.** The macOS project renders in
+  Gamma colour space, where the shader read the overlay texture without decoding it from
+  sRGB. The patch was weaker at its centre with a softer edge than on Windows, and
+  peripheral loss blurred the point of gaze by about two mip levels. The shaders now decode
+  the overlay in Gamma space, so both platforms read the same values.
 
 ### Changed — dependencies
 

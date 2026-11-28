@@ -404,6 +404,21 @@ GROUPS = [
                         "about 2.6 px per degree on every screen and left it rotated after the effect "
                         "was switched off.",
             },
+            {
+                "id": "D12",
+                "title": "Field loss is round and sized in degrees",
+                "plat": ALL,
+                "do": "Switch on Vision Loss, Peripheral. Its parameter reads Radius, degrees, at "
+                      "10. Look at the patch, then change the viewing distance in F1 \u2192 Display "
+                      "& text from 60 to 120 cm. Switch to Vision Loss, Central and do the same.",
+                "expect": "Both patches are round on a wide screen. Doubling the distance doubles "
+                          "the patch's size on screen, since one degree then covers twice as many "
+                          "pixels. Raising a profile's peripheral severity shrinks the clear area.",
+                "fail": "The overlay was stretched to the screen, so the patch was 1.8 times wider "
+                        "than tall on a 16:9 screen, and its size was a fraction of the screen "
+                        "whatever the distance. Peripheral severity ran backwards: severity 1 drew "
+                        "the mildest loss.",
+            },
         ],
     },
     {

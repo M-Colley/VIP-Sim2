@@ -19,8 +19,11 @@ namespace VisSim
         private Texture2D _oldOverlayTexture = null; // for checking for updates
 
 
-        [Linkable, Range(0.1f, 3.0f), Tooltip("Overlay Scale.")]
-        public float overlayScale = 0.5f;
+        // Radius of the residual field: from the point of gaze to the middle of the soft edge
+        // beyond which vision is lost, in degrees of visual angle. Conversions and the overlay's
+        // measured edge are in myFieldLoss. It replaced overlayScale (see there).
+        [Linkable, Range(0f, myFieldLoss.MaxRadiusDeg), Tooltip("Radius of the residual field, degrees of visual angle.")]
+        public float radius_deg = 10f;
 
         private float numLevelsOfBlur;
         private RenderTexture rt; // temporary render texture for generating mipmaps
@@ -98,6 +101,10 @@ namespace VisSim
             // blit whole camera image into an intermediate rendertexture (rt), at which point mipmaps will be generated
             Graphics.Blit(source, rt);
 
+            // Sized in pixels of the image it is drawn over, so it is set here, per image.
+            Material.SetVector("_OverlayScale",
+                myFieldLoss.OverlayScaleFor(radius_deg, ViewingGeometry.PixelsPerDegree, source.width, source.height));
+
             // Blit onto screen, at which point mipmapblur shader will be applied
             Graphics.Blit(rt, destination, Material, 0);
         }
@@ -117,8 +124,6 @@ namespace VisSim
             Material.SetFloat("_MouseX", 1 - xy_norm.x); 
             Material.SetFloat("_MouseY", xy_norm.y);
 
-            // Set the overlay scale
-            Material.SetFloat("_OverlayScale", overlayScale);
         }
 
         public void setGrid(double[,] grid_xy)
